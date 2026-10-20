@@ -55,6 +55,36 @@ class ExportTests(unittest.TestCase):
                          "run `llmsim export-web` to regenerate the web data")
 
 
+class WebServerTests(unittest.TestCase):
+    def test_serves_app_from_any_working_directory(self):
+        import os
+        import tempfile
+        import threading
+        import urllib.request
+
+        from llm_sim_bench.cli import make_web_server
+
+        cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chdir(tmp)
+            try:
+                httpd = make_web_server("127.0.0.1", 0)
+            finally:
+                os.chdir(cwd)
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            try:
+                base = f"http://127.0.0.1:{httpd.server_address[1]}/"
+                with urllib.request.urlopen(base) as r:
+                    self.assertIn(b"LLM Sim Bench", r.read())
+                with urllib.request.urlopen(base + "js/app.js") as r:
+                    self.assertEqual(r.headers.get_content_type(), "text/javascript")
+                with urllib.request.urlopen(base + "data/presets.json") as r:
+                    self.assertEqual(r.status, 200)
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+
+
 class UnifiedMemoryTests(unittest.TestCase):
     def test_gpu_budget_is_a_share_of_unified_memory(self):
         chip = APPLE_PRESETS["apple-m4-max-40c"]

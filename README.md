@@ -53,8 +53,11 @@ side by side, and watch both stream mock tokens at their simulated speed. The wh
 kept in the URL, so a link reproduces it.
 
 ```bash
-python -m http.server -d web 8000   # then open http://127.0.0.1:8000
+llmsim web            # then open http://127.0.0.1:8000
 ```
+
+Without installing, run `PYTHONPATH=src python -m llm_sim_bench web` from the repository root.
+The page must be served over HTTP; opening `index.html` as a file does not work.
 
 Python is the reference implementation. `llmsim export-web` writes `web/data/presets.json`
 and the golden test vectors in `web/test/golden.json`; rerun it after changing presets,

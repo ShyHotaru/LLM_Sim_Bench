@@ -502,5 +502,5 @@ async function main() {
 
 main().catch((e) => {
   document.getElementById("configs").replaceChildren(
-    h("p", { class: "error" }, `Could not start: ${e.message}. Serve this folder over HTTP, e.g. python -m http.server -d web`));
+    h("p", { class: "error" }, `Could not start: ${e.message}. Serve it over HTTP with: llmsim web`));
 });

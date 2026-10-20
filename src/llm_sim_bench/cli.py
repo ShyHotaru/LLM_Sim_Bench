@@ -1,4 +1,4 @@
-"""Command-line interface: `llmsim list | estimate | run | serve | calibrate | export-web`."""
+"""Command-line interface: `llmsim list | estimate | run | serve | calibrate | export-web | web`."""
 
 from __future__ import annotations
 
@@ -174,6 +174,38 @@ def cmd_export_web(args):
     return 0
 
 
+def make_web_server(host: str, port: int):
+    """HTTP server for the static web app in web/, independent of the working directory."""
+    import functools
+    import http.server
+
+    from .export import WEB_DIR
+
+    if not (WEB_DIR / "index.html").is_file():
+        raise OSError(f"web app not found at {WEB_DIR}; run llmsim from a source checkout")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        # Windows can map .js to text/plain via the registry, which browsers
+        # reject for module scripts.
+        extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
+                          ".js": "text/javascript", ".mjs": "text/javascript",
+                          ".json": "application/json", ".css": "text/css"}
+
+    handler = functools.partial(Handler, directory=str(WEB_DIR))
+    return http.server.ThreadingHTTPServer((host, port), handler)
+
+
+def cmd_web(args):
+    with make_web_server(args.host, args.port) as httpd:
+        print(f"Serving the web app at http://{args.host}:{httpd.server_address[1]}/ "
+              "(Ctrl+C to stop)")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     g = common.add_argument_group("virtual system")
@@ -215,6 +247,11 @@ def parser() -> argparse.ArgumentParser:
     ex = sub.add_parser("export-web", help="write presets and golden tests for the web app")
     ex.add_argument("--check", action="store_true", help="only verify the files are current")
     ex.set_defaults(func=cmd_export_web)
+
+    w = sub.add_parser("web", help="serve the web app locally")
+    w.add_argument("--host", default="127.0.0.1")
+    w.add_argument("--port", type=int, default=8000)
+    w.set_defaults(func=cmd_web)
 
     sv = sub.add_parser("serve", parents=[common], help="run a mock OpenAI-compatible API")
     sv.add_argument("--host", default="127.0.0.1")
