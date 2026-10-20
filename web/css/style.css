@@ -1,4 +1,5 @@
-/* Look: a measuring instrument with a terminal. Sections are divided by rules rather than
+/* Decorative glyphs in ::before/::after use `content: "x" / ""` so screen readers skip them.
+   Look: a measuring instrument with a terminal. Sections are divided by rules rather than
    boxed in cards, readings use a monospace face, and the mock stream is a black-and-green
    terminal in both themes. Fonts are self-hosted in web/fonts/. */
 :root {
@@ -108,7 +109,7 @@ html:lang(ja) :is(label, h2, h3, button, summary, .badge, .legend, .bar-label, .
 
 h2 { font-size: 1rem; margin: 0; }
 h3 { font-size: 0.85rem; margin: 18px 0 8px; font-weight: 600; }
-h3::before { content: "## "; color: var(--muted); font-family: var(--mono); font-weight: 400; }
+h3::before { content: "## "; content: "## " / ""; color: var(--muted); font-family: var(--mono); font-weight: 400; }
 
 /* Sections are separated by a rule, not boxed. */
 .panel {
@@ -131,17 +132,8 @@ h3::before { content: "## "; color: var(--muted); font-family: var(--mono); font
   gap: 8px;
 }
 .config-head h2 { display: flex; align-items: center; white-space: nowrap; }
-.config-head .tag {
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font: 700 0.82rem var(--mono);
-  margin-right: 8px;
-}
+/* With two configurations each is marked [A] / [B], in the same form on its terminal. */
+.config-head .tag { color: var(--accent); font: 600 1rem var(--mono); margin-right: 8px; }
 
 .configs.single { grid-template-columns: minmax(0, 1fr); }
 
@@ -245,8 +237,8 @@ button.primary {
   color: var(--accent-text);
   font: 600 0.95rem var(--mono);
 }
-#play::before { content: "▶ "; }
-#play.playing::before { content: "■ "; }
+#play::before { content: "▶ "; content: "▶ " / ""; }
+#play.playing::before { content: "■ "; content: "■ " / ""; }
 button.link {
   border: 0;
   background: none;
@@ -273,9 +265,9 @@ button.link {
   font: 600 0.85rem var(--mono);
 }
 .badge.warn { color: var(--warn); }
-.badge.warn::before { content: "▲ "; }
+.badge.warn::before { content: "▲ "; content: "▲ " / ""; }
 .badge.bad { color: var(--bad); }
-.badge.bad::before { content: "✕ "; }
+.badge.bad::before { content: "✕ "; content: "✕ " / ""; }
 
 .headline {
   display: flex;
@@ -337,7 +329,7 @@ button.link {
 
 /* Notes and warnings read as footnotes. */
 .notes { margin: 10px 0 0; padding: 0; list-style: none; color: var(--warn); font-size: 0.85rem; }
-.notes li::before { content: "※ "; }
+.notes li::before { content: "※ "; content: "※ " / ""; }
 
 .warnings {
   margin-top: 12px;
@@ -346,7 +338,7 @@ button.link {
   font-size: 0.85rem;
 }
 .warnings strong { color: var(--warn); font: 600 0.8rem var(--mono); }
-.warnings strong::before { content: "! "; }
+.warnings strong::before { content: "! "; content: "! " / ""; }
 .warnings ul { margin: 4px 0 0; padding-left: 18px; }
 
 .measured {
@@ -410,6 +402,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 }
 .stream-head .tok { color: var(--term-muted); }
 .stream-head .stats { color: var(--term-accent); }
+.stream-head .tag { color: var(--term-accent); }
 .stream-out {
   height: 260px;
   overflow-y: auto;
@@ -419,7 +412,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   word-break: break-word;
 }
 .stream-out.waiting { color: var(--term-muted); height: auto; }
-.stream-out.waiting::before { content: "$ "; color: var(--term-accent); }
+.stream-out.waiting::before { content: "$ "; content: "$ " / ""; color: var(--term-accent); }
 .stream-out .msg { margin: 0 0 10px; }
 .stream-out .msg .who {
   display: block;
@@ -437,6 +430,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 /* A cursor follows the newest text while playback runs. */
 .streams.live .msg:last-child .body::after {
   content: "█";
+  content: "█" / "";
   color: var(--term-accent);
   animation: blink 1s steps(1) infinite;
 }

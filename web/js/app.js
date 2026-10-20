@@ -280,7 +280,7 @@ function renderConfig(cfg, i) {
   const panel = h("div", { class: "panel config", "data-i": i });
   panel.append(h("div", { class: "config-head" },
     single ? h("h2", {}, t("config.single"))
-      : h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), t("config.title", { letter: LETTERS[i] })),
+      : h("h2", { "aria-label": t("config.title", { letter: LETTERS[i] }) }, h("span", { class: "tag" }, `[${LETTERS[i]}]`), t("config.single")),
     h("div", { class: "segmented", role: "group", "aria-label": t("config.platform") },
       h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, t("platform.pc")),
       h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac")),
@@ -652,7 +652,7 @@ function renderStreams() {
     } catch { /* invalid configs show an error in their panel */ }
     return h("div", { class: "stream", "data-i": i },
       h("div", { class: "stream-head" },
-        h("strong", {}, state.configs.length > 1 ? `${LETTERS[i]} · ${label}` : label),
+        h("strong", {}, state.configs.length > 1 ? h("span", { class: "tag" }, `[${LETTERS[i]}] `) : null, label),
         h("span", { class: "tok" }, tok),
         h("span", { class: "stats" })),
       h("div", { class: "stream-out waiting", "aria-live": "off" }, t("mock.ready")));
