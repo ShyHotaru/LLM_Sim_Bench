@@ -1,0 +1,30 @@
+# Example virtual rig. Use with: llmsim estimate --config examples/rtx3080_desktop.toml
+# Any table can name a `preset` and override fields, or define every field itself.
+
+cpu = "ryzen7-5800x"
+
+[ram]
+size_gb = 64
+kind = "ddr4-3200"
+channels = 2
+# bandwidth_gbps = 51.2   # set directly to skip the kind/channels calculation
+
+[[gpu]]
+preset = "rtx3080-10gb"
+
+# A second GPU would be another [[gpu]] table, e.g. a fully custom one:
+# [[gpu]]
+# name = "my-gpu"
+# vram_gb = 16
+# bandwidth_gbps = 448
+# fp16_tflops = 90
+
+[model]
+preset = "qwen2.5-14b"
+quant = "Q4_K_M"
+context = 8192
+kv_bits = 16
+
+# [sim]
+# decode_tps = 25      # force a fixed decode speed instead of the estimate
+# prefill_tps = 1500

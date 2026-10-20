@@ -1,0 +1,99 @@
+# LLM Sim Bench
+
+Simulate a local LLM rig before you build it. Describe a virtual CPU, RAM, GPU(s) and model,
+get an estimate of memory use and tokens/sec, then run a mock inference engine that streams
+dummy tokens at that exact speed — in the terminal or behind an OpenAI-compatible API — so you
+can *feel* the latency in your real tools before spending money on hardware.
+
+## Why
+
+Spec sheets do not tell you whether 15 tok/s is pleasant or painful for your workflow, or
+whether a model spills out of VRAM into system RAM. LLM Sim Bench answers three questions:
+
+1. **Does it fit?** Weights + KV cache vs. VRAM and RAM, with llama.cpp-style layer offloading.
+2. **How fast is it?** Prefill (prompt processing) and decode (generation) tok/s, including the
+   slowdown as the context fills up.
+3. **How does that feel?** A speed-matched mock that your chat UI, agent or script can call.
+
+## Quick start
+
+Requires Python 3.11+. No third-party dependencies.
+
+```bash
+pip install -e .
+llmsim list
+llmsim estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx 8192
+llmsim run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
+llmsim serve --config examples/rtx3080_desktop.toml --port 8000
+```
+
+Without installing: `PYTHONPATH=src python -m llm_sim_bench ...`
+
+Example estimate:
+
+```
+System    CPU ryzen7-5800x | RAM 64 GB ddr4-3200 x2 (51.2 GB/s) | GPU rtx3080-10gb
+Model     qwen2.5-14b (14.8B) Q4_K_M, context 8192
+Memory    weights 9.05 GB + KV cache 1.61 GB = 10.66 GB
+Placement
+  rtx3080-10gb              40 layers    8.88 GB
+  cpu:ryzen7-5800x           8 layers    1.78 GB
+Fits      yes
+Decode    ~16.0 tok/s (empty context)  ->  ~13.6 tok/s (full context)
+Note      8/48 layers offloaded to CPU
+```
+
+## Configuring a virtual system
+
+Every option can be passed as a flag or in a TOML file (`--config`); flags win.
+
+| Flag | Meaning |
+| --- | --- |
+| `--cpu` | CPU preset |
+| `--ram-gb`, `--ram-kind`, `--ram-channels` | RAM size, DDR kind (e.g. `ddr5-6000`) and channel count |
+| `--gpu` | GPU preset; repeat for multi-GPU; `--no-gpu` for CPU-only |
+| `--model`, `--quant`, `--ctx`, `--kv-bits` | Model preset, quantization, context length, KV cache precision |
+| `--decode-tps`, `--prefill-tps` | Skip the estimate and force a target speed for the mock |
+
+Custom hardware or models that are not presets can be defined field-by-field in TOML. See
+[`examples/rtx3080_desktop.toml`](examples/rtx3080_desktop.toml).
+
+## Mock OpenAI-compatible server
+
+`llmsim serve` exposes `GET /v1/models` and `POST /v1/chat/completions` (streaming and
+non-streaming). Point any OpenAI client or chat UI at `http://127.0.0.1:8000/v1` with any API
+key. Time-to-first-token follows the simulated prefill speed for the prompt length, and each
+token after that follows the simulated decode speed at the current context fill.
+
+## How the estimate works
+
+- **Weights** = parameters × bits-per-weight of the quantization.
+- **KV cache** = 2 × layers × KV heads × head dim × bytes × context.
+- **Placement**: whole layers go to GPUs first (minus a VRAM reserve), the rest to system RAM.
+- **Decode** is memory-bandwidth bound: per token, each device reads its share of the active
+  weights and the filled KV cache. Device times add up (layers run sequentially).
+- **Prefill** is compute bound: about 2 FLOPs per active parameter per prompt token.
+- Peak specs are scaled by efficiency factors (`Efficiency` in `estimator.py`).
+
+All preset numbers are approximate public specs. Treat results as order-of-magnitude guidance.
+
+### Known limitations
+
+- Prefill with partial CPU offload is pessimistic: real runtimes push large prompt batches
+  through the GPU even for CPU-resident layers.
+- MoE decode is optimistic: routing overhead and shared weights are not modeled yet.
+- Single request only; no batching or concurrency effects. Apple Silicon unified memory is not
+  modeled yet.
+
+## Roadmap
+
+- Calibrate efficiency factors against real `llama-bench` results.
+- Apple Silicon / unified memory and AMD GPU presets.
+- Concurrent-request simulation and a small benchmark harness that replays a prompt set.
+- Report export (JSON/Markdown) for comparing candidate builds side by side.
+
+## Development
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
+```
