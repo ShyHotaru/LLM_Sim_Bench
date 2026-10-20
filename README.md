@@ -61,6 +61,12 @@ llmsim web            # then open http://127.0.0.1:8000
 Without installing, run `PYTHONPATH=src python -m llm_sim_bench web` from the repository root.
 The page must be served over HTTP; opening `index.html` as a file does not work.
 
+The mock stream plays real text: an LLM-style answer or a multi-turn conversation in each
+language, or excerpts of public-domain books. Text is split into tokens at the rate measured
+with each model family's real tokenizer, so a Korean answer on a Llama 2 model streams far fewer
+characters per second than on Llama 3 at the same tokens per second. See
+[`data/README.md`](data/README.md) for sources and licensing.
+
 Python is the reference implementation. `llmsim export-web` writes `web/data/presets.json`
 and the golden test vectors in `web/test/golden.json`; rerun it after changing presets,
 measurement data or the estimator, then run `node --test web/test/*.test.mjs`.

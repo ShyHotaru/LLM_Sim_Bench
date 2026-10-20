@@ -17,6 +17,7 @@ from .profiles import (APPLE_PRESETS, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, Q
                        System, apple_system, lookup)
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+TOKENIZER_RATIOS = Path(__file__).resolve().parents[2] / "data" / "tokenizer_ratios.json"
 
 
 def build_system(spec: dict) -> System:
@@ -83,6 +84,7 @@ def presets(records: list[dict]) -> dict:
         "gpus": [asdict(g) for g in GPU_PRESETS.values()],
         "apple": [asdict(a) for a in APPLE_PRESETS.values()],
         "models": [asdict(m) for m in MODEL_PRESETS.values()],
+        "tokenizers": json.loads(TOKENIZER_RATIOS.read_text(encoding="utf-8")),
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),
                             "max": round(v["max"], 4)} for k, v in stats.items()},
         "measurements": [{

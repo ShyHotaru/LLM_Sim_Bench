@@ -2,8 +2,9 @@ import { buildSystem, estimate, ramBandwidthGbps } from "./estimator.js";
 import {
   LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
 } from "./i18n.js";
-import { MockStream } from "./mock.js";
+import { Schedule } from "./mock.js";
 import { decodeState, encodeState } from "./state.js";
+import { charsPerToken, chunkText } from "./tokenize.js";
 
 const RAM_SIZES = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256];
 const RAM_KINDS = ["ddr4-2666", "ddr4-3200", "ddr4-3600", "ddr5-4800", "ddr5-5600",
@@ -35,6 +36,8 @@ const DEFAULT_STATE = {
 };
 
 let P; // presets.json
+let TEXTS; // data/texts/manifest.json
+let CREDITS; // data/texts/credits.json
 let state;
 let playback = null;
 
@@ -144,6 +147,7 @@ function loadState() {
     configs: configs.length ? configs : [sanitizeConfig(DEFAULT_CONFIG)],
     prompt: clamp(src.prompt, 1, 200000, DEFAULT_STATE.prompt),
     maxTokens: clamp(src.maxTokens, 1, 4000, DEFAULT_STATE.maxTokens),
+    text: TEXTS.texts.some((x) => x.id === src.text) ? src.text : defaultTextId(),
   };
 }
 
@@ -395,36 +399,100 @@ function changed() {
 
 // ---------- mock streams ----------
 
+const textCache = new Map();
+
+function textEntry(id = state.text) {
+  return TEXTS.texts.find((x) => x.id === id);
+}
+
+function defaultTextId() {
+  return textEntry(`${lang}-answer`) ? `${lang}-answer` : TEXTS.texts[0].id;
+}
+
+async function loadText(entry) {
+  if (!textCache.has(entry.id)) {
+    const resp = await fetch(`data/texts/${entry.file}`);
+    if (!resp.ok) throw new Error(`${entry.file}: HTTP ${resp.status}`);
+    textCache.set(entry.id, entry.kind === "chat" ? (await resp.json()).turns : await resp.text());
+  }
+  return textCache.get(entry.id);
+}
+
+function renderTextPicker() {
+  const picker = document.getElementById("text");
+  picker.replaceChildren(...Object.entries(LANGS).map(([code, name]) =>
+    h("optgroup", { label: name },
+      TEXTS.texts.filter((x) => x.lang === code).map((x) =>
+        h("option", { value: x.id, selected: x.id === state.text },
+          x.author ? `${x.title} (${x.author})` : x.title)))));
+  renderCredits();
+}
+
+function renderCredits() {
+  const entry = textEntry();
+  const el = document.getElementById("credits");
+  if (entry.origin === "authored") {
+    el.replaceChildren(t("mock.authored"));
+    return;
+  }
+  const notes = CREDITS[entry.id]?.notes;
+  el.replaceChildren(
+    t("mock.credit", { title: entry.title, author: entry.author, year: entry.first_published,
+                       died: entry.author_died }), " · ",
+    h("a", { href: entry.source.page }, entry.source.name),
+    notes ? h("details", { class: "credit-notes" }, h("summary", {}, t("mock.creditNotes")), notes) : null);
+}
+
+function tokenizerFor(cfg) {
+  const m = P.models.find((x) => x.name === cfg.model);
+  const r = charsPerToken(P.tokenizers, state.text, m.tokenizer);
+  return { family: m.tokenizer, ...r };
+}
+
+function tokenizerLabel(tk) {
+  const cpt = tk.value.toFixed(2);
+  return tk.measured ? t("mock.tokenizer", { family: tk.family, cpt }) : t("mock.tokenizerUnknown", { cpt });
+}
+
 function renderStreams() {
   const root = document.getElementById("streams");
   root.replaceChildren(...state.configs.map((cfg, i) => {
     let label = "";
+    let tok = "";
     try {
       const m = P.models.find((x) => x.name === cfg.model);
       const hw = cfg.platform === "apple" ? chipName(P.apple.find((a) => a.name === cfg.chip))
         : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : t("mock.cpuOnly"));
       label = `${hw} · ${m.name} ${cfg.quant}`;
+      tok = tokenizerLabel(tokenizerFor(cfg));
     } catch { /* invalid configs show an error in their panel */ }
     return h("div", { class: "stream", "data-i": i },
       h("div", { class: "stream-head" },
         h("strong", {}, `${LETTERS[i]} · ${label}`),
+        h("span", { class: "tok" }, tok),
         h("span", { class: "stats" }, t("mock.ready"))),
       h("div", { class: "stream-out waiting", "aria-live": "off" }, ""));
   }));
 }
 
-function startPlayback() {
+async function startPlayback() {
+  const entry = textEntry();
+  const content = await loadText(entry);
   const streams = [];
   state.configs.forEach((cfg, i) => {
     const el = document.querySelector(`.stream[data-i="${i}"]`);
     try {
       const { est } = compute(cfg);
+      const tk = tokenizerFor(cfg);
+      const turns = entry.kind === "chat"
+        ? content.map((x) => ({ user: chunkText(x.user, tk.value), assistant: chunkText(x.assistant, tk.value) }))
+        : [{ user: null, assistant: chunkText(content, tk.value) }];
       streams.push({
-        el, est, shown: 0,
-        mock: new MockStream({ promptTokens: state.prompt, maxTokens: state.maxTokens,
-                               prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i }),
+        el, est, shown: 0, block: null, chat: entry.kind === "chat",
+        schedule: new Schedule({ turns, promptTokens: state.prompt, maxTokens: state.maxTokens,
+                                 prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i }),
       });
-      el.querySelector(".stream-out").textContent = "";
+      el.querySelector(".stream-out").replaceChildren();
     } catch (e) {
       el.querySelector(".stats").textContent = e.message;
     }
@@ -441,36 +509,66 @@ function stopPlayback() {
   document.getElementById("play").textContent = t("mock.play");
 }
 
+// Append events [s.shown, n) to the output, one block per message.
+function appendEvents(s, n) {
+  const out = s.el.querySelector(".stream-out");
+  out.classList.remove("waiting");
+  out.querySelector(".pending")?.remove();
+  for (const ev of s.schedule.events.slice(s.shown, n)) {
+    if (ev.role === "user" || !s.block || s.block.dataset.turn !== String(ev.turn)) {
+      const role = ev.role === "user" ? "user" : "assistant";
+      s.block = h("div", { class: `msg ${role}`, "data-turn": ev.turn },
+        s.chat ? h("span", { class: "who" }, t(role === "user" ? "mock.you" : "mock.ai")) : null,
+        h("span", { class: "body" }));
+      out.append(s.block);
+      if (ev.role === "user") {
+        s.block.querySelector(".body").textContent = ev.text;
+        s.block = null;
+        continue;
+      }
+    }
+    s.block.querySelector(".body").textContent += ev.text;
+  }
+  s.shown = n;
+  out.scrollTop = out.scrollHeight;
+}
+
 function tick() {
   if (!playback) return;
   const elapsed = (performance.now() - playback.start) / 1000;
   let running = false;
   for (const s of playback.streams) {
+    const sch = s.schedule;
+    const n = sch.dueBy(elapsed);
+    if (n > s.shown) appendEvents(s, n);
+    const k = Math.max(0, sch.turns.findLastIndex((x) => x.start <= elapsed));
+    const turn = sch.turns[k];
     const out = s.el.querySelector(".stream-out");
     const stats = s.el.querySelector(".stats");
-    const n = s.mock.tokensDueBy(elapsed);
-    const total = s.mock.times.length;
-    if (n > s.shown) {
-      const words = s.mock.words.slice(s.shown, n).join(" ");
-      out.textContent = s.shown ? `${out.textContent} ${words}` : words;
-      out.classList.remove("waiting");
-      out.scrollTop = out.scrollHeight;
-      s.shown = n;
-    }
-    if (n === 0) {
-      out.classList.add("waiting");
-      out.textContent = t("mock.prefilling", { n: fmtInt(state.prompt), left: fmtTime(Math.max(0, s.mock.ttft - elapsed)) });
-      stats.textContent = t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps) });
+    const turnLabel = sch.turns.length > 1 ? `${t("mock.turn", { k: k + 1, total: sch.turns.length })} · ` : "";
+    if (elapsed < turn.firstAt) {
+      let pending = out.querySelector(".pending");
+      if (!pending) {
+        pending = h("div", { class: "pending" });
+        out.append(pending);
+      }
+      pending.textContent = t("mock.prefilling", {
+        n: fmtInt(turn.prefillTokens), left: fmtTime(Math.max(0, turn.firstAt - elapsed)) });
+      stats.textContent = turnLabel + t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps) });
       running = true;
     } else {
-      const genElapsed = Math.min(elapsed, s.mock.totalTime) - s.mock.ttft;
-      const rate = n > 1 && genElapsed > 0 ? (n - 1) / genElapsed : 0;
-      stats.textContent = t("mock.stats", {
-        ttft: fmtTime(s.mock.ttft), n, total, rate: rate ? fmtTps(rate) : "–",
-        elapsed: fmtTime(Math.min(elapsed, s.mock.totalTime)),
+      const now = Math.min(elapsed, turn.end);
+      const done = sch.events.slice(0, n).filter((ev) => ev.turn === k && ev.role === "assistant");
+      const genElapsed = now - turn.firstAt;
+      const rate = done.length > 1 && genElapsed > 0 ? (done.length - 1) / genElapsed : 0;
+      const chars = done.slice(1).reduce((a, ev) => a + Array.from(ev.text).length, 0);
+      stats.textContent = turnLabel + t("mock.stats", {
+        ttft: fmtTime(turn.ttft), n: done.length, total: turn.tokens,
+        rate: rate ? fmtTps(rate) : "–", cps: rate ? fmtTps(chars / genElapsed) : "–",
+        fill: fmtInt(n ? sch.events[n - 1].fill : state.prompt),
       });
-      if (n < total) running = true;
     }
+    if (n < sch.events.length) running = true;
   }
   if (running) playback.raf = requestAnimationFrame(tick);
   else stopPlayback();
@@ -506,19 +604,28 @@ async function switchLang(code) {
   }
   await loadLocale(code);
   renderStatic();
+  renderCredits();
   renderConfigs();
 }
 
 async function main() {
   const code = pickLang(location.search, savedLang(), navigator.languages || [navigator.language]);
-  const [presets] = await Promise.all([fetch("data/presets.json").then((r) => r.json()), loadLocale(code)]);
-  P = presets;
+  const json = (url) => fetch(url).then((r) => r.json());
+  [P, TEXTS, CREDITS] = await Promise.all([
+    json("data/presets.json"), json("data/texts/manifest.json"), json("data/texts/credits.json"),
+    loadLocale(code)]);
   state = loadState();
 
   const picker = document.getElementById("lang");
   picker.replaceChildren(...Object.entries(LANGS).map(([c, name]) => h("option", { value: c, selected: c === code }, name)));
   picker.addEventListener("change", () => switchLang(picker.value));
   renderStatic();
+  renderTextPicker();
+  document.getElementById("text").addEventListener("change", (e) => {
+    state.text = e.target.value;
+    renderCredits();
+    changed();
+  });
   document.getElementById("prompt-tokens").value = state.prompt;
   document.getElementById("max-tokens").value = state.maxTokens;
 
@@ -535,11 +642,14 @@ async function main() {
     if (playback) return stopPlayback();
     readMockInputs();
     saveState();
-    startPlayback();
+    startPlayback().catch((e) => {
+      document.querySelector(".stream .stats").textContent = e.message;
+    });
   });
   window.addEventListener("hashchange", () => {
     stopPlayback();
     state = loadState();
+    renderTextPicker();
     renderConfigs();
   });
 

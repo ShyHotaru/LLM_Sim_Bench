@@ -28,6 +28,9 @@
       <div class="mock-head">
         <h2 id="mock-title" data-i18n="mock.title"></h2>
         <div class="mock-controls">
+          <label class="text-picker"><span data-i18n="mock.text"></span>
+            <select id="text"></select>
+          </label>
           <label><span data-i18n="mock.promptTokens"></span>
             <input id="prompt-tokens" type="number" min="1" max="200000" step="100" value="1000">
           </label>
@@ -37,6 +40,7 @@
           <button id="play" class="primary" type="button" data-i18n="mock.play"></button>
         </div>
       </div>
+      <p class="credits" id="credits"></p>
       <p class="hint" data-i18n="mock.hint"></p>
       <div class="streams" id="streams"></div>
     </section>

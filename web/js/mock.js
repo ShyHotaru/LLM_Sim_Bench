@@ -1,12 +1,6 @@
-// Speed-matched dummy token stream, the browser counterpart of mock.py.
-// The emission time of every token is computed up front, so the UI just asks
-// how many tokens are due at the current elapsed time on each animation frame.
-
-const WORDS = (
-  "the model simulates local inference on virtual hardware so you can feel " +
-  "the latency before buying anything memory bandwidth decides decode speed " +
-  "while compute decides prefill speed and context length slowly drags it down"
-).split(" ");
+// Speed-matched mock playback, the browser counterpart of mock.py.
+// The time of every event is computed up front, so the UI only asks how many
+// events are due at the current elapsed time on each animation frame.
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -19,45 +13,58 @@ function mulberry32(seed) {
   };
 }
 
-export class MockStream {
-  constructor({ promptTokens, maxTokens, prefillTps, decodeTps, jitter = 0.05, seed = 1 }) {
+// turns: [{ user: pieces | null, assistant: pieces }], where pieces are token
+// texts from chunkText(). Before the first turn the context already holds
+// `promptTokens` tokens. Each turn prefills only its new user tokens (the
+// earlier conversation stays in the KV cache, as llama.cpp's prompt cache does),
+// then generates up to `maxTokens` assistant tokens at the decode speed for the
+// current context fill. `pause` seconds separate turns.
+//
+// Events: { t, role: "user" | "assistant", turn, text, fill }. A user event
+// carries the whole message; an assistant event is one token.
+export class Schedule {
+  constructor({ turns, promptTokens, maxTokens, prefillTps, decodeTps, pause = 1,
+                jitter = 0.05, seed = 1 }) {
     const rand = mulberry32(seed);
-    this.times = new Float64Array(maxTokens);
-    this.words = [];
-    // Prefill produces the first token; each later token follows the decode
-    // speed at the current context fill.
-    let t = promptTokens / prefillTps;
-    for (let i = 0; i < maxTokens; i++) {
-      if (i) {
-        const dt = 1 / decodeTps(promptTokens + i);
-        t += Math.max(0, dt * (1 + jitter * (2 * rand() - 1)));
+    this.events = [];
+    this.turns = [];
+    let t = 0;
+    let fill = promptTokens;
+    turns.forEach((turn, k) => {
+      if (k) t += pause;
+      const start = t;
+      let newTokens = k ? 0 : promptTokens;
+      if (turn.user) {
+        this.events.push({ t, role: "user", turn: k, text: turn.user.join(""), fill });
+        newTokens += turn.user.length;
+        fill += turn.user.length;
       }
-      this.times[i] = t;
-      this.words.push(WORDS[Math.floor(rand() * WORDS.length)]);
-    }
-  }
-
-  get ttft() {
-    return this.times.length ? this.times[0] : 0;
+      t += newTokens / prefillTps;
+      const first = t;
+      const pieces = turn.assistant.slice(0, maxTokens);
+      pieces.forEach((text, i) => {
+        if (i) t += Math.max(0, (1 / decodeTps(fill)) * (1 + jitter * (2 * rand() - 1)));
+        fill += 1;
+        this.events.push({ t, role: "assistant", turn: k, text, fill });
+      });
+      this.turns.push({ start, prefillTokens: newTokens, ttft: first - start, firstAt: first,
+                        end: t, tokens: pieces.length });
+    });
   }
 
   get totalTime() {
-    return this.times.length ? this.times[this.times.length - 1] : 0;
+    return this.events.length ? this.events[this.events.length - 1].t : 0;
   }
 
-  // Number of tokens emitted by `elapsed` seconds (binary search).
-  tokensDueBy(elapsed) {
+  // Number of events that have happened by `elapsed` seconds (binary search).
+  dueBy(elapsed) {
     let lo = 0;
-    let hi = this.times.length;
+    let hi = this.events.length;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if (this.times[mid] <= elapsed) lo = mid + 1;
+      if (this.events[mid].t <= elapsed) lo = mid + 1;
       else hi = mid;
     }
     return lo;
-  }
-
-  text(n) {
-    return this.words.slice(0, n).join(" ");
   }
 }

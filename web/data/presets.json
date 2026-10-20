@@ -517,7 +517,8 @@
    "n_kv_heads": 32,
    "head_dim": 128,
    "max_context": 4096,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "llama2"
   },
   {
    "name": "llama-3.2-3b",
@@ -526,7 +527,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "llama3"
   },
   {
    "name": "llama-3.1-8b",
@@ -535,7 +537,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "llama3"
   },
   {
    "name": "llama-3.1-70b",
@@ -544,7 +547,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "llama3"
   },
   {
    "name": "mistral-7b",
@@ -553,7 +557,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 32768,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "mistral"
   },
   {
    "name": "gemma-2-9b",
@@ -562,7 +567,8 @@
    "n_kv_heads": 8,
    "head_dim": 256,
    "max_context": 8192,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "gemma2"
   },
   {
    "name": "qwen2.5-7b",
@@ -571,7 +577,8 @@
    "n_kv_heads": 4,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen2.5"
   },
   {
    "name": "qwen2.5-14b",
@@ -580,7 +587,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen2.5"
   },
   {
    "name": "qwen2.5-32b",
@@ -589,7 +597,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen2.5"
   },
   {
    "name": "qwen3-8b",
@@ -598,7 +607,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 32768,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen3"
   },
   {
    "name": "qwen3-14b",
@@ -607,7 +617,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 32768,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen3"
   },
   {
    "name": "qwen3-32b",
@@ -616,7 +627,8 @@
    "n_kv_heads": 8,
    "head_dim": 128,
    "max_context": 32768,
-   "active_params_b": null
+   "active_params_b": null,
+   "tokenizer": "qwen3"
   },
   {
    "name": "qwen3-30b-a3b",
@@ -625,7 +637,8 @@
    "n_kv_heads": 4,
    "head_dim": 128,
    "max_context": 131072,
-   "active_params_b": 3.3
+   "active_params_b": 3.3,
+   "tokenizer": "qwen3"
   },
   {
    "name": "gpt-oss-20b",
@@ -634,7 +647,8 @@
    "n_kv_heads": 8,
    "head_dim": 64,
    "max_context": 131072,
-   "active_params_b": 3.6
+   "active_params_b": 3.6,
+   "tokenizer": "gpt-oss"
   },
   {
    "name": "gpt-oss-120b",
@@ -643,9 +657,152 @@
    "n_kv_heads": 8,
    "head_dim": 64,
    "max_context": 131072,
-   "active_params_b": 5.1
+   "active_params_b": 5.1,
+   "tokenizer": "gpt-oss"
   }
  ],
+ "tokenizers": {
+  "measured": "2026-10-20",
+  "unit": "characters (Unicode code points) per token, no special tokens",
+  "families": {
+   "llama2": {
+    "repo": "NousResearch/Llama-2-7b-hf",
+    "license": "Llama 2 Community License",
+    "vocab_size": 32000
+   },
+   "mistral": {
+    "repo": "mistralai/Mistral-7B-v0.1",
+    "license": "Apache-2.0",
+    "vocab_size": 32000
+   },
+   "llama3": {
+    "repo": "NousResearch/Meta-Llama-3-8B",
+    "license": "Meta Llama 3 Community License",
+    "vocab_size": 128256
+   },
+   "qwen2.5": {
+    "repo": "Qwen/Qwen2.5-7B-Instruct",
+    "license": "Apache-2.0",
+    "vocab_size": 151665
+   },
+   "qwen3": {
+    "repo": "Qwen/Qwen3-8B",
+    "license": "Apache-2.0",
+    "vocab_size": 151669
+   },
+   "gemma2": {
+    "repo": "unsloth/gemma-2-9b-it",
+    "license": "Gemma Terms of Use",
+    "vocab_size": 256000
+   },
+   "gpt-oss": {
+    "repo": "openai/gpt-oss-20b",
+    "license": "Apache-2.0",
+    "vocab_size": 200019
+   }
+  },
+  "chars_per_token": {
+   "ko-answer": {
+    "llama2": 0.715,
+    "mistral": 0.919,
+    "llama3": 1.642,
+    "qwen2.5": 1.473,
+    "qwen3": 1.473,
+    "gemma2": 1.501,
+    "gpt-oss": 1.706
+   },
+   "ko-chat": {
+    "llama2": 0.714,
+    "mistral": 0.931,
+    "llama3": 1.649,
+    "qwen2.5": 1.446,
+    "qwen3": 1.446,
+    "gemma2": 1.485,
+    "gpt-oss": 1.729
+   },
+   "ja-answer": {
+    "llama2": 0.898,
+    "mistral": 0.971,
+    "llama3": 1.458,
+    "qwen2.5": 1.537,
+    "qwen3": 1.537,
+    "gemma2": 1.852,
+    "gpt-oss": 1.406
+   },
+   "ja-chat": {
+    "llama2": 0.93,
+    "mistral": 0.996,
+    "llama3": 1.56,
+    "qwen2.5": 1.554,
+    "qwen3": 1.554,
+    "gemma2": 1.784,
+    "gpt-oss": 1.46
+   },
+   "ja-neko": {
+    "llama2": 0.794,
+    "mistral": 0.84,
+    "llama3": 1.303,
+    "qwen2.5": 1.395,
+    "qwen3": 1.395,
+    "gemma2": 1.643,
+    "gpt-oss": 1.178
+   },
+   "ja-botchan": {
+    "llama2": 0.821,
+    "mistral": 0.864,
+    "llama3": 1.327,
+    "qwen2.5": 1.409,
+    "qwen3": 1.409,
+    "gemma2": 1.623,
+    "gpt-oss": 1.186
+   },
+   "ja-takasebune": {
+    "llama2": 0.851,
+    "mistral": 0.887,
+    "llama3": 1.425,
+    "qwen2.5": 1.514,
+    "qwen3": 1.514,
+    "gemma2": 1.737,
+    "gpt-oss": 1.266
+   },
+   "en-answer": {
+    "llama2": 3.934,
+    "mistral": 3.951,
+    "llama3": 4.431,
+    "qwen2.5": 4.366,
+    "qwen3": 4.366,
+    "gemma2": 4.222,
+    "gpt-oss": 4.42
+   },
+   "en-chat": {
+    "llama2": 3.319,
+    "mistral": 3.343,
+    "llama3": 3.873,
+    "qwen2.5": 3.665,
+    "qwen3": 3.665,
+    "gemma2": 3.499,
+    "gpt-oss": 3.919
+   },
+   "en-alice": {
+    "llama2": 3.8,
+    "mistral": 3.88,
+    "llama3": 4.179,
+    "qwen2.5": 4.179,
+    "qwen3": 4.179,
+    "gemma2": 4.122,
+    "gpt-oss": 4.232
+   },
+   "en-pride": {
+    "llama2": 3.876,
+    "mistral": 3.957,
+    "llama3": 4.314,
+    "qwen2.5": 4.314,
+    "qwen3": 4.314,
+    "gemma2": 4.315,
+    "gpt-oss": 4.342
+   }
+  }
+ },
  "calibration": {
   "cuda/pp": {
    "n": 30,

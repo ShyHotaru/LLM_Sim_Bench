@@ -41,3 +41,28 @@ guess.
   same value for prefill and decode).
 - No CPU-only, ROCm or Vulkan data yet, so CPU efficiency factors are not calibrated.
 - No depth (`-d`) data yet, so the slowdown as the context fills is not calibrated.
+
+# Output texts and tokenizer ratios
+
+The web mock streams real text instead of filler. Texts live in `web/data/texts/`
+(`manifest.json` lists them):
+
+- **Authored**: an LLM-style answer and a four-turn conversation in Korean, Japanese and
+  English, written for this project.
+- **Public domain**: excerpts of works whose author died in or before 1925 and that were first
+  published before 1931, so they are free in every country (including life+100 terms and the
+  US publication rule). Japanese texts come from 青空文庫 (Aozora Bunko), which allows free
+  reuse and asks that the edition and transcription notes be kept; they are stored in
+  `credits.json` and shown in the app. English texts come from Project Gutenberg via the
+  GITenberg mirror (its site forbids scripted downloads); the Project Gutenberg license and
+  name are removed from the excerpts as its license requires, and the app links to the ebook
+  page as an acknowledgement. 夢十夜 was left out because its opening contains characters that
+  Aozora renders as images.
+
+`tools/build_texts.py` rebuilds the excerpts and `credits.json` from the manifest.
+
+`tokenizer_ratios.json` holds the measured characters per token for every text and tokenizer
+family, produced by `tools/measure_tokenizers.py` (needs `pip install tokenizers`). Only the
+counts are stored; tokenizer files are cached in `.cache/` and never committed. Llama 2,
+Llama 3 and Gemma 2 tokenizers were read from ungated community mirrors of the gated official
+repositories.

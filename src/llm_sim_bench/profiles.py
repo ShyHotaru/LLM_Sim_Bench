@@ -42,6 +42,7 @@ class Model:
     head_dim: int
     max_context: int
     active_params_b: float | None = None  # MoE: parameters used per token
+    tokenizer: str = ""  # tokenizer family in data/tokenizer_ratios.json, "" if unknown
 
     @property
     def active_b(self) -> float:
@@ -171,21 +172,21 @@ def apple_system(chip: AppleChip, memory_gb: float) -> System:
 MODEL_PRESETS: dict[str, Model] = {
     m.name: m
     for m in [
-        Model("llama-2-7b", 6.74, 32, 32, 128, 4096),
-        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072),
-        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072),
-        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072),
-        Model("mistral-7b", 7.24, 32, 8, 128, 32768),
-        Model("gemma-2-9b", 9.24, 42, 8, 256, 8192),
-        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072),
-        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072),
-        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072),
-        Model("qwen3-8b", 8.19, 36, 8, 128, 32768),
-        Model("qwen3-14b", 14.8, 40, 8, 128, 32768),
-        Model("qwen3-32b", 32.8, 64, 8, 128, 32768),
-        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3),
-        Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6),
-        Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1),
+        Model("llama-2-7b", 6.74, 32, 32, 128, 4096, tokenizer="llama2"),
+        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072, tokenizer="llama3"),
+        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072, tokenizer="llama3"),
+        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072, tokenizer="llama3"),
+        Model("mistral-7b", 7.24, 32, 8, 128, 32768, tokenizer="mistral"),
+        Model("gemma-2-9b", 9.24, 42, 8, 256, 8192, tokenizer="gemma2"),
+        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072, tokenizer="qwen2.5"),
+        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072, tokenizer="qwen2.5"),
+        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072, tokenizer="qwen2.5"),
+        Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3"),
+        Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3"),
+        Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3"),
+        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3, tokenizer="qwen3"),
+        Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss"),
+        Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1, tokenizer="gpt-oss"),
     ]
 }
 

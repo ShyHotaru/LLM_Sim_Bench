@@ -10,6 +10,9 @@ Simulates local LLM hardware and models, estimates tok/s, and runs a speed-match
   export-web` and keep `web/js/estimator.js` in sync.
 - Measurement records live in `data/measurements/` (schema in `data/README.md`); never guess
   missing fields.
+- Mock output texts are in `web/data/texts/`: only text written for this project, or
+  public-domain works whose author died in or before 1925 and that were first published before
+  1931. After changing texts, rerun `tools/measure_tokenizers.py` and `export-web`.
 - Run tests: `PYTHONPATH=src python -m unittest discover -s tests -v` and
   `node --test web/test/*.test.mjs`
 - All repository text (README, comments, commit messages, issues) is written in English.

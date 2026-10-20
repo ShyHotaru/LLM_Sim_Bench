@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { buildSystem, estimate, ramBandwidthGbps } from "../js/estimator.js";
-import { MockStream } from "../js/mock.js";
 import { decodeState, encodeState } from "../js/state.js";
 
 const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf8"));
@@ -46,18 +45,6 @@ test("RAM bandwidth", () => {
   assert.equal(ramBandwidthGbps("ddr4-3200", 2), 51.2);
   assert.equal(ramBandwidthGbps("DDR5-6000", 2), 96);
   assert.throws(() => ramBandwidthGbps("fast-ram"));
-});
-
-test("mock stream paces tokens by prefill and decode speed", () => {
-  const s = new MockStream({ promptTokens: 100, maxTokens: 11, prefillTps: 1000,
-                             decodeTps: () => 100, jitter: 0, seed: 1 });
-  assert.equal(s.ttft, 0.1);
-  assert.equal(s.tokensDueBy(0.05), 0);
-  assert.equal(s.tokensDueBy(0.1), 1);
-  assert.equal(s.tokensDueBy(0.155), 6);
-  close(s.totalTime, 0.2, "total");
-  assert.equal(s.tokensDueBy(10), 11);
-  assert.equal(s.text(3).split(" ").length, 3);
 });
 
 test("URL state round-trips", () => {
