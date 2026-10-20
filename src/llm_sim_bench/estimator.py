@@ -25,15 +25,16 @@ class Efficiency:
     """Fraction of theoretical peak that real runtimes typically reach.
 
     CUDA and Metal values are fitted to llama.cpp scoreboard data with
-    `llmsim calibrate`; CPU values are not calibrated yet.
+    `llmsim calibrate` (Metal on 2026 builds only); CPU values are not
+    calibrated yet.
     """
 
     gpu_bandwidth: float = 0.87
     gpu_compute: float = 0.56
     gpu_layer_overhead_us: float = 32.0
-    metal_bandwidth: float = 0.94
-    metal_compute: float = 0.72
-    metal_layer_overhead_us: float = 184.0
+    metal_bandwidth: float = 0.99
+    metal_compute: float = 0.66
+    metal_layer_overhead_us: float = 72.0
     cpu_bandwidth: float = 0.60
     cpu_compute: float = 0.40
     cpu_layer_overhead_us: float = 0.0

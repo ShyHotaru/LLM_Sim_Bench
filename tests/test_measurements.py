@@ -33,7 +33,7 @@ class CalibrationTests(unittest.TestCase):
     def test_defaults_match_measurements(self):
         stats = calibrate.summary(calibrate.evaluate(RECORDS, Efficiency()))
         for backend in ("cuda", "metal"):
-            self.assertGreaterEqual(stats[f"{backend}/tg"]["n"], 20)
+            self.assertGreaterEqual(stats[f"{backend}/tg"]["n"], 10)
             self.assertLess(stats[f"{backend}/tg"]["median"], 0.06, backend)
             self.assertLess(stats[f"{backend}/tg"]["max"], 0.30, backend)
             self.assertLess(stats[f"{backend}/pp"]["median"], 0.10, backend)

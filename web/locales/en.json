@@ -33,6 +33,9 @@
   "gpu.addFirst": "+ Add a GPU (currently CPU only)",
   "gpu.remove": "Remove GPU {n}",
 
+  "cpu.segment.desktop": "Desktop",
+  "cpu.segment.workstation": "Workstation",
+  "cpu.segment.server": "Server",
   "option.cpu": "{name} ({cores} cores)",
   "option.chip": "{name} · {cores}-core GPU · {bw} GB/s",
   "option.moe": "{total}B, {active}B active",
@@ -67,6 +70,8 @@
   "measured.summary": "Check: real benchmarks on this hardware ({n})",
   "measured.intro": "Llama 2 7B with llama.cpp, measured vs. this simulator (tok/s).",
   "measured.source": "Source",
+  "measured.oldBuild": "(2023 build)",
+  "measured.oldBuildNote": "Rows marked as 2023 builds ran on an older, slower llama.cpp; current builds are faster.",
   "measured.quant": "Quant",
   "measured.genReal": "Gen real",
   "measured.genSim": "Gen sim",

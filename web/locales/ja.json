@@ -33,6 +33,9 @@
   "gpu.addFirst": "+ GPUを追加（現在はCPUのみ）",
   "gpu.remove": "GPU {n} を削除",
 
+  "cpu.segment.desktop": "デスクトップ",
+  "cpu.segment.workstation": "ワークステーション",
+  "cpu.segment.server": "サーバー",
   "option.cpu": "{name}（{cores}コア）",
   "option.chip": "{name} · GPU {cores}コア · {bw} GB/s",
   "option.moe": "{total}B、アクティブ {active}B",
@@ -67,6 +70,8 @@
   "measured.summary": "検証: このハードウェアの実測ベンチマーク（{n}件）",
   "measured.intro": "llama.cppでのLlama 2 7Bの実測値と、このシミュレーターの推定値の比較（tok/s）。",
   "measured.source": "出典",
+  "measured.oldBuild": "（2023年のビルド）",
+  "measured.oldBuildNote": "2023年のビルドと表示された行は古いllama.cppで測定した値のため、現在のビルドより遅く出ています。",
   "measured.quant": "量子化",
   "measured.genReal": "生成 実測",
   "measured.genSim": "生成 推定",

@@ -386,3 +386,6 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   padding: 6px 10px;
 }
 .stream-out .pending { color: var(--muted); }
+
+.measured .old-build { color: var(--muted); font-size: 0.75rem; }
+.measured p.old-build { margin: 6px 0 0; }

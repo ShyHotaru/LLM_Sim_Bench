@@ -3,9 +3,9 @@
   "gpu_bandwidth": 0.87,
   "gpu_compute": 0.56,
   "gpu_layer_overhead_us": 32.0,
-  "metal_bandwidth": 0.94,
-  "metal_compute": 0.72,
-  "metal_layer_overhead_us": 184.0,
+  "metal_bandwidth": 0.99,
+  "metal_compute": 0.66,
+  "metal_layer_overhead_us": 72.0,
   "cpu_bandwidth": 0.6,
   "cpu_compute": 0.4,
   "cpu_layer_overhead_us": 0.0,
@@ -28,22 +28,38 @@
   {
    "name": "i5-12400",
    "cores": 6,
-   "fp32_tflops": 0.77
+   "fp32_tflops": 0.77,
+   "vendor": "",
+   "segment": "",
+   "mem_kind": "",
+   "mem_channels": 0
   },
   {
    "name": "ryzen7-5800x",
    "cores": 8,
-   "fp32_tflops": 1.02
+   "fp32_tflops": 1.02,
+   "vendor": "",
+   "segment": "",
+   "mem_kind": "",
+   "mem_channels": 0
   },
   {
    "name": "i7-13700k",
    "cores": 16,
-   "fp32_tflops": 1.8
+   "fp32_tflops": 1.8,
+   "vendor": "",
+   "segment": "",
+   "mem_kind": "",
+   "mem_channels": 0
   },
   {
    "name": "ryzen9-7950x",
    "cores": 16,
-   "fp32_tflops": 2.3
+   "fp32_tflops": 2.3,
+   "vendor": "",
+   "segment": "",
+   "mem_kind": "",
+   "mem_channels": 0
   }
  ],
  "gpus": [
@@ -507,6 +523,106 @@
     64,
     128
    ]
+  },
+  {
+   "name": "apple-m5-8c",
+   "gpu_cores": 8,
+   "bandwidth_gbps": 153.6,
+   "gpu_tflops": 12.9,
+   "cpu_cores": 10,
+   "cpu_tflops": 1.1,
+   "memory_options_gb": [
+    16,
+    24,
+    32
+   ]
+  },
+  {
+   "name": "apple-m5-10c",
+   "gpu_cores": 10,
+   "bandwidth_gbps": 153.6,
+   "gpu_tflops": 16.2,
+   "cpu_cores": 10,
+   "cpu_tflops": 1.1,
+   "memory_options_gb": [
+    16,
+    24,
+    32
+   ]
+  },
+  {
+   "name": "apple-m5-pro-16c",
+   "gpu_cores": 16,
+   "bandwidth_gbps": 307,
+   "gpu_tflops": 25.9,
+   "cpu_cores": 15,
+   "cpu_tflops": 1.6,
+   "memory_options_gb": [
+    24,
+    48
+   ]
+  },
+  {
+   "name": "apple-m5-pro-20c",
+   "gpu_cores": 20,
+   "bandwidth_gbps": 307,
+   "gpu_tflops": 32.3,
+   "cpu_cores": 18,
+   "cpu_tflops": 1.9,
+   "memory_options_gb": [
+    24,
+    48,
+    64
+   ]
+  },
+  {
+   "name": "apple-m5-max-32c",
+   "gpu_cores": 32,
+   "bandwidth_gbps": 460,
+   "gpu_tflops": 51.7,
+   "cpu_cores": 18,
+   "cpu_tflops": 1.9,
+   "memory_options_gb": [
+    36
+   ]
+  },
+  {
+   "name": "apple-m5-max-40c",
+   "gpu_cores": 40,
+   "bandwidth_gbps": 614,
+   "gpu_tflops": 64.6,
+   "cpu_cores": 18,
+   "cpu_tflops": 1.9,
+   "memory_options_gb": [
+    48,
+    64,
+    128
+   ]
+  },
+  {
+   "name": "apple-m5-ultra-64c",
+   "gpu_cores": 64,
+   "bandwidth_gbps": 1228.8,
+   "gpu_tflops": 103.4,
+   "cpu_cores": 30,
+   "cpu_tflops": 3.2,
+   "memory_options_gb": [
+    96,
+    256
+   ]
+  },
+  {
+   "name": "apple-m5-ultra-80c",
+   "gpu_cores": 80,
+   "bandwidth_gbps": 1228.8,
+   "gpu_tflops": 129.3,
+   "cpu_cores": 36,
+   "cpu_tflops": 3.8,
+   "memory_options_gb": [
+    96,
+    256,
+    512
+   ]
   }
  ],
  "models": [
@@ -815,17 +931,209 @@
    "max": 0.129
   },
   "metal/pp": {
-   "n": 79,
-   "median": 0.045,
-   "max": 0.1844
+   "n": 12,
+   "median": 0.0253,
+   "max": 0.2892
   },
   "metal/tg": {
-   "n": 79,
-   "median": 0.0317,
-   "max": 0.2357
+   "n": 12,
+   "median": 0.0142,
+   "max": 0.0983
   }
  },
  "measurements": [
+  {
+   "id": "llamacpp-4167-m5-pro-16c-f16",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-16c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1310.78,
+   "tg_tps": 21.39,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "60081bb",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-pro-16c-q8_0",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-16c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1302.59,
+   "tg_tps": 38.94,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "60081bb",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-pro-16c-q4_0",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-16c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1340.44,
+   "tg_tps": 67.59,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "60081bb",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-pro-20c-f16",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-20c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1588.78,
+   "tg_tps": 21.55,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-pro-20c-q8_0",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-20c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1553.86,
+   "tg_tps": 38.92,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-pro-20c-q4_0",
+   "gpu": "Apple M5 Pro",
+   "preset": "apple-m5-pro-20c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1620.64,
+   "tg_tps": 66.33,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-max-40c-f16",
+   "gpu": "Apple M5 Max",
+   "preset": "apple-m5-max-40c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 3158.49,
+   "tg_tps": 37.11,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-max-40c-q8_0",
+   "gpu": "Apple M5 Max",
+   "preset": "apple-m5-max-40c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 3143.81,
+   "tg_tps": 72.42,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-max-40c-q4_0",
+   "gpu": "Apple M5 Max",
+   "preset": "apple-m5-max-40c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 3219.99,
+   "tg_tps": 119.92,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-ultra-80c-f16",
+   "gpu": "Apple M5 Ultra",
+   "preset": "apple-m5-ultra-80c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 5207.14,
+   "tg_tps": 73.6,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-ultra-80c-q8_0",
+   "gpu": "Apple M5 Ultra",
+   "preset": "apple-m5-ultra-80c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 4910.55,
+   "tg_tps": 119.01,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m5-ultra-80c-q4_0",
+   "gpu": "Apple M5 Ultra",
+   "preset": "apple-m5-ultra-80c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 4944.66,
+   "tg_tps": 179.1,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
   {
    "id": "llamacpp-15013-rtx-5090-fa0",
    "gpu": "RTX 5090",
@@ -838,7 +1146,9 @@
    "n_gen": 128,
    "pp_tps": 14073.41,
    "tg_tps": 290.02,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "8cf6b42",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5090-fa1",
@@ -852,7 +1162,9 @@
    "n_gen": 128,
    "pp_tps": 14970.15,
    "tg_tps": 300.4,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "8cf6b42",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4090-fa0",
@@ -866,7 +1178,9 @@
    "n_gen": 128,
    "pp_tps": 11992.7,
    "tg_tps": 186.21,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "2241453",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4090-fa1",
@@ -880,7 +1194,9 @@
    "n_gen": 128,
    "pp_tps": 14770.63,
    "tg_tps": 188.96,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "2241453",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5080-fa0",
@@ -894,7 +1210,9 @@
    "n_gen": 128,
    "pp_tps": 8297.36,
    "tg_tps": 181.99,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "8a4280c",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5080-fa1",
@@ -908,7 +1226,9 @@
    "n_gen": 128,
    "pp_tps": 9487.7,
    "tg_tps": 184.68,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "8a4280c",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5070-ti-fa0",
@@ -922,7 +1242,9 @@
    "n_gen": 128,
    "pp_tps": 6952.38,
    "tg_tps": 176.85,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "933414c",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5070-ti-fa1",
@@ -936,7 +1258,9 @@
    "n_gen": 128,
    "pp_tps": 8419.56,
    "tg_tps": 182.43,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "933414c",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3090-ti-fa0",
@@ -950,7 +1274,9 @@
    "n_gen": 128,
    "pp_tps": 6567.49,
    "tg_tps": 171.19,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3090-ti-fa1",
@@ -964,7 +1290,9 @@
    "n_gen": 128,
    "pp_tps": 6924.01,
    "tg_tps": 172.26,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3090-fa0",
@@ -978,7 +1306,9 @@
    "n_gen": 128,
    "pp_tps": 5174.69,
    "tg_tps": 158.16,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "c76b420",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3090-fa1",
@@ -992,7 +1322,9 @@
    "n_gen": 128,
    "pp_tps": 5560.06,
    "tg_tps": 161.89,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "c76b420",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4080-super-fa0",
@@ -1006,7 +1338,9 @@
    "n_gen": 128,
    "pp_tps": 8125.15,
    "tg_tps": 148.33,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "81086cd",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4080-super-fa1",
@@ -1020,7 +1354,9 @@
    "n_gen": 128,
    "pp_tps": 9439.01,
    "tg_tps": 147.48,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "81086cd",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4080-fa0",
@@ -1034,7 +1370,9 @@
    "n_gen": 128,
    "pp_tps": 8031.64,
    "tg_tps": 142.49,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "20638e4",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4080-fa1",
@@ -1048,7 +1386,9 @@
    "n_gen": 128,
    "pp_tps": 9205.93,
    "tg_tps": 143.47,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "20638e4",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3080-fa0",
@@ -1062,7 +1402,9 @@
    "n_gen": 128,
    "pp_tps": 5013.86,
    "tg_tps": 139.65,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3080-fa1",
@@ -1076,7 +1418,9 @@
    "n_gen": 128,
    "pp_tps": 5569.56,
    "tg_tps": 139.95,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4070-ti-super-fa0",
@@ -1090,7 +1434,9 @@
    "n_gen": 128,
    "pp_tps": 6924.53,
    "tg_tps": 132.26,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4070-ti-super-fa1",
@@ -1104,7 +1450,9 @@
    "n_gen": 128,
    "pp_tps": 7612.32,
    "tg_tps": 132.85,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5070-fa0",
@@ -1118,7 +1466,9 @@
    "n_gen": 128,
    "pp_tps": 5184.75,
    "tg_tps": 127.54,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": null,
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5070-fa1",
@@ -1132,7 +1482,9 @@
    "n_gen": 128,
    "pp_tps": 5783.44,
    "tg_tps": 128.21,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": null,
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-2080-ti-fa0",
@@ -1146,7 +1498,9 @@
    "n_gen": 128,
    "pp_tps": 2890.66,
    "tg_tps": 107.51,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-2080-ti-fa1",
@@ -1160,7 +1514,9 @@
    "n_gen": 128,
    "pp_tps": 3107.61,
    "tg_tps": 109.17,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "9c35706",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5060-ti-fa0",
@@ -1174,7 +1530,9 @@
    "n_gen": 128,
    "pp_tps": 3737.25,
    "tg_tps": 90.94,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "89d1029",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-5060-ti-fa1",
@@ -1188,7 +1546,9 @@
    "n_gen": 128,
    "pp_tps": 4195.53,
    "tg_tps": 93.46,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "89d1029",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3060-fa0",
@@ -1202,7 +1562,9 @@
    "n_gen": 128,
    "pp_tps": 2137.5,
    "tg_tps": 75.57,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "baa9255",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-3060-fa1",
@@ -1216,7 +1578,9 @@
    "n_gen": 128,
    "pp_tps": 2407.67,
    "tg_tps": 76.92,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "baa9255",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4060-ti-fa0",
@@ -1230,7 +1594,9 @@
    "n_gen": 128,
    "pp_tps": 3394.63,
    "tg_tps": 63.86,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "89d1029",
+   "old_build": false
   },
   {
    "id": "llamacpp-15013-rtx-4060-ti-fa1",
@@ -1244,7 +1610,9 @@
    "n_gen": 128,
    "pp_tps": 3803.45,
    "tg_tps": 64.03,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15013",
+   "commit": "89d1029",
+   "old_build": false
   },
   {
    "id": "llamacpp-4167-m1-7c-q8_0",
@@ -1258,7 +1626,9 @@
    "n_gen": 128,
    "pp_tps": 108.21,
    "tg_tps": 7.92,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-7c-q4_0",
@@ -1272,7 +1642,9 @@
    "n_gen": 128,
    "pp_tps": 107.81,
    "tg_tps": 14.19,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-8c-q8_0",
@@ -1286,7 +1658,9 @@
    "n_gen": 128,
    "pp_tps": 117.25,
    "tg_tps": 7.91,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-8c-q4_0",
@@ -1300,7 +1674,9 @@
    "n_gen": 128,
    "pp_tps": 117.96,
    "tg_tps": 14.15,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-14c-f16",
@@ -1314,7 +1690,9 @@
    "n_gen": 128,
    "pp_tps": 262.65,
    "tg_tps": 12.75,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-14c-q8_0",
@@ -1328,7 +1706,9 @@
    "n_gen": 128,
    "pp_tps": 235.16,
    "tg_tps": 21.95,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-14c-q4_0",
@@ -1342,7 +1722,9 @@
    "n_gen": 128,
    "pp_tps": 232.55,
    "tg_tps": 35.52,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-16c-f16",
@@ -1356,7 +1738,9 @@
    "n_gen": 128,
    "pp_tps": 302.14,
    "tg_tps": 12.75,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-16c-q8_0",
@@ -1370,7 +1754,9 @@
    "n_gen": 128,
    "pp_tps": 270.37,
    "tg_tps": 22.34,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-pro-16c-q4_0",
@@ -1384,7 +1770,9 @@
    "n_gen": 128,
    "pp_tps": 266.25,
    "tg_tps": 36.41,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-24c-f16",
@@ -1398,7 +1786,9 @@
    "n_gen": 128,
    "pp_tps": 453.03,
    "tg_tps": 22.55,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-24c-q8_0",
@@ -1412,7 +1802,9 @@
    "n_gen": 128,
    "pp_tps": 405.87,
    "tg_tps": 37.81,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-24c-q4_0",
@@ -1426,7 +1818,9 @@
    "n_gen": 128,
    "pp_tps": 400.26,
    "tg_tps": 54.61,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-32c-f16",
@@ -1440,7 +1834,9 @@
    "n_gen": 128,
    "pp_tps": 599.53,
    "tg_tps": 23.03,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-32c-q8_0",
@@ -1454,7 +1850,9 @@
    "n_gen": 128,
    "pp_tps": 537.37,
    "tg_tps": 40.2,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-max-32c-q4_0",
@@ -1468,7 +1866,9 @@
    "n_gen": 128,
    "pp_tps": 530.06,
    "tg_tps": 61.19,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-48c-f16",
@@ -1482,7 +1882,9 @@
    "n_gen": 128,
    "pp_tps": 875.81,
    "tg_tps": 33.92,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-48c-q8_0",
@@ -1496,7 +1898,9 @@
    "n_gen": 128,
    "pp_tps": 783.45,
    "tg_tps": 55.69,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-48c-q4_0",
@@ -1510,7 +1914,9 @@
    "n_gen": 128,
    "pp_tps": 772.24,
    "tg_tps": 74.93,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-64c-f16",
@@ -1524,7 +1930,9 @@
    "n_gen": 128,
    "pp_tps": 1168.89,
    "tg_tps": 37.01,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-64c-q8_0",
@@ -1538,7 +1946,9 @@
    "n_gen": 128,
    "pp_tps": 1042.95,
    "tg_tps": 59.87,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m1-ultra-64c-q4_0",
@@ -1552,7 +1962,9 @@
    "n_gen": 128,
    "pp_tps": 1030.04,
    "tg_tps": 83.73,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-8c-q8_0",
@@ -1566,7 +1978,9 @@
    "n_gen": 128,
    "pp_tps": 147.27,
    "tg_tps": 12.18,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-8c-q4_0",
@@ -1580,7 +1994,9 @@
    "n_gen": 128,
    "pp_tps": 145.91,
    "tg_tps": 21.7,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-10c-f16",
@@ -1594,7 +2010,9 @@
    "n_gen": 128,
    "pp_tps": 201.34,
    "tg_tps": 6.72,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-10c-q8_0",
@@ -1608,7 +2026,9 @@
    "n_gen": 128,
    "pp_tps": 181.4,
    "tg_tps": 12.21,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-10c-q4_0",
@@ -1622,7 +2042,9 @@
    "n_gen": 128,
    "pp_tps": 179.57,
    "tg_tps": 21.91,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-16c-f16",
@@ -1636,7 +2058,9 @@
    "n_gen": 128,
    "pp_tps": 312.65,
    "tg_tps": 12.47,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-16c-q8_0",
@@ -1650,7 +2074,9 @@
    "n_gen": 128,
    "pp_tps": 288.46,
    "tg_tps": 22.7,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-16c-q4_0",
@@ -1664,7 +2090,9 @@
    "n_gen": 128,
    "pp_tps": 294.24,
    "tg_tps": 37.87,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-19c-f16",
@@ -1678,7 +2106,9 @@
    "n_gen": 128,
    "pp_tps": 384.38,
    "tg_tps": 13.06,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-19c-q8_0",
@@ -1692,7 +2122,9 @@
    "n_gen": 128,
    "pp_tps": 344.5,
    "tg_tps": 23.01,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-pro-19c-q4_0",
@@ -1706,7 +2138,9 @@
    "n_gen": 128,
    "pp_tps": 341.19,
    "tg_tps": 38.86,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-30c-f16",
@@ -1720,7 +2154,9 @@
    "n_gen": 128,
    "pp_tps": 600.46,
    "tg_tps": 24.16,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-30c-q8_0",
@@ -1734,7 +2170,9 @@
    "n_gen": 128,
    "pp_tps": 540.15,
    "tg_tps": 39.97,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-30c-q4_0",
@@ -1748,7 +2186,9 @@
    "n_gen": 128,
    "pp_tps": 537.6,
    "tg_tps": 60.99,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-38c-f16",
@@ -1762,7 +2202,9 @@
    "n_gen": 128,
    "pp_tps": 755.67,
    "tg_tps": 24.65,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-38c-q8_0",
@@ -1776,7 +2218,9 @@
    "n_gen": 128,
    "pp_tps": 677.91,
    "tg_tps": 41.83,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-max-38c-q4_0",
@@ -1790,7 +2234,9 @@
    "n_gen": 128,
    "pp_tps": 671.31,
    "tg_tps": 65.95,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-60c-f16",
@@ -1804,7 +2250,9 @@
    "n_gen": 128,
    "pp_tps": 1128.59,
    "tg_tps": 39.86,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-60c-q8_0",
@@ -1818,7 +2266,9 @@
    "n_gen": 128,
    "pp_tps": 1003.16,
    "tg_tps": 62.14,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-60c-q4_0",
@@ -1832,7 +2282,9 @@
    "n_gen": 128,
    "pp_tps": 1013.81,
    "tg_tps": 88.64,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-76c-f16",
@@ -1846,7 +2298,9 @@
    "n_gen": 128,
    "pp_tps": 1401.85,
    "tg_tps": 41.02,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-76c-q8_0",
@@ -1860,7 +2314,9 @@
    "n_gen": 128,
    "pp_tps": 1248.59,
    "tg_tps": 66.64,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m2-ultra-76c-q4_0",
@@ -1874,7 +2330,9 @@
    "n_gen": 128,
    "pp_tps": 1238.48,
    "tg_tps": 94.27,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-10c-q8_0",
@@ -1888,7 +2346,9 @@
    "n_gen": 128,
    "pp_tps": 187.52,
    "tg_tps": 12.27,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-10c-q4_0",
@@ -1902,7 +2362,9 @@
    "n_gen": 128,
    "pp_tps": 186.75,
    "tg_tps": 21.34,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-pro-14c-q8_0",
@@ -1916,7 +2378,9 @@
    "n_gen": 128,
    "pp_tps": 272.11,
    "tg_tps": 17.44,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-pro-14c-q4_0",
@@ -1930,7 +2394,9 @@
    "n_gen": 128,
    "pp_tps": 269.49,
    "tg_tps": 30.65,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-pro-18c-f16",
@@ -1944,7 +2410,9 @@
    "n_gen": 128,
    "pp_tps": 357.45,
    "tg_tps": 9.89,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-pro-18c-q8_0",
@@ -1958,7 +2426,9 @@
    "n_gen": 128,
    "pp_tps": 344.66,
    "tg_tps": 17.53,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-pro-18c-q4_0",
@@ -1972,7 +2442,9 @@
    "n_gen": 128,
    "pp_tps": 341.67,
    "tg_tps": 30.74,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-30c-f16",
@@ -1986,7 +2458,9 @@
    "n_gen": 128,
    "pp_tps": 589.41,
    "tg_tps": 19.54,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-30c-q8_0",
@@ -2000,7 +2474,9 @@
    "n_gen": 128,
    "pp_tps": 566.4,
    "tg_tps": 34.3,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-30c-q4_0",
@@ -2014,7 +2490,9 @@
    "n_gen": 128,
    "pp_tps": 567.59,
    "tg_tps": 56.58,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-40c-f16",
@@ -2028,7 +2506,9 @@
    "n_gen": 128,
    "pp_tps": 779.17,
    "tg_tps": 25.09,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-40c-q8_0",
@@ -2042,7 +2522,9 @@
    "n_gen": 128,
    "pp_tps": 757.64,
    "tg_tps": 42.75,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-max-40c-q4_0",
@@ -2056,7 +2538,9 @@
    "n_gen": 128,
    "pp_tps": 759.7,
    "tg_tps": 66.31,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-60c-f16",
@@ -2070,7 +2554,9 @@
    "n_gen": 128,
    "pp_tps": 1121.8,
    "tg_tps": 42.24,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-60c-q8_0",
@@ -2084,7 +2570,9 @@
    "n_gen": 128,
    "pp_tps": 1085.76,
    "tg_tps": 63.55,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-60c-q4_0",
@@ -2098,7 +2586,9 @@
    "n_gen": 128,
    "pp_tps": 1073.09,
    "tg_tps": 88.4,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-80c-f16",
@@ -2112,7 +2602,9 @@
    "n_gen": 128,
    "pp_tps": 1538.34,
    "tg_tps": 39.78,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-80c-q8_0",
@@ -2126,7 +2618,9 @@
    "n_gen": 128,
    "pp_tps": 1487.51,
    "tg_tps": 63.93,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m3-ultra-80c-q4_0",
@@ -2140,7 +2634,9 @@
    "n_gen": 128,
    "pp_tps": 1471.24,
    "tg_tps": 92.14,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-10c-f16",
@@ -2154,7 +2650,9 @@
    "n_gen": 128,
    "pp_tps": 230.18,
    "tg_tps": 7.43,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-10c-q8_0",
@@ -2168,7 +2666,9 @@
    "n_gen": 128,
    "pp_tps": 223.64,
    "tg_tps": 13.54,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-10c-q4_0",
@@ -2182,7 +2682,9 @@
    "n_gen": 128,
    "pp_tps": 221.29,
    "tg_tps": 24.11,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-16c-f16",
@@ -2196,7 +2698,9 @@
    "n_gen": 128,
    "pp_tps": 381.14,
    "tg_tps": 17.19,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-16c-q8_0",
@@ -2210,7 +2714,9 @@
    "n_gen": 128,
    "pp_tps": 367.13,
    "tg_tps": 30.54,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-16c-q4_0",
@@ -2224,7 +2730,9 @@
    "n_gen": 128,
    "pp_tps": 364.06,
    "tg_tps": 49.64,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-20c-f16",
@@ -2238,7 +2746,9 @@
    "n_gen": 128,
    "pp_tps": 464.48,
    "tg_tps": 17.18,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-20c-q8_0",
@@ -2252,7 +2762,9 @@
    "n_gen": 128,
    "pp_tps": 449.62,
    "tg_tps": 30.69,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-pro-20c-q4_0",
@@ -2266,7 +2778,9 @@
    "n_gen": 128,
    "pp_tps": 439.78,
    "tg_tps": 50.74,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-32c-f16",
@@ -2280,7 +2794,9 @@
    "n_gen": 128,
    "pp_tps": 736.25,
    "tg_tps": 24.29,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-32c-q8_0",
@@ -2294,7 +2810,9 @@
    "n_gen": 128,
    "pp_tps": 718.56,
    "tg_tps": 43.87,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-32c-q4_0",
@@ -2308,7 +2826,9 @@
    "n_gen": 128,
    "pp_tps": 713.93,
    "tg_tps": 69.95,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-40c-f16",
@@ -2322,7 +2842,9 @@
    "n_gen": 128,
    "pp_tps": 922.83,
    "tg_tps": 31.64,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-40c-q8_0",
@@ -2336,7 +2858,9 @@
    "n_gen": 128,
    "pp_tps": 891.94,
    "tg_tps": 54.05,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   },
   {
    "id": "llamacpp-4167-m4-max-40c-q4_0",
@@ -2350,7 +2874,9 @@
    "n_gen": 128,
    "pp_tps": 885.68,
    "tg_tps": 83.06,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167"
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
+   "commit": "8e672ef",
+   "old_build": true
   }
  ]
 }

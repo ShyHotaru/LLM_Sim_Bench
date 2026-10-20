@@ -6,10 +6,17 @@ import { Schedule } from "./mock.js";
 import { decodeState, encodeState } from "./state.js";
 import { charsPerToken, chunkText } from "./tokenize.js";
 
-const RAM_SIZES = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256];
+const RAM_SIZES = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536];
 const RAM_KINDS = ["ddr4-2666", "ddr4-3200", "ddr4-3600", "ddr5-4800", "ddr5-5600",
                    "ddr5-6000", "ddr5-6400", "ddr5-8000"];
-const RAM_CHANNELS = [1, 2, 4, 8];
+const RAM_CHANNELS = [1, 2, 4, 8, 12];
+
+// Common kinds plus every CPU preset's default memory, sorted by generation and speed.
+function ramKinds() {
+  const kinds = new Set([...RAM_KINDS, ...P.cpus.map((c) => c.mem_kind).filter(Boolean)]);
+  const key = (k) => { const [g, mt] = k.split("-"); return Number(g.replace(/\D/g, "")) * 1e5 + Number(mt); };
+  return [...kinds].sort((a, b) => key(a) - key(b));
+}
 const CONTEXTS = [2048, 4096, 8192, 16384, 32768, 65536, 131072];
 const KV_BITS = [16, 8, 4];
 const MAX_CONFIGS = 2;
@@ -62,6 +69,20 @@ function h(tag, attrs = {}, ...children) {
 function select(key, options, value, extra = {}) {
   return h("select", { "data-k": key, ...extra },
     options.map(([v, label]) => h("option", { value: String(v), selected: String(v) === String(value) }, label)));
+}
+
+// CPU presets grouped by vendor and segment, e.g. "AMD · Server".
+function cpuSelect(value, extra) {
+  const groups = new Map();
+  for (const c of P.cpus) {
+    const key = c.vendor ? `${c.vendor} · ${t(`cpu.segment.${c.segment}`)}` : "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+  const option = (c) => h("option", { value: c.name, selected: c.name === value },
+    t("option.cpu", { name: c.name, cores: c.cores }));
+  return h("select", { "data-k": "cpu", ...extra },
+    [...groups].map(([label, cpus]) => (label ? h("optgroup", { label }, cpus.map(option)) : cpus.map(option))));
 }
 
 function field(label, control) {
@@ -124,7 +145,7 @@ function sanitizeConfig(c) {
   cfg.gpus = Array.isArray(cfg.gpus) ? cfg.gpus.filter((g) => has(P.gpus, g)).slice(0, 8) : [];
   if (!has(P.cpus, cfg.cpu)) cfg.cpu = DEFAULT_CONFIG.cpu;
   if (!RAM_SIZES.includes(Number(cfg.ramGb))) cfg.ramGb = DEFAULT_CONFIG.ramGb;
-  if (!RAM_KINDS.includes(cfg.ramKind)) cfg.ramKind = DEFAULT_CONFIG.ramKind;
+  if (!ramKinds().includes(cfg.ramKind)) cfg.ramKind = DEFAULT_CONFIG.ramKind;
   if (!RAM_CHANNELS.includes(Number(cfg.ramChannels))) cfg.ramChannels = DEFAULT_CONFIG.ramChannels;
   if (!has(P.apple, cfg.chip)) cfg.chip = DEFAULT_CONFIG.chip;
   const chip = P.apple.find((a) => a.name === cfg.chip);
@@ -216,9 +237,9 @@ function renderConfig(cfg, i) {
     settings.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
       cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
     settings.append(h("div", { class: "fields" },
-      field(t("field.cpu"), select("cpu", P.cpus.map((c) => [c.name, t("option.cpu", { name: c.name, cores: c.cores })]), cfg.cpu, { "data-focus-id": `${i}-cpu` })),
+      field(t("field.cpu"), cpuSelect(cfg.cpu, { "data-focus-id": `${i}-cpu` })),
       field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
-      field(t("field.ramType"), select("ramKind", RAM_KINDS.map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
+      field(t("field.ramType"), select("ramKind", ramKinds().map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
       field(t("field.channels"), select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
   }
 
@@ -342,7 +363,7 @@ function renderMeasured(cfg) {
     const tgEst = m.n_gen / genTime(est, 0, m.n_gen + 1);
     const fa = m.backend === "CUDA" ? (m.flash_attn ? " · FA" : "") : "";
     return h("tr", {},
-      h("td", {}, `${m.quant}${fa}`),
+      h("td", {}, `${m.quant}${fa}`, m.old_build ? h("span", { class: "old-build" }, ` ${t("measured.oldBuild")}`) : null),
       h("td", {}, fmtTps(m.tg_tps)), h("td", {}, fmtTps(tgEst)),
       h("td", {}, fmtTps(m.pp_tps)), h("td", {}, fmtTps(est.prefill_tps)));
   });
@@ -354,7 +375,8 @@ function renderMeasured(cfg) {
       h("table", {},
         h("thead", {}, h("tr", {}, h("th", {}, t("measured.quant")), h("th", {}, t("measured.genReal")),
           h("th", {}, t("measured.genSim")), h("th", {}, t("measured.promptReal")), h("th", {}, t("measured.promptSim")))),
-        h("tbody", {}, body))));
+        h("tbody", {}, body)),
+      rows.some((m) => m.old_build) ? h("p", { class: "old-build" }, t("measured.oldBuildNote")) : null));
 }
 
 // ---------- events ----------
@@ -386,6 +408,12 @@ function onConfigEvent(e) {
     const v = e.target.value;
     if (k === "gpu") {
       cfg.gpus = cfg.gpus.map((g, j) => (j === Number(e.target.dataset.j) ? v : g));
+    } else if (k === "cpu") {
+      // Switch memory to what the new CPU supports; the user can still change it.
+      const cpu = P.cpus.find((c) => c.name === v);
+      cfg.cpu = v;
+      if (cpu?.mem_kind) cfg.ramKind = cpu.mem_kind;
+      if (cpu?.mem_channels) cfg.ramChannels = cpu.mem_channels;
     } else {
       cfg[k] = ["ramGb", "ramChannels", "memoryGb", "context", "kvBits"].includes(k) ? Number(v) : v;
     }

@@ -24,6 +24,10 @@ class CPU:
     name: str
     cores: int
     fp32_tflops: float  # peak SIMD FP32 throughput
+    vendor: str = ""
+    segment: str = ""  # "desktop", "workstation" or "server"
+    mem_kind: str = ""  # fastest officially supported memory, e.g. "ddr5-5600"
+    mem_channels: int = 0  # 64-bit memory channels per socket
 
 
 @dataclass(frozen=True)
@@ -113,8 +117,9 @@ CPU_PRESETS: dict[str, CPU] = {
     ]
 }
 
-# Per-GPU-core FP32/FP16 GFLOPS by generation: 128 ALUs x 2 FLOPs x GPU clock.
-_APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404}
+# Per-GPU-core FP16 TFLOPS by generation: 128 ALUs x 2 FLOPs x GPU clock. M5 adds a
+# Neural Accelerator to every GPU core; Apple quotes over 4x M4's peak GPU AI compute.
+_APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404, "M5": 4 * 0.404}
 
 
 def _apple(name: str, gpu_cores: int, bw: float, cpu_cores: int, cpu_tflops: float,
@@ -155,6 +160,15 @@ APPLE_PRESETS: dict[str, AppleChip] = {
         _apple("M4 Pro", 20, 273, 14, 1.5, (24, 48, 64)),
         _apple("M4 Max", 32, 410, 14, 1.5, (36,)),
         _apple("M4 Max", 40, 546, 16, 1.7, (48, 64, 128)),
+        # M5 family: Apple newsroom and Mac/MacBook tech specs (2025-10, 2026-03, 2026-08).
+        _apple("M5", 8, 153.6, 10, 1.1, (16, 24, 32)),
+        _apple("M5", 10, 153.6, 10, 1.1, (16, 24, 32)),
+        _apple("M5 Pro", 16, 307, 15, 1.6, (24, 48)),
+        _apple("M5 Pro", 20, 307, 18, 1.9, (24, 48, 64)),
+        _apple("M5 Max", 32, 460, 18, 1.9, (36,)),
+        _apple("M5 Max", 40, 614, 18, 1.9, (48, 64, 128)),
+        _apple("M5 Ultra", 64, 1228.8, 30, 3.2, (96, 256)),
+        _apple("M5 Ultra", 80, 1228.8, 36, 3.8, (96, 256, 512)),
     ]
 }
 

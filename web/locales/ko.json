@@ -33,6 +33,9 @@
   "gpu.addFirst": "+ GPU 추가 (현재 CPU만 사용)",
   "gpu.remove": "GPU {n} 삭제",
 
+  "cpu.segment.desktop": "데스크톱",
+  "cpu.segment.workstation": "워크스테이션",
+  "cpu.segment.server": "서버",
   "option.cpu": "{name} ({cores}코어)",
   "option.chip": "{name} · GPU {cores}코어 · {bw} GB/s",
   "option.moe": "{total}B, 활성 {active}B",
@@ -67,6 +70,8 @@
   "measured.summary": "검증: 이 하드웨어의 실측 벤치마크 ({n}건)",
   "measured.intro": "llama.cpp에서 Llama 2 7B의 실측값과 이 시뮬레이터의 추정값 비교 (tok/s).",
   "measured.source": "출처",
+  "measured.oldBuild": "(2023년 빌드)",
+  "measured.oldBuildNote": "2023년 빌드로 표시된 행은 예전 llama.cpp로 측정한 값이라, 현재 빌드보다 느리게 나옵니다.",
   "measured.quant": "양자화",
   "measured.genReal": "생성 실측",
   "measured.genSim": "생성 추정",

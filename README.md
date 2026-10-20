@@ -110,14 +110,15 @@ All preset numbers are approximate public specs. Treat results as order-of-magni
 
 ### Calibration
 
-CUDA and Metal efficiency factors are fitted to 109 public llama.cpp scoreboard results
-([`data/`](data/README.md)). `llmsim calibrate` refits them and prints the error against every
+CUDA and Metal efficiency factors are fitted to public llama.cpp scoreboard results
+([`data/`](data/README.md)); Metal uses only results from 2026 builds, because 2023 builds
+had much more per-token overhead. `llmsim calibrate` refits them and prints the error against every
 record; the test suite fails if the defaults drift from the data. Current median error:
 
 | Backend | Decode | Prefill |
 | --- | --- | --- |
 | CUDA (30 results) | 4.0 % | 7.0 % |
-| Metal (79 results) | 3.2 % | 4.5 % |
+| Metal (12 results, M5 family) | 1.4 % | 2.5 % |
 
 All calibration data is Llama 2 7B at short context, so larger models, long contexts and CPU
 offload are extrapolations.
@@ -128,8 +129,8 @@ offload are extrapolations.
   through the GPU even for CPU-resident layers.
 - MoE decode is optimistic: routing overhead and shared weights are not modeled yet.
 - Single request only; no batching or concurrency effects.
-- CPU, ROCm and Vulkan factors are not calibrated yet. Dual-die Apple Ultra chips decode up to
-  ~20 % slower than estimated, and Turing (RTX 20) prefill is overestimated.
+- CPU, ROCm and Vulkan factors are not calibrated yet. Prompt processing on the M5 Ultra is
+  about 40 % slower than estimated, and Turing (RTX 20) prefill is overestimated.
 
 ## Roadmap
 
