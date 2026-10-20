@@ -352,6 +352,9 @@ function renderWarnings(system, est) {
   for (const g of new Set(deviceLess.map((x) => x.label || x.name))) {
     items.push(t("warn.prefillDevice", { device: g }));
   }
+  if (backends.has("cpu") && !system.unified && !(`${system.cpu.name}|cpu` in P.efficiency.device_bandwidth)) {
+    items.push(t("warn.cpuDevice", { cpu: system.cpu.name }));
+  }
   for (const b of backends) {
     const tg = P.calibration[`${b}/tg`];
     const pp = P.calibration[`${b}/pp`];

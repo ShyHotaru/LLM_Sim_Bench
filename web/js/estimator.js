@@ -104,7 +104,9 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
   if (system.unified) ramFreeGb -= gpuUsedGb;
   if (remaining) {
     const cpuGb = (remaining * (layerW + layerKv)) / GB;
-    const [bwEff, cEff, layerS] = forBackend(eff, "cpu");
+    const [backendBw, backendC, layerS] = forBackend(eff, "cpu");
+    const bwEff = eff.device_bandwidth?.[`${system.cpu.name}|cpu`] ?? backendBw;
+    const cEff = eff.device_compute?.[`${system.cpu.name}|cpu`] ?? backendC;
     placements.push({
       device: `cpu:${system.cpu.name}`, layers: remaining,
       weights_gb: (remaining * layerW) / GB, kv_gb: (remaining * layerKv) / GB,

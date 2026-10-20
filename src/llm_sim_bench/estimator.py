@@ -23,9 +23,9 @@ GB = 1e9
 DEVICE_CALIBRATION = Path(__file__).with_name("device_calibration.json")
 
 
-def _device_compute() -> dict[str, float]:
-    """Prompt-processing efficiency per measured device, "<preset>|<backend>" -> fraction."""
-    return json.loads(DEVICE_CALIBRATION.read_text(encoding="utf-8"))["compute"]
+def _device(kind: str) -> dict[str, float]:
+    """Per-device efficiency from measurements, "<preset>|<backend>" -> fraction."""
+    return json.loads(DEVICE_CALIBRATION.read_text(encoding="utf-8"))[kind]
 
 
 @dataclass(frozen=True)
@@ -52,15 +52,18 @@ class Efficiency:
     sycl_bandwidth: float = 0.85
     sycl_compute: float = 0.10
     sycl_layer_overhead_us: float = 58.0
-    cpu_bandwidth: float = 0.60
-    cpu_compute: float = 0.40
-    cpu_layer_overhead_us: float = 0.0
+    cpu_bandwidth: float = 0.79
+    cpu_compute: float = 0.35
+    cpu_layer_overhead_us: float = 119.0
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
     # Measured devices reach very different shares of peak compute in prompt processing
     # (data-center GPUs far less than consumer ones), so they override the backend value.
-    device_compute: dict[str, float] = field(default_factory=_device_compute)
+    device_compute: dict[str, float] = field(default_factory=lambda: _device("compute"))
+    # CPUs differ in how much DRAM bandwidth reaches the cores (single-CCD Ryzen parts are
+    # limited by their fabric link), so measured CPUs override cpu_bandwidth for decode.
+    device_bandwidth: dict[str, float] = field(default_factory=lambda: _device("bandwidth"))
 
     def for_backend(self, backend: str) -> tuple[float, float, float]:
         """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
@@ -160,6 +163,8 @@ def estimate(
     if remaining:
         cpu_gb = remaining * (layer_w + layer_kv) / GB
         bw_eff, c_eff, layer_s = eff.for_backend("cpu")
+        bw_eff = eff.device_bandwidth.get(f"{system.cpu.name}|cpu", bw_eff)
+        c_eff = eff.device_compute.get(f"{system.cpu.name}|cpu", c_eff)
         placements.append(
             Placement(f"cpu:{system.cpu.name}", remaining, remaining * layer_w / GB,
                       remaining * layer_kv / GB,

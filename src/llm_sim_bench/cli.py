@@ -156,9 +156,10 @@ def cmd_calibrate(args):
     fitted = calibrate.fit(records)
     print("\nFitted backend factors (copy into Efficiency defaults to adopt)")
     for k, v in vars(fitted).items():
-        if k != "device_compute" and v != getattr(Efficiency(), k):
+        if not k.startswith("device_") and v != getattr(Efficiency(), k):
             print(f"  {k:<26} {v}")
-    print(f"Per-device prompt-processing efficiency: {len(fitted.device_compute)} devices")
+    print(f"Per-device factors: prompt processing {len(fitted.device_compute)}, "
+          f"CPU decode bandwidth {len(fitted.device_bandwidth)}")
     print(calibrate.format_report(records, fitted))
     if args.write:
         calibrate.write_device_calibration(fitted)

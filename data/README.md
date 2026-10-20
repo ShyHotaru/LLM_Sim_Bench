@@ -9,9 +9,13 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | --- | --- | --- |
 | `measurements/llamacpp-scoreboards.jsonl` | llama.cpp community scoreboards: [CUDA (#15013)](https://github.com/ggml-org/llama.cpp/discussions/15013), [Apple Silicon (#4167)](https://github.com/ggml-org/llama.cpp/discussions/4167) | 191 |
 | `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`): M5 Pro, M5 Max, M5 Ultra, M6 | 15 |
+| `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021) | 46 |
+| `measurements/llamacpp-vulkan.jsonl` | [llama.cpp Vulkan scoreboard (#10879)](https://github.com/ggml-org/llama.cpp/discussions/10879) | 237 |
+| `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313) | 104 |
+| `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [AMD's EPYC llama.cpp article](https://www.amd.com/en/developer/resources/technical-articles/2026/llama-cpp-on-amd-epyc.html), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1606 |
 
-All records are Llama 2 7B, `llama-bench -p 512 -n 128` with every layer on the GPU.
-Values were transcribed from the scoreboard tables on the `retrieved` date. Only the
+GPU scoreboard records are Llama 2 7B Q4_0 (SYCL also lists other models), `llama-bench -p 512
+-n 128`. Values were transcribed from the scoreboard tables on the `retrieved` date. Only the
 numbers and hardware descriptions were copied; contributor names were not.
 
 ## Record schema
@@ -27,12 +31,14 @@ guess.
 | `hardware.vram_gb`, `hardware.memory_type`, `hardware.bus_width_bits` | Memory description from the source |
 | `hardware.gpu_cores`, `hardware.bandwidth_gbps` | Apple GPU core count and memory bandwidth from the source |
 | `hardware.cpu`, `hardware.ram_gb` | Host CPU and RAM, when stated |
-| `hardware.gpu_preset` | Matching preset in `profiles.py`, or `null`; only records with a preset are used for calibration |
+| `hardware.gpu_preset` | Matching preset in `profiles.py`, or `null`; only records with a preset are used for calibration. A name is linked only when it identifies a single configuration (e.g. "RTX 3080" without a memory size is not linked, since the 10 GB and 12 GB cards differ in bandwidth) |
+| `hardware.cpu_preset`, `hardware.dimms`, `hardware.mem_mts`, `hardware.ram_channels`, `hardware.sockets`, `hardware.threads` | CPU runs only: matching CPU preset, DIMM count, memory speed (MT/s), memory channels, sockets and threads used, each when stated |
+| `notes` | Optional free-form details from the source (test profile, run id, standard error, ...) |
 | `software.runtime`, `software.backend`, `software.commit`, `software.flash_attn` | Runtime, backend (`CUDA`, `Metal`, `ROCm`, `Vulkan`, `SYCL`, `CPU`), build commit, flash attention on/off |
 | `model.name`, `model.quant`, `model.file` | Model preset name, quantization, GGUF file name |
-| `run.n_gpu_layers`, `run.n_prompt`, `run.n_gen`, `run.depth` | llama-bench `-ngl`, `-p`, `-n`, `-d` |
+| `run.n_gpu_layers`, `run.n_prompt`, `run.n_gen`, `run.depth` | llama-bench `-ngl` (`-1`: the tool's default, as many layers as fit), `-p`, `-n`, `-d` |
 | `results.pp_tps`, `results.pp_std`, `results.tg_tps`, `results.tg_std` | Prefill and decode tokens/s with standard deviation |
-| `flags` | Quality flags, each excluding the record from calibration. `suspect`: the source value looks wrong. `old_build`: measured on a llama.cpp build much older than current ones (kept for reference) |
+| `flags` | Quality flags. Excluded from calibration: `suspect` (the source value looks wrong), `old_build` (a llama.cpp build much older than current ones), `multi-socket`, `mobile-class-cpu`, `cpu-model-inferred`, `batched` (many parallel sequences). Partly excluded: `openblas-build` (prompt processing ran through OpenBLAS, not the default CPU path; decode is kept), `tg_thread_limited` (decode run with too few threads) |
 
 ## Notes and gaps
 
@@ -48,7 +54,15 @@ guess.
   is about 40 % slower than that scaling suggests.
 - One CUDA row is flagged `suspect` (Quadro T1000 with flash attention: the source lists the
   same value for prefill and decode).
-- No CPU-only, ROCm or Vulkan data yet, so CPU efficiency factors are not calibrated.
+- CPU runs give DIMM counts rather than memory channels. Calibration assumes DIMMs fill
+  separate channels first, up to the CPU's channel count.
+- Prompt-processing efficiency differs strongly between devices (data-center GPUs reach far
+  less of their peak at this batch size than consumer cards; Intel results mix FP16 and FP32
+  builds), so every measured device gets its own factor in
+  `src/llm_sim_bench/device_calibration.json` (`llmsim calibrate --write`). The same file
+  holds per-CPU decode bandwidth factors: single-CCD Ryzen parts reach about 0.6 of their
+  DRAM bandwidth, dual-CCD parts about 0.85.
+- Mixture-of-experts models are excluded from calibration (routing is not modeled).
 - No depth (`-d`) data yet, so the slowdown as the context fills is not calibrated.
 
 # Output texts and tokenizer ratios
@@ -96,3 +110,13 @@ Presets in `src/llm_sim_bench/profiles.py` are approximate public specs.
   with CUDIMMs.
 - **Apple M5 family**: Apple Newsroom announcements (October 2025, March 2026) and the Mac
   Studio and MacBook Pro tech specs pages.
+- **GPUs**: NVIDIA whitepapers and datasheets, AMD product pages and datasheets, Intel product
+  pages and datasheets (through Wayback Machine copies), cross-checked with Wikipedia. FP16 is
+  the dense tensor/matrix figure without sparsity. Where vendors publish only "AI TOPS" or
+  sparse figures, it is derived with ratios confirmed on cards of the same generation
+  (GeForce 40: AI TOPS / 4; Blackwell: FP4 sparse / 8; RTX Ada: FP8 sparse / 4; Intel: INT8
+  TOPS / 2). RDNA2 cards have no matrix units, so their packed FP16 vector peak is used.
+- **Unified-memory PCs**: DGX Spark FP16 is derived from NVIDIA's "1 PFLOP FP4 with sparsity"
+  (/8); Ryzen AI Max FP16 from AMD's compute-unit count and GPU clock (RDNA 3.5, 512 FP16
+  FLOPs per CU per clock). CPU figures for these systems are rough. Jetson AGX Thor was left
+  out because no usable FP16 figure is published.

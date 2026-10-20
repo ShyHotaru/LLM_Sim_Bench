@@ -21,8 +21,16 @@ from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, 
 _HOST = (CPU("host", 8, 1.0), RAM(128, 51.2))
 _BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal", "ROCm": "rocm", "Vulkan": "vulkan",
                 "SYCL": "sycl", "CPU": "cpu"}
+# Flags that exclude a record from calibration, or only one of its two results.
+_EXCLUDE = {"suspect", "old_build", "multi-socket", "mobile-class-cpu", "cpu-model-inferred",
+            "batched"}
+_NO_PP = {"openblas-build"}  # OpenBLAS runs prompt batches: not llama.cpp's default CPU path
+_NO_TG = {"tg_thread_limited"}
+# Fine-tunes share their base model's architecture and therefore its speed.
+MODEL_ALIASES = {"llama-3.1-tulu-3-8b": "llama-3.1-8b",
+                 "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b"}
 # Peak hardware with no overhead: the fit's x values.
-_UNIT = Efficiency(device_compute={},
+_UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
                       for k, v in (("bandwidth", 1), ("compute", 1), ("layer_overhead_us", 0))})
 
@@ -36,7 +44,8 @@ class Point:
     tg_meas: float | None
     pp_pred: float | None = None
     tg_pred: float | None = None
-    device: str = ""  # "<preset>|<backend>" for GPUs, "" for CPU runs
+    device: str = ""  # "<preset>|<backend>", e.g. "rtx4090-24gb|cuda" or "ryzen9-7950x|cpu"
+    tg_x: float | None = None  # decode seconds per token at 100 % bandwidth (no overhead)
 
     @property
     def pp_err(self) -> float | None:
@@ -51,10 +60,25 @@ def _rel(pred, meas):
     return None if pred is None or meas is None else pred / meas - 1
 
 
+def _model(rec: dict):
+    name = rec["model"]["name"]
+    return MODEL_PRESETS.get(MODEL_ALIASES.get(name, name))
+
+
 def _ram_bandwidth(hw: dict) -> float | None:
-    """Bandwidth from a stated memory type and channel count, else None."""
-    kind, channels = hw.get("memory_type"), hw.get("ram_channels")
+    """Bandwidth from the stated memory speed and channels, else None.
+
+    Sources often give the DIMM count instead of channels; DIMMs are assumed to fill
+    separate channels first (one per channel), up to the CPU's channel count.
+    """
+    channels, mts = hw.get("ram_channels"), hw.get("mem_mts")
+    cpu = CPU_PRESETS.get(hw.get("cpu_preset"))
+    if not channels and hw.get("dimms") and cpu and cpu.mem_channels:
+        channels = min(hw["dimms"], cpu.mem_channels)
+    if mts and channels:
+        return mts * 8 * channels / 1000
     try:
+        kind = hw.get("memory_type")
         return ram_bandwidth_gbps(kind, channels) if kind and channels else None
     except ValueError:
         return None
@@ -80,8 +104,9 @@ def usable(rec: dict) -> bool:
     """Known presets and backend, not flagged; GPU runs single-GPU and fully offloaded,
     CPU runs single-socket with nothing offloaded."""
     backend = _BACKEND_KEY.get(rec["software"]["backend"])
-    model = MODEL_PRESETS.get(rec["model"]["name"])
-    if (not backend or not model or rec["model"]["quant"] not in QUANT_BPW or rec["flags"]
+    model = _model(rec)
+    if (not backend or not model or model.active_params_b  # MoE routing is not modeled
+            or rec["model"]["quant"] not in QUANT_BPW or _EXCLUDE & set(rec["flags"])
             or system_for(rec) is None):
         return False
     ngl = rec["run"]["n_gpu_layers"]
@@ -93,7 +118,7 @@ def usable(rec: dict) -> bool:
 
 
 def predict(rec: dict, eff: Efficiency) -> Point:
-    model = MODEL_PRESETS[rec["model"]["name"]]
+    model = _model(rec)
     backend = _BACKEND_KEY[rec["software"]["backend"]]
     run, res = rec["run"], rec["results"]
     n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
@@ -104,9 +129,14 @@ def predict(rec: dict, eff: Efficiency) -> Point:
     if on_device and n_gen and (backend != "cpu" or _ram_bandwidth(rec["hardware"])):
         t = sum(1 / est.decode_tps_at(run["depth"] + i) for i in range(n_gen))
         tg = n_gen / t
-    device = "" if backend == "cpu" else f"{rec['hardware']['gpu_preset']}|{backend}"
-    return Point(rec["id"], backend, model.n_layers, res["pp_tps"], res["tg_tps"],
-                 est.prefill_tps if on_device and n_prompt else None, tg, device)
+    hw = rec["hardware"]
+    device = f"{hw['cpu_preset'] if backend == 'cpu' else hw['gpu_preset']}|{backend}"
+    flags = set(rec["flags"])
+    return Point(rec["id"], backend, model.n_layers,
+                 None if _NO_PP & flags else res["pp_tps"],
+                 None if _NO_TG & flags else res["tg_tps"],
+                 est.prefill_tps if on_device and n_prompt else None, tg, device,
+                 1 / tg if tg else None)
 
 
 def fit(records: list[dict]) -> Efficiency:
@@ -130,12 +160,22 @@ def fit(records: list[dict]) -> Efficiency:
         if p.device and p.pp_meas and p.pp_pred:
             by_device.setdefault(p.device, []).append(p.pp_meas / p.pp_pred)
     devices = {d: round(statistics.median(v), 3) for d, v in sorted(by_device.items())}
-    return replace(Efficiency(), device_compute=devices, **fitted)
+    # CPUs: bandwidth efficiency that reproduces each measured decode speed, given the
+    # fitted per-layer overhead.
+    overhead = fitted.get("cpu_layer_overhead_us", Efficiency().cpu_layer_overhead_us) / 1e6
+    by_cpu: dict[str, list[float]] = {}
+    for p in points:
+        if p.backend == "cpu" and p.tg_meas and p.tg_x:
+            busy = 1 / p.tg_meas - p.layers * overhead
+            if busy > 0:
+                by_cpu.setdefault(p.device, []).append(p.tg_x / busy)
+    bandwidth = {d: round(statistics.median(v), 3) for d, v in sorted(by_cpu.items())}
+    return replace(Efficiency(), device_compute=devices, device_bandwidth=bandwidth, **fitted)
 
 
 def write_device_calibration(eff: Efficiency) -> None:
-    DEVICE_CALIBRATION.write_text(json.dumps({"compute": eff.device_compute}, indent=1) + "\n",
-                                  encoding="utf-8")
+    data = {"compute": eff.device_compute, "bandwidth": eff.device_bandwidth}
+    DEVICE_CALIBRATION.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
 
 
 def _fit_decode(rows: list[tuple[float, int, float]]) -> tuple[float, float]:

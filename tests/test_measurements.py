@@ -22,9 +22,13 @@ class MeasurementDataTests(unittest.TestCase):
                       measurements.validate({k: v for k, v in RECORDS[0].items() if k != "run"}))
 
     def test_flagged_records_are_not_used(self):
-        flagged = [r for r in RECORDS if r["flags"]]
+        flagged = [r for r in RECORDS if calibrate._EXCLUDE & set(r["flags"])]
         self.assertTrue(flagged)
         self.assertFalse(any(calibrate.usable(r) for r in flagged))
+        # OpenBLAS builds keep their decode result but not prompt processing.
+        blas = next(r for r in RECORDS if "openblas-build" in r["flags"] and calibrate.usable(r)
+                    and r["results"]["pp_tps"])
+        self.assertIsNone(calibrate.predict(blas, Efficiency()).pp_meas)
 
 
 class CalibrationTests(unittest.TestCase):
@@ -36,7 +40,7 @@ class CalibrationTests(unittest.TestCase):
 
     def test_defaults_match_measurements(self):
         stats = calibrate.summary(calibrate.evaluate(RECORDS, Efficiency()))
-        for backend in ("cuda", "metal", "rocm", "vulkan", "sycl"):
+        for backend in ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu"):
             for metric, limit in self.LIMITS.items():
                 s = stats[f"{backend}/{metric}"]
                 median = self.PP_MEDIAN.get(backend, limit["median"]) if metric == "pp" \
@@ -48,10 +52,11 @@ class CalibrationTests(unittest.TestCase):
     def test_defaults_are_close_to_a_fresh_fit(self):
         fitted, default = calibrate.fit(RECORDS), Efficiency()
         for k, v in vars(default).items():
-            if k.endswith(("_bandwidth", "_compute")) and not k.startswith("cpu"):
+            if k.endswith(("_bandwidth", "_compute")) and not k.startswith("device"):
                 self.assertAlmostEqual(getattr(fitted, k), v, delta=0.02, msg=k)
-        self.assertEqual(fitted.device_compute, default.device_compute,
-                         "run `llmsim calibrate --write` to store the device calibration")
+        for k in ("device_compute", "device_bandwidth"):
+            self.assertEqual(getattr(fitted, k), getattr(default, k),
+                             "run `llmsim calibrate --write` to store the device calibration")
 
     def test_cli_calibrate(self):
         self.assertEqual(main(["calibrate"]), 0)

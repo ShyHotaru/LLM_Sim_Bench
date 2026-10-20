@@ -101,7 +101,9 @@ def presets(records: list[dict]) -> dict:
             "pp_tps": r["results"]["pp_tps"], "tg_tps": r["results"]["tg_tps"],
             "source": r["source"]["url"], "commit": r["software"]["commit"],
             "old_build": "old_build" in r["flags"],
-        } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]],
+        } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]
+            and r["model"]["name"] in MODEL_PRESETS and r["model"]["quant"] in QUANT_BPW
+            and r["run"]["n_prompt"] and r["run"]["n_gen"]],
     }
 
 

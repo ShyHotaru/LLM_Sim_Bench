@@ -133,5 +133,6 @@
   "warn.decodeUncalibrated": "{backend} 생성 속도는 아직 보정되지 않았습니다 (메모리 구성이 확인된 실측이 없음).",
   "warn.prefillUncalibrated": "{backend} 프롬프트 처리 속도는 아직 보정되지 않았습니다.",
   "warn.prefillDevice": "{device}는 이 백엔드로 측정한 프롬프트 처리 실측이 없어 백엔드 평균을 썼습니다. 실제와 차이가 클 수 있습니다.",
+  "warn.cpuDevice": "{cpu}는 생성 속도 실측이 없어 CPU 평균 메모리 효율을 썼습니다. CCD가 하나인 Ryzen은 실측상 이보다 약 25% 느립니다.",
   "warn.moe": "MoE(전문가 혼합) 모델의 라우팅 비용은 반영되지 않아, 생성 속도가 실제보다 빠르게 나올 수 있습니다."
 }

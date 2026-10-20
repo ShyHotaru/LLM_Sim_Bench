@@ -83,6 +83,30 @@
   "rx9070-16gb|vulkan": 0.28,
   "rx9070xt-16gb|rocm": 0.344,
   "rx9070xt-16gb|vulkan": 0.349,
+  "ryzen9-7950x|cpu": 0.687,
+  "ryzen9-9950x3d|cpu": 0.34,
   "t4-16gb|cuda": 0.262
+ },
+ "bandwidth": {
+  "core-ultra9-285k|cpu": 0.817,
+  "epyc-9575f|cpu": 0.92,
+  "epyc-9655p|cpu": 0.81,
+  "epyc-9754|cpu": 0.579,
+  "i5-14600k|cpu": 0.518,
+  "i9-14900k|cpu": 0.783,
+  "ryzen5-7600x|cpu": 0.63,
+  "ryzen5-9600x|cpu": 0.654,
+  "ryzen7-7700x|cpu": 0.574,
+  "ryzen7-7800x3d|cpu": 0.578,
+  "ryzen7-8700g|cpu": 0.651,
+  "ryzen7-9700x|cpu": 0.662,
+  "ryzen7-9800x3d|cpu": 0.663,
+  "ryzen9-7900x|cpu": 0.695,
+  "ryzen9-7950x3d|cpu": 0.677,
+  "ryzen9-7950x|cpu": 0.881,
+  "ryzen9-9900x|cpu": 0.859,
+  "ryzen9-9950x3d|cpu": 0.834,
+  "ryzen9-9950x|cpu": 0.844,
+  "threadripper-7980x|cpu": 0.874
  }
 }
