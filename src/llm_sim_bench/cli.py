@@ -1,4 +1,4 @@
-"""Command-line interface: `llmsim list | estimate | run | serve`."""
+"""Command-line interface: `llmsim list | estimate | run | serve | calibrate`."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from dataclasses import replace
 
 from .estimator import Estimate, estimate, format_estimate
 from .mock import MockEngine, StreamStats, count_tokens
-from .profiles import (CPU, CPU_PRESETS, GPU, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
-                       Model, System, lookup, ram_bandwidth_gbps)
+from .profiles import (APPLE_PRESETS, CPU, CPU_PRESETS, GPU, GPU_PRESETS, MODEL_PRESETS,
+                       QUANT_BPW, RAM, Model, System, apple_system, lookup, ram_bandwidth_gbps)
 
 DEFAULTS = {
     "cpu": "ryzen7-5800x",
@@ -50,12 +50,18 @@ def build(args) -> tuple[System, Model, dict]:
             if key != "size_gb":
                 ram_spec.pop("bandwidth_gbps", None)
 
-    gpu_specs = [] if args.no_gpu else (args.gpu if args.gpu else cfg["gpu"])
-    system = System(
-        cpu=_profile(CPU_PRESETS, CPU, args.cpu or cfg["cpu"], "CPU"),
-        ram=_ram(ram_spec),
-        gpus=tuple(_profile(GPU_PRESETS, GPU, g, "GPU") for g in gpu_specs),
-    )
+    apple = args.apple or cfg.get("apple")
+    if apple:
+        chip = lookup(APPLE_PRESETS, apple, "Apple chip")
+        system = apple_system(chip, float(args.ram_gb or cfg.get("ram", {}).get(
+            "size_gb", max(chip.memory_options_gb))))
+    else:
+        gpu_specs = [] if args.no_gpu else (args.gpu if args.gpu else cfg["gpu"])
+        system = System(
+            cpu=_profile(CPU_PRESETS, CPU, args.cpu or cfg["cpu"], "CPU"),
+            ram=_ram(ram_spec),
+            gpus=tuple(_profile(GPU_PRESETS, GPU, g, "GPU") for g in gpu_specs),
+        )
 
     model_spec = dict(cfg["model"])
     run = {
@@ -72,6 +78,9 @@ def build(args) -> tuple[System, Model, dict]:
 
 
 def describe_system(system: System) -> str:
+    if system.unified:
+        return (f"System    {system.gpus[0].name} | {system.ram.size_gb:g} GB unified memory "
+                f"({system.ram.bandwidth_gbps:.0f} GB/s)")
     gpus = ", ".join(g.name for g in system.gpus) or "none"
     return (f"System    CPU {system.cpu.name} | RAM {system.ram.size_gb:g} GB "
             f"{system.ram.label} ({system.ram.bandwidth_gbps:.1f} GB/s) | GPU {gpus}")
@@ -91,6 +100,7 @@ def _estimate(args):
 def cmd_list(_args):
     print("CPUs:  ", ", ".join(CPU_PRESETS))
     print("GPUs:  ", ", ".join(GPU_PRESETS))
+    print("Apple: ", ", ".join(APPLE_PRESETS))
     print("Models:", ", ".join(MODEL_PRESETS))
     print("Quants:", ", ".join(QUANT_BPW))
     print("RAM:    any 'ddrN-SPEED' kind, e.g. ddr4-3200, ddr5-6000")
@@ -131,6 +141,26 @@ def cmd_serve(args):
     return 0
 
 
+def cmd_calibrate(args):
+    from . import calibrate, measurements
+    from .estimator import Efficiency
+
+    records = measurements.load(args.data)
+    problems = measurements.check_all(records)
+    if problems:
+        print("\n".join(problems), file=sys.stderr)
+        return 1
+    print("Current defaults")
+    print(calibrate.format_report(records, Efficiency()))
+    fitted = calibrate.fit(records)
+    print("\nFitted factors (copy into Efficiency defaults to adopt)")
+    for k in ("gpu_bandwidth", "gpu_compute", "gpu_layer_overhead_us", "metal_bandwidth",
+              "metal_compute", "metal_layer_overhead_us"):
+        print(f"  {k:<24} {getattr(fitted, k)}")
+    print(calibrate.format_report(records, fitted))
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     g = common.add_argument_group("virtual system")
@@ -141,6 +171,7 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--ram-channels", type=int, help="number of memory channels")
     g.add_argument("--gpu", action="append", help="GPU preset (repeat for multi-GPU)")
     g.add_argument("--no-gpu", action="store_true", help="CPU-only system")
+    g.add_argument("--apple", help="Apple Silicon chip preset; --ram-gb sets unified memory")
     m = common.add_argument_group("model")
     m.add_argument("--model", help="model preset")
     m.add_argument("--quant", help="quantization, e.g. Q4_K_M")
@@ -162,6 +193,11 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--max-tokens", type=int, default=200)
     r.add_argument("--seed", type=int)
     r.set_defaults(func=cmd_run)
+
+    c = sub.add_parser("calibrate", help="fit efficiency factors to measurement records")
+    c.add_argument("--data", help="measurement .jsonl file or directory "
+                   "(default: data/measurements in the source tree)")
+    c.set_defaults(func=cmd_calibrate)
 
     sv = sub.add_parser("serve", parents=[common], help="run a mock OpenAI-compatible API")
     sv.add_argument("--host", default="127.0.0.1")

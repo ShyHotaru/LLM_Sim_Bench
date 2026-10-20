@@ -3,9 +3,12 @@
 Decode is treated as memory-bandwidth bound: every generated token reads
 all active weights plus the KV cache filled so far. Prefill is treated as
 compute bound: roughly 2 FLOPs per active parameter per prompt token.
+Each layer also costs a fixed per-token overhead (kernel launches and
+synchronization), which dominates on fast GPUs with small models.
 Layers are offloaded to GPUs first (like llama.cpp's n_gpu_layers) and the
 rest stays in system RAM. Devices run layers sequentially, so per-token
-times add up.
+times add up. On unified-memory systems (Apple Silicon) the GPU budget is a
+fraction of system RAM instead of dedicated VRAM.
 """
 
 from __future__ import annotations
@@ -19,14 +22,32 @@ GB = 1e9
 
 @dataclass(frozen=True)
 class Efficiency:
-    """Fraction of theoretical peak that real runtimes typically reach."""
+    """Fraction of theoretical peak that real runtimes typically reach.
 
-    gpu_bandwidth: float = 0.75
+    CUDA and Metal values are fitted to llama.cpp scoreboard data with
+    `llmsim calibrate`; CPU values are not calibrated yet.
+    """
+
+    gpu_bandwidth: float = 0.87
+    gpu_compute: float = 0.56
+    gpu_layer_overhead_us: float = 32.0
+    metal_bandwidth: float = 0.94
+    metal_compute: float = 0.72
+    metal_layer_overhead_us: float = 184.0
     cpu_bandwidth: float = 0.60
-    gpu_compute: float = 0.50
     cpu_compute: float = 0.40
+    cpu_layer_overhead_us: float = 0.0
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
+    unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
+
+    def for_backend(self, backend: str) -> tuple[float, float, float]:
+        """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
+        if backend == "metal":
+            return self.metal_bandwidth, self.metal_compute, self.metal_layer_overhead_us / 1e6
+        if backend == "cpu":
+            return self.cpu_bandwidth, self.cpu_compute, self.cpu_layer_overhead_us / 1e6
+        return self.gpu_bandwidth, self.gpu_compute, self.gpu_layer_overhead_us / 1e6
 
 
 @dataclass
@@ -38,6 +59,7 @@ class Placement:
     bandwidth_gbps: float
     tflops: float
     is_gpu: bool
+    overhead_s: float = 0.0  # fixed per-token time for this device's layers
 
 
 @dataclass
@@ -88,27 +110,34 @@ def estimate(
 
     placements: list[Placement] = []
     remaining = model.n_layers
+    gpu_used_gb = 0.0
     for gpu in system.gpus:
-        usable = max(0.0, gpu.vram_gb - eff.vram_reserve_gb) * GB
+        vram = system.ram.size_gb * eff.unified_gpu_fraction if system.unified else gpu.vram_gb
+        usable = max(0.0, vram - eff.vram_reserve_gb) * GB
         n = min(remaining, int(usable // (layer_w + layer_kv)))
         if n > 0:
+            bw_eff, c_eff, layer_s = eff.for_backend(gpu.backend)
             placements.append(
                 Placement(gpu.name, n, n * layer_w / GB, n * layer_kv / GB,
-                          gpu.bandwidth_gbps * eff.gpu_bandwidth,
-                          gpu.fp16_tflops * eff.gpu_compute, True)
+                          gpu.bandwidth_gbps * bw_eff, gpu.fp16_tflops * c_eff, True,
+                          n * layer_s)
             )
             remaining -= n
+            gpu_used_gb += n * (layer_w + layer_kv) / GB
 
     fits = True
     if remaining:
         cpu_gb = remaining * (layer_w + layer_kv) / GB
+        bw_eff, c_eff, layer_s = eff.for_backend("cpu")
         placements.append(
             Placement(f"cpu:{system.cpu.name}", remaining, remaining * layer_w / GB,
                       remaining * layer_kv / GB,
-                      system.ram.bandwidth_gbps * eff.cpu_bandwidth,
-                      system.cpu.fp32_tflops * eff.cpu_compute, False)
+                      system.ram.bandwidth_gbps * bw_eff,
+                      system.cpu.fp32_tflops * c_eff, False, remaining * layer_s)
         )
         ram_free = system.ram.size_gb - eff.ram_reserve_gb
+        if system.unified:
+            ram_free -= gpu_used_gb
         if cpu_gb > ram_free:
             fits = False
             notes.append(f"needs {cpu_gb:.1f} GB in RAM but only {ram_free:.1f} GB is free; "
@@ -123,7 +152,7 @@ def estimate(
     for p in placements:
         frac = p.layers / model.n_layers
         bw = p.bandwidth_gbps * GB
-        base_time += p.weights_gb * GB * active_ratio / bw
+        base_time += p.weights_gb * GB * active_ratio / bw + p.overhead_s
         kv_terms.append((kv_tok * frac, bw))
         prefill_time += 2 * model.active_b * 1e9 * frac / (p.tflops * 1e12)
 

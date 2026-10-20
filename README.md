@@ -24,7 +24,9 @@ pip install -e .
 llmsim list
 llmsim estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx 8192
 llmsim run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
+llmsim estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
 llmsim serve --config examples/rtx3080_desktop.toml --port 8000
+llmsim calibrate
 ```
 
 Without installing: `PYTHONPATH=src python -m llm_sim_bench ...`
@@ -52,6 +54,7 @@ Every option can be passed as a flag or in a TOML file (`--config`); flags win.
 | `--cpu` | CPU preset |
 | `--ram-gb`, `--ram-kind`, `--ram-channels` | RAM size, DDR kind (e.g. `ddr5-6000`) and channel count |
 | `--gpu` | GPU preset; repeat for multi-GPU; `--no-gpu` for CPU-only |
+| `--apple` | Apple Silicon chip preset; `--ram-gb` then sets the unified memory size |
 | `--model`, `--quant`, `--ctx`, `--kv-bits` | Model preset, quantization, context length, KV cache precision |
 | `--decode-tps`, `--prefill-tps` | Skip the estimate and force a target speed for the mock |
 
@@ -72,23 +75,40 @@ token after that follows the simulated decode speed at the current context fill.
 - **Placement**: whole layers go to GPUs first (minus a VRAM reserve), the rest to system RAM.
 - **Decode** is memory-bandwidth bound: per token, each device reads its share of the active
   weights and the filled KV cache. Device times add up (layers run sequentially).
+- **Overhead**: each layer adds a fixed per-token cost (kernel launches, synchronization).
 - **Prefill** is compute bound: about 2 FLOPs per active parameter per prompt token.
+- **Unified memory** (Apple Silicon): the GPU may use about 75 % of system RAM.
 - Peak specs are scaled by efficiency factors (`Efficiency` in `estimator.py`).
 
 All preset numbers are approximate public specs. Treat results as order-of-magnitude guidance.
+
+### Calibration
+
+CUDA and Metal efficiency factors are fitted to 109 public llama.cpp scoreboard results
+([`data/`](data/README.md)). `llmsim calibrate` refits them and prints the error against every
+record; the test suite fails if the defaults drift from the data. Current median error:
+
+| Backend | Decode | Prefill |
+| --- | --- | --- |
+| CUDA (30 results) | 4.0 % | 7.0 % |
+| Metal (79 results) | 3.2 % | 4.5 % |
+
+All calibration data is Llama 2 7B at short context, so larger models, long contexts and CPU
+offload are extrapolations.
 
 ### Known limitations
 
 - Prefill with partial CPU offload is pessimistic: real runtimes push large prompt batches
   through the GPU even for CPU-resident layers.
 - MoE decode is optimistic: routing overhead and shared weights are not modeled yet.
-- Single request only; no batching or concurrency effects. Apple Silicon unified memory is not
-  modeled yet.
+- Single request only; no batching or concurrency effects.
+- CPU, ROCm and Vulkan factors are not calibrated yet. Dual-die Apple Ultra chips decode up to
+  ~20 % slower than estimated, and Turing (RTX 20) prefill is overestimated.
 
 ## Roadmap
 
-- Calibrate efficiency factors against real `llama-bench` results.
-- Apple Silicon / unified memory and AMD GPU presets.
+- More calibration data: CPU-only, AMD, long-context (`llama-bench -d`) and larger models.
+- AMD GPU presets.
 - Concurrent-request simulation and a small benchmark harness that replays a prompt set.
 - Report export (JSON/Markdown) for comparing candidate builds side by side.
 
