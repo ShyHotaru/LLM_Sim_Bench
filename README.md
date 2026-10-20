@@ -153,8 +153,6 @@ or device without measurements, or a mixture-of-experts model).
 Before a public release:
 
 - Enable GitHub Pages (the workflow is ready) and choose a custom domain.
-- Ask the SYCL scoreboard's author whether its data may be used without the non-commercial
-  restriction.
 
 Calibration data:
 
