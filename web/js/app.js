@@ -30,7 +30,7 @@ const DEFAULT_CONFIG = {
   kvBits: 16,
 };
 const DEFAULT_STATE = {
-  configs: [DEFAULT_CONFIG, { ...DEFAULT_CONFIG, platform: "apple" }],
+  configs: [DEFAULT_CONFIG],
   prompt: 1000,
   maxTokens: 300,
 };
@@ -177,55 +177,59 @@ function compute(cfg, model = cfg.model, quant = cfg.quant, context = cfg.contex
 function renderConfigs() {
   const root = document.getElementById("configs");
   const focused = document.activeElement?.dataset?.focusId;
+  root.classList.toggle("single", state.configs.length === 1);
   root.replaceChildren(...state.configs.map((cfg, i) => renderConfig(cfg, i)));
   if (state.configs.length < MAX_CONFIGS) {
-    root.append(h("div", { class: "panel add-config" },
-      h("button", { type: "button", "data-act": "add-config" }, t("config.compare", { letter: LETTERS[state.configs.length] }))));
+    root.append(h("div", { class: "compare-bar" },
+      h("button", { type: "button", "data-act": "add-config" }, t("config.compare"))));
   }
   if (focused) root.querySelector(`[data-focus-id="${focused}"]`)?.focus();
   renderStreams();
 }
 
 function renderConfig(cfg, i) {
+  const single = state.configs.length === 1;
   const panel = h("div", { class: "panel config", "data-i": i });
   panel.append(h("div", { class: "config-head" },
-    h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), t("config.title", { letter: LETTERS[i] })),
+    single ? h("h2", {}, t("config.single"))
+      : h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), t("config.title", { letter: LETTERS[i] })),
     h("div", { class: "segmented", role: "group", "aria-label": t("config.platform") },
       h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, t("platform.pc")),
       h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac"))),
     state.configs.length > 1 ? h("button", { type: "button", class: "link", "data-act": "remove-config" }, t("config.remove")) : null));
 
-  panel.append(h("h3", {}, t("section.hardware")));
+  const settings = h("div", { class: "config-settings" });
+  settings.append(h("h3", {}, t("section.hardware")));
   if (cfg.platform === "apple") {
     const chip = P.apple.find((a) => a.name === cfg.chip);
-    panel.append(h("div", { class: "fields" },
+    settings.append(h("div", { class: "fields" },
       field(t("field.chip"), select("chip", P.apple.map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })),
       field(t("field.unifiedMemory"), select("memoryGb", chip.memory_options_gb.map((m) => [m, `${m} GB`]), cfg.memoryGb, { "data-focus-id": `${i}-mem` }))));
   } else {
     const gpuOptions = P.gpus.map((g) => [g.name, gpuLabel(g)]);
     cfg.gpus.forEach((g, j) => {
-      panel.append(h("div", { class: "gpu-row" },
+      settings.append(h("div", { class: "gpu-row" },
         field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }), select("gpu", gpuOptions, g, { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
         field(t("field.vram"), h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
         h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": t("gpu.remove", { n: j + 1 }) }, "✕")));
     });
-    panel.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
+    settings.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
       cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
-    panel.append(h("div", { class: "fields" },
+    settings.append(h("div", { class: "fields" },
       field(t("field.cpu"), select("cpu", P.cpus.map((c) => [c.name, t("option.cpu", { name: c.name, cores: c.cores })]), cfg.cpu, { "data-focus-id": `${i}-cpu` })),
       field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
       field(t("field.ramType"), select("ramKind", RAM_KINDS.map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
       field(t("field.channels"), select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
   }
 
-  panel.append(h("h3", {}, t("section.model")));
-  panel.append(h("div", { class: "fields" },
+  settings.append(h("h3", {}, t("section.model")));
+  settings.append(h("div", { class: "fields" },
     field(t("field.model"), select("model", P.models.map((m) => [m.name, modelLabel(m)]), cfg.model, { "data-focus-id": `${i}-model` })),
     field(t("field.quant"), select("quant", Object.entries(P.quant_bpw).map(([q, b]) => [q, `${q} (${b} bpw)`]), cfg.quant, { "data-focus-id": `${i}-quant` })),
     field(t("field.context"), select("context", CONTEXTS.map((c) => [c, t("option.context", { k: c / 1024 })]), cfg.context, { "data-focus-id": `${i}-ctx` })),
     field(t("field.kvCache"), select("kvBits", KV_BITS.map((b) => [b, b === 16 ? "F16" : `Q${b}`]), cfg.kvBits, { "data-focus-id": `${i}-kv` }))));
 
-  panel.append(renderResult(cfg));
+  panel.append(h("div", { class: "config-body" }, settings, renderResult(cfg)));
   return panel;
 }
 
@@ -468,7 +472,7 @@ function renderStreams() {
     } catch { /* invalid configs show an error in their panel */ }
     return h("div", { class: "stream", "data-i": i },
       h("div", { class: "stream-head" },
-        h("strong", {}, `${LETTERS[i]} · ${label}`),
+        h("strong", {}, state.configs.length > 1 ? `${LETTERS[i]} · ${label}` : label),
         h("span", { class: "tok" }, tok),
         h("span", { class: "stats" }, t("mock.ready"))),
       h("div", { class: "stream-out waiting", "aria-live": "off" }, ""));

@@ -5,8 +5,9 @@
   "lang.label": "言語",
 
   "config.section": "構成",
+  "config.single": "構成",
   "config.title": "構成 {letter}",
-  "config.compare": "+ 構成 {letter} を追加して比較",
+  "config.compare": "+ 別の構成と比較する",
   "config.remove": "削除",
   "config.platform": "プラットフォーム",
   "platform.pc": "PC",

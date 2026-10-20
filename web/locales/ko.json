@@ -5,8 +5,9 @@
   "lang.label": "언어",
 
   "config.section": "구성",
+  "config.single": "구성",
   "config.title": "구성 {letter}",
-  "config.compare": "+ 구성 {letter}를 추가해 비교하기",
+  "config.compare": "+ 다른 구성과 비교하기",
   "config.remove": "삭제",
   "config.platform": "플랫폼",
   "platform.pc": "PC",

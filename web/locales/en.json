@@ -5,8 +5,9 @@
   "lang.label": "Language",
 
   "config.section": "Configurations",
+  "config.single": "Configuration",
   "config.title": "Configuration {letter}",
-  "config.compare": "+ Add configuration {letter} to compare",
+  "config.compare": "+ Compare with a second configuration",
   "config.remove": "Remove",
   "config.platform": "Platform",
   "platform.pc": "PC",
