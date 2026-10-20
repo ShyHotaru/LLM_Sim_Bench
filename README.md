@@ -50,7 +50,9 @@ Note      8/48 layers offloaded to CPU
 `web/` is a static site with the same estimator ported to JavaScript: pick a PC (GPUs, CPU,
 RAM) or a Mac (chip, unified memory), a model and a quantization, compare two configurations
 side by side, and watch both stream mock tokens at their simulated speed. The whole setup is
-kept in the URL, so a link reproduces it.
+kept in the URL, so a link reproduces it. The interface is available in English, Korean and
+Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style URL parameter, or
+the picker in the header.
 
 ```bash
 llmsim web            # then open http://127.0.0.1:8000

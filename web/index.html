@@ -4,53 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LLM Sim Bench</title>
-  <meta name="description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
+  <meta name="description" data-i18n-attr="content:app.description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
   <link rel="stylesheet" href="css/style.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
   <header class="site-header">
-    <div class="wrap">
-      <h1>LLM Sim Bench</h1>
-      <p class="tagline">Pick hardware and a model, see whether it fits and how fast it runs, then watch tokens stream at that speed.</p>
+    <div class="wrap header-row">
+      <div>
+        <h1>LLM Sim Bench</h1>
+        <p class="tagline" data-i18n="app.tagline"></p>
+      </div>
+      <label class="lang-picker"><span data-i18n="lang.label">Language</span>
+        <select id="lang"></select>
+      </label>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="configs" id="configs" aria-label="Configurations"></section>
+    <section class="configs" id="configs" aria-label="Configurations" data-i18n-attr="aria-label:config.section"></section>
 
     <section class="panel mock" aria-labelledby="mock-title">
       <div class="mock-head">
-        <h2 id="mock-title">Feel the speed</h2>
+        <h2 id="mock-title" data-i18n="mock.title"></h2>
         <div class="mock-controls">
-          <label>Prompt tokens
+          <label><span data-i18n="mock.promptTokens"></span>
             <input id="prompt-tokens" type="number" min="1" max="200000" step="100" value="1000">
           </label>
-          <label>Output tokens
+          <label><span data-i18n="mock.outputTokens"></span>
             <input id="max-tokens" type="number" min="1" max="4000" step="50" value="300">
           </label>
-          <button id="play" class="primary" type="button">Play</button>
+          <button id="play" class="primary" type="button" data-i18n="mock.play"></button>
         </div>
       </div>
-      <p class="hint">Time to first token follows the prefill speed for the prompt; every later token follows the decode speed at the current context fill. The text is filler.</p>
+      <p class="hint" data-i18n="mock.hint"></p>
       <div class="streams" id="streams"></div>
     </section>
 
     <section class="panel about" aria-labelledby="about-title">
-      <h2 id="about-title">How the estimate works</h2>
+      <h2 id="about-title" data-i18n="about.title"></h2>
       <ul>
-        <li><strong>Memory</strong>: weights (parameters × bits per weight) plus KV cache for the full context. Whole layers go to GPUs first, the rest to system RAM. On Apple Silicon the GPU may use about 75 % of unified memory.</li>
-        <li><strong>Decode</strong> is memory-bandwidth bound: each token reads every active weight and the filled KV cache, plus a fixed per-layer overhead.</li>
-        <li><strong>Prefill</strong> is compute bound: about 2 FLOPs per active parameter per prompt token.</li>
-        <li><strong>Calibration</strong>: efficiency factors are fitted to public llama.cpp benchmarks. <span id="calibration"></span></li>
+        <li><strong data-i18n="about.memory.title"></strong>: <span data-i18n="about.memory.body"></span></li>
+        <li><strong data-i18n="about.decode.title"></strong> <span data-i18n="about.decode.body"></span></li>
+        <li><strong data-i18n="about.prefill.title"></strong> <span data-i18n="about.prefill.body"></span></li>
+        <li><strong data-i18n="about.calibration.title"></strong>: <span data-i18n="about.calibration.body"></span> <span id="calibration"></span></li>
       </ul>
-      <p class="hint">Estimates for a single request with llama.cpp-style offloading. Larger models, long contexts and CPU offload are extrapolations; treat results as planning guidance, not guarantees.</p>
+      <p class="hint" data-i18n="about.disclaimer"></p>
     </section>
   </main>
 
   <footer class="wrap site-footer">
     <span>LLM Sim Bench</span>
-    <span>Data: <a href="https://github.com/ggml-org/llama.cpp/discussions/15013">llama.cpp CUDA scoreboard</a>, <a href="https://github.com/ggml-org/llama.cpp/discussions/4167">Apple Silicon scoreboard</a></span>
+    <span><span data-i18n="footer.data"></span> <a href="https://github.com/ggml-org/llama.cpp/discussions/15013" data-i18n="footer.cuda"></a>, <a href="https://github.com/ggml-org/llama.cpp/discussions/4167" data-i18n="footer.apple"></a></span>
   </footer>
 </body>
 </html>

@@ -13,3 +13,5 @@ Simulates local LLM hardware and models, estimates tok/s, and runs a speed-match
 - Run tests: `PYTHONPATH=src python -m unittest discover -s tests -v` and
   `node --test web/test/*.test.mjs`
 - All repository text (README, comments, commit messages, issues) is written in English.
+  Exception: UI translations in `web/locales/<lang>.json` (`en` is the source; `ko` and `ja`
+  are reviewed by the maintainer). Every locale must have the same keys and placeholders.

@@ -1,4 +1,7 @@
 import { buildSystem, estimate, ramBandwidthGbps } from "./estimator.js";
+import {
+  LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
+} from "./i18n.js";
 import { MockStream } from "./mock.js";
 import { decodeState, encodeState } from "./state.js";
 
@@ -62,9 +65,11 @@ function field(label, control) {
   return h("label", {}, label, control);
 }
 
+const fmtInt = (n) => Math.round(n).toLocaleString(numberLocale());
+
 export function fmtTps(x) {
   if (!Number.isFinite(x)) return "–";
-  if (x >= 1000) return Math.round(x).toLocaleString("en-US");
+  if (x >= 1000) return fmtInt(x);
   if (x >= 100) return x.toFixed(0);
   if (x >= 10) return x.toFixed(1);
   return x.toFixed(2);
@@ -72,17 +77,18 @@ export function fmtTps(x) {
 
 export function fmtTime(s) {
   if (!Number.isFinite(s)) return "–";
-  if (s < 1) return `${Math.round(s * 1000)} ms`;
-  if (s < 60) return `${s.toFixed(1)} s`;
+  if (s < 1) return t("time.ms", { n: Math.round(s * 1000) });
+  if (s < 60) return t("time.s", { n: s.toFixed(1) });
   const m = Math.floor(s / 60);
   const sec = Math.round(s % 60);
-  return m < 60 ? `${m}m ${String(sec).padStart(2, "0")}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
+  return m < 60 ? t("time.minSec", { m, s: String(sec).padStart(2, "0") })
+    : t("time.hourMin", { h: Math.floor(m / 60), m: m % 60 });
 }
 
 const gb = (x) => `${x.toFixed(1)} GB`;
 
 function modelLabel(m) {
-  const size = m.active_params_b ? `${m.params_b}B, ${m.active_params_b}B active` : `${m.params_b}B`;
+  const size = m.active_params_b ? t("option.moe", { total: m.params_b, active: m.active_params_b }) : `${m.params_b}B`;
   return `${m.name} (${size})`;
 }
 
@@ -93,7 +99,7 @@ function chipName(a) {
 }
 
 function chipLabel(a) {
-  return `${chipName(a)} · ${a.gpu_cores}-core GPU · ${a.bandwidth_gbps} GB/s`;
+  return t("option.chip", { name: chipName(a), cores: a.gpu_cores, bw: a.bandwidth_gbps });
 }
 
 // "rtx4070tisuper-16gb" -> "RTX 4070 Ti SUPER"
@@ -170,7 +176,7 @@ function renderConfigs() {
   root.replaceChildren(...state.configs.map((cfg, i) => renderConfig(cfg, i)));
   if (state.configs.length < MAX_CONFIGS) {
     root.append(h("div", { class: "panel add-config" },
-      h("button", { type: "button", "data-act": "add-config" }, `+ Compare with configuration ${LETTERS[state.configs.length]}`)));
+      h("button", { type: "button", "data-act": "add-config" }, t("config.compare", { letter: LETTERS[state.configs.length] }))));
   }
   if (focused) root.querySelector(`[data-focus-id="${focused}"]`)?.focus();
   renderStreams();
@@ -179,41 +185,41 @@ function renderConfigs() {
 function renderConfig(cfg, i) {
   const panel = h("div", { class: "panel config", "data-i": i });
   panel.append(h("div", { class: "config-head" },
-    h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), `Configuration ${LETTERS[i]}`),
-    h("div", { class: "segmented", role: "group", "aria-label": "Platform" },
-      h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, "PC"),
-      h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, "Mac")),
-    state.configs.length > 1 ? h("button", { type: "button", class: "link", "data-act": "remove-config" }, "Remove") : null));
+    h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), t("config.title", { letter: LETTERS[i] })),
+    h("div", { class: "segmented", role: "group", "aria-label": t("config.platform") },
+      h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, t("platform.pc")),
+      h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac"))),
+    state.configs.length > 1 ? h("button", { type: "button", class: "link", "data-act": "remove-config" }, t("config.remove")) : null));
 
-  panel.append(h("h3", {}, "Hardware"));
+  panel.append(h("h3", {}, t("section.hardware")));
   if (cfg.platform === "apple") {
     const chip = P.apple.find((a) => a.name === cfg.chip);
     panel.append(h("div", { class: "fields" },
-      field("Chip", select("chip", P.apple.map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })),
-      field("Unified memory", select("memoryGb", chip.memory_options_gb.map((m) => [m, `${m} GB`]), cfg.memoryGb, { "data-focus-id": `${i}-mem` }))));
+      field(t("field.chip"), select("chip", P.apple.map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })),
+      field(t("field.unifiedMemory"), select("memoryGb", chip.memory_options_gb.map((m) => [m, `${m} GB`]), cfg.memoryGb, { "data-focus-id": `${i}-mem` }))));
   } else {
     const gpuOptions = P.gpus.map((g) => [g.name, gpuLabel(g)]);
     cfg.gpus.forEach((g, j) => {
       panel.append(h("div", { class: "gpu-row" },
-        field(j === 0 ? "GPU" : `GPU ${j + 1}`, select("gpu", gpuOptions, g, { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
-        field("VRAM", h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
-        h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": `Remove GPU ${j + 1}` }, "✕")));
+        field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }), select("gpu", gpuOptions, g, { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
+        field(t("field.vram"), h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
+        h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": t("gpu.remove", { n: j + 1 }) }, "✕")));
     });
     panel.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
-      cfg.gpus.length ? "+ Add another GPU" : "+ Add a GPU (currently CPU only)"));
+      cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
     panel.append(h("div", { class: "fields" },
-      field("CPU", select("cpu", P.cpus.map((c) => [c.name, `${c.name} (${c.cores} cores)`]), cfg.cpu, { "data-focus-id": `${i}-cpu` })),
-      field("System RAM", select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
-      field("RAM type", select("ramKind", RAM_KINDS.map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
-      field("Channels", select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
+      field(t("field.cpu"), select("cpu", P.cpus.map((c) => [c.name, t("option.cpu", { name: c.name, cores: c.cores })]), cfg.cpu, { "data-focus-id": `${i}-cpu` })),
+      field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
+      field(t("field.ramType"), select("ramKind", RAM_KINDS.map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
+      field(t("field.channels"), select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
   }
 
-  panel.append(h("h3", {}, "Model"));
+  panel.append(h("h3", {}, t("section.model")));
   panel.append(h("div", { class: "fields" },
-    field("Model", select("model", P.models.map((m) => [m.name, modelLabel(m)]), cfg.model, { "data-focus-id": `${i}-model` })),
-    field("Quantization", select("quant", Object.entries(P.quant_bpw).map(([q, b]) => [q, `${q} (${b} bpw)`]), cfg.quant, { "data-focus-id": `${i}-quant` })),
-    field("Context", select("context", CONTEXTS.map((c) => [c, `${c / 1024}K tokens`]), cfg.context, { "data-focus-id": `${i}-ctx` })),
-    field("KV cache", select("kvBits", KV_BITS.map((b) => [b, b === 16 ? "F16" : `Q${b}`]), cfg.kvBits, { "data-focus-id": `${i}-kv` }))));
+    field(t("field.model"), select("model", P.models.map((m) => [m.name, modelLabel(m)]), cfg.model, { "data-focus-id": `${i}-model` })),
+    field(t("field.quant"), select("quant", Object.entries(P.quant_bpw).map(([q, b]) => [q, `${q} (${b} bpw)`]), cfg.quant, { "data-focus-id": `${i}-quant` })),
+    field(t("field.context"), select("context", CONTEXTS.map((c) => [c, t("option.context", { k: c / 1024 })]), cfg.context, { "data-focus-id": `${i}-ctx` })),
+    field(t("field.kvCache"), select("kvBits", KV_BITS.map((b) => [b, b === 16 ? "F16" : `Q${b}`]), cfg.kvBits, { "data-focus-id": `${i}-kv` }))));
 
   panel.append(renderResult(cfg));
   return panel;
@@ -230,27 +236,41 @@ function renderResult(cfg) {
   const gpuLayers = est.placements.filter((p) => p.is_gpu).reduce((a, p) => a + p.layers, 0);
   const n = est.model.n_layers;
   let badge;
-  if (!est.fits) badge = h("span", { class: "badge bad" }, "Does not fit in memory");
-  else if (!system.gpus.length) badge = h("span", { class: "badge warn" }, "CPU only");
-  else if (gpuLayers === n) badge = h("span", { class: "badge ok" }, system.unified ? "Fits in GPU memory" : "Fits in VRAM");
-  else badge = h("span", { class: "badge warn" }, `${n - gpuLayers}/${n} layers on CPU`);
+  if (!est.fits) badge = h("span", { class: "badge bad" }, t("badge.noFit"));
+  else if (!system.gpus.length) badge = h("span", { class: "badge warn" }, t("badge.cpuOnly"));
+  else if (gpuLayers === n) badge = h("span", { class: "badge ok" }, t(system.unified ? "badge.fitsGpu" : "badge.fitsVram"));
+  else badge = h("span", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
 
   const ttft = state.prompt / est.prefill_tps;
   const gen = genTime(est, state.prompt, state.maxTokens);
+  const notes = localizedNotes(cfg, system, est);
   const result = h("div", { class: "result" },
     badge,
     h("div", { class: "headline" },
       h("span", { class: "big" }, fmtTps(est.decode_tps_empty)),
-      h("span", { class: "unit" }, "tok/s generation (empty context)")),
+      h("span", { class: "unit" }, t("result.unit"))),
     h("div", { class: "metrics" },
-      metric("At full context", `${fmtTps(est.decode_tps_full)} tok/s`),
-      metric("Prompt processing", `${fmtTps(est.prefill_tps)} tok/s`),
-      metric(`First token (${state.prompt.toLocaleString("en-US")}-token prompt)`, fmtTime(ttft)),
-      metric(`${state.maxTokens}-token reply`, fmtTime(ttft + gen))),
+      metric(t("metric.fullContext"), t("result.tps", { v: fmtTps(est.decode_tps_full) })),
+      metric(t("metric.prefill"), t("result.tps", { v: fmtTps(est.prefill_tps) })),
+      metric(t("metric.firstToken", { n: fmtInt(state.prompt) }), fmtTime(ttft)),
+      metric(t("metric.reply", { n: fmtInt(state.maxTokens) }), fmtTime(ttft + gen))),
     renderBars(system, est),
-    est.notes.length ? h("ul", { class: "notes" }, est.notes.map((t) => h("li", {}, t))) : null,
+    notes.length ? h("ul", { class: "notes" }, notes.map((note) => h("li", {}, note))) : null,
     renderMeasured(cfg));
   return result;
+}
+
+// The estimator's notes are English; rebuild them from its numbers instead.
+function localizedNotes(cfg, system, est) {
+  const notes = [];
+  const n = est.model.n_layers;
+  const cpu = est.placements.find((p) => !p.is_gpu);
+  if (cfg.context > est.model.max_context) {
+    notes.push(t("note.context", { context: fmtInt(cfg.context), max: fmtInt(est.model.max_context) }));
+  }
+  if (cpu && !est.fits) notes.push(t("note.ram", { need: gb(est.ram_needed_gb), free: gb(est.ram_free_gb) }));
+  if (cpu && system.gpus.length) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
+  return notes;
 }
 
 function metric(k, v) {
@@ -268,7 +288,7 @@ function bar(label, capacity, segments, over = false) {
   const used = segments.reduce((a, s) => a + s.v, 0);
   return h("div", { class: "bar-row" },
     h("div", { class: "bar-label" }, h("span", {}, label), h("span", {}, `${gb(used)} / ${gb(capacity)}`)),
-    h("div", { class: `bar${over ? " over" : ""}`, role: "img", "aria-label": `${label}: ${gb(used)} of ${gb(capacity)}` },
+    h("div", { class: `bar${over ? " over" : ""}`, role: "img", "aria-label": t("bar.aria", { label, used: gb(used), capacity: gb(capacity) }) },
       segments.map((s) => h("span", { class: s.cls, style: `width:${(100 * s.v) / total}%` }))));
 }
 
@@ -281,7 +301,7 @@ function renderBars(system, est) {
     const segs = [];
     if (g) segs.push({ cls: "w", v: g.weights_gb }, { cls: "kv", v: g.kv_gb });
     if (cpu) segs.push({ cls: "cpu", v: cpu.weights_gb + cpu.kv_gb });
-    rows.push(bar(`Unified memory (GPU limit ${gb(system.ram.size_gb * eff.unified_gpu_fraction)})`,
+    rows.push(bar(t("bar.unified", { limit: gb(system.ram.size_gb * eff.unified_gpu_fraction) }),
                   system.ram.size_gb, segs, !est.fits));
   } else {
     let k = 0;
@@ -292,17 +312,17 @@ function renderBars(system, est) {
         segs.push({ cls: "w", v: p.weights_gb }, { cls: "kv", v: p.kv_gb });
         k++;
       }
-      rows.push(bar(system.gpus.length > 1 ? `GPU ${j + 1} VRAM` : "VRAM", gpu.vram_gb, segs));
+      rows.push(bar(system.gpus.length > 1 ? t("bar.vramN", { n: j + 1 }) : t("bar.vram"), gpu.vram_gb, segs));
     });
-    rows.push(bar(`System RAM (${gb(eff.ram_reserve_gb)} kept for the OS)`, system.ram.size_gb,
+    rows.push(bar(t("bar.ram", { reserve: gb(eff.ram_reserve_gb) }), system.ram.size_gb,
                   cpu ? [{ cls: "cpu", v: cpu.weights_gb + cpu.kv_gb }] : [], !est.fits));
   }
   return h("div", {},
     h("div", { class: "bars" }, rows),
     h("div", { class: "legend" },
-      h("span", {}, h("i", { style: "background:var(--bar-gpu)" }), "Weights on GPU"),
-      h("span", {}, h("i", { style: "background:var(--bar-kv)" }), "KV cache on GPU"),
-      h("span", {}, h("i", { style: "background:var(--bar-cpu)" }), "Layers in system RAM")));
+      h("span", {}, h("i", { style: "background:var(--bar-gpu)" }), t("legend.weights")),
+      h("span", {}, h("i", { style: "background:var(--bar-kv)" }), t("legend.kv")),
+      h("span", {}, h("i", { style: "background:var(--bar-cpu)" }), t("legend.cpu"))));
 }
 
 function renderMeasured(cfg) {
@@ -319,13 +339,13 @@ function renderMeasured(cfg) {
       h("td", {}, fmtTps(m.pp_tps)), h("td", {}, fmtTps(est.prefill_tps)));
   });
   return h("details", { class: "measured-wrap" },
-    h("summary", {}, `Check: real benchmarks on this hardware (${rows.length})`),
+    h("summary", {}, t("measured.summary", { n: rows.length })),
     h("div", { class: "measured" },
-      h("p", { style: "margin:0 0 6px" }, "Llama 2 7B with llama.cpp, measured vs. this simulator (tok/s). ",
-        h("a", { href: rows[0].source }, "Source")),
+      h("p", { style: "margin:0 0 6px" }, `${t("measured.intro")} `,
+        h("a", { href: rows[0].source }, t("measured.source"))),
       h("table", {},
-        h("thead", {}, h("tr", {}, h("th", {}, "Quant"), h("th", {}, "Gen real"), h("th", {}, "Gen sim"),
-          h("th", {}, "Prompt real"), h("th", {}, "Prompt sim"))),
+        h("thead", {}, h("tr", {}, h("th", {}, t("measured.quant")), h("th", {}, t("measured.genReal")),
+          h("th", {}, t("measured.genSim")), h("th", {}, t("measured.promptReal")), h("th", {}, t("measured.promptSim")))),
         h("tbody", {}, body))));
 }
 
@@ -382,13 +402,13 @@ function renderStreams() {
     try {
       const m = P.models.find((x) => x.name === cfg.model);
       const hw = cfg.platform === "apple" ? chipName(P.apple.find((a) => a.name === cfg.chip))
-        : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : "CPU only");
+        : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : t("mock.cpuOnly"));
       label = `${hw} · ${m.name} ${cfg.quant}`;
     } catch { /* invalid configs show an error in their panel */ }
     return h("div", { class: "stream", "data-i": i },
       h("div", { class: "stream-head" },
         h("strong", {}, `${LETTERS[i]} · ${label}`),
-        h("span", { class: "stats" }, "Press Play")),
+        h("span", { class: "stats" }, t("mock.ready"))),
       h("div", { class: "stream-out waiting", "aria-live": "off" }, ""));
   }));
 }
@@ -410,7 +430,7 @@ function startPlayback() {
     }
   });
   playback = { streams, start: performance.now(), raf: 0 };
-  document.getElementById("play").textContent = "Stop";
+  document.getElementById("play").textContent = t("mock.stop");
   tick();
 }
 
@@ -418,7 +438,7 @@ function stopPlayback() {
   if (!playback) return;
   cancelAnimationFrame(playback.raf);
   playback = null;
-  document.getElementById("play").textContent = "Play";
+  document.getElementById("play").textContent = t("mock.play");
 }
 
 function tick() {
@@ -439,15 +459,16 @@ function tick() {
     }
     if (n === 0) {
       out.classList.add("waiting");
-      out.textContent = `Processing ${state.prompt.toLocaleString("en-US")} prompt tokens… ` +
-        `${fmtTime(Math.max(0, s.mock.ttft - elapsed))} left`;
-      stats.textContent = `prefill ${fmtTps(s.est.prefill_tps)} tok/s`;
+      out.textContent = t("mock.prefilling", { n: fmtInt(state.prompt), left: fmtTime(Math.max(0, s.mock.ttft - elapsed)) });
+      stats.textContent = t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps) });
       running = true;
     } else {
       const genElapsed = Math.min(elapsed, s.mock.totalTime) - s.mock.ttft;
       const rate = n > 1 && genElapsed > 0 ? (n - 1) / genElapsed : 0;
-      stats.textContent = `TTFT ${fmtTime(s.mock.ttft)} · ${n}/${total} tokens · ` +
-        `${rate ? fmtTps(rate) : "–"} tok/s · ${fmtTime(Math.min(elapsed, s.mock.totalTime))}`;
+      stats.textContent = t("mock.stats", {
+        ttft: fmtTime(s.mock.ttft), n, total, rate: rate ? fmtTps(rate) : "–",
+        elapsed: fmtTime(Math.min(elapsed, s.mock.totalTime)),
+      });
       if (n < total) running = true;
     }
   }
@@ -463,18 +484,43 @@ function readMockInputs() {
 
 // ---------- boot ----------
 
+function renderStatic() {
+  document.documentElement.lang = lang;
+  translateDom();
+  document.getElementById("play").textContent = t(playback ? "mock.stop" : "mock.play");
+  const cal = P.calibration;
+  const pct = (x) => `${(x * 100).toFixed(1)}%`;
+  document.getElementById("calibration").textContent = t("about.calibration.stats", {
+    cuda: pct(cal["cuda/tg"].median), cudaN: cal["cuda/tg"].n,
+    metal: pct(cal["metal/tg"].median), metalN: cal["metal/tg"].n,
+  });
+}
+
+async function switchLang(code) {
+  stopPlayback();
+  saveLang(code);
+  const url = new URL(location.href);
+  if (url.searchParams.has("lang")) {
+    url.searchParams.set("lang", code);
+    history.replaceState(null, "", url);
+  }
+  await loadLocale(code);
+  renderStatic();
+  renderConfigs();
+}
+
 async function main() {
-  const resp = await fetch("data/presets.json");
-  P = await resp.json();
+  const code = pickLang(location.search, savedLang(), navigator.languages || [navigator.language]);
+  const [presets] = await Promise.all([fetch("data/presets.json").then((r) => r.json()), loadLocale(code)]);
+  P = presets;
   state = loadState();
 
+  const picker = document.getElementById("lang");
+  picker.replaceChildren(...Object.entries(LANGS).map(([c, name]) => h("option", { value: c, selected: c === code }, name)));
+  picker.addEventListener("change", () => switchLang(picker.value));
+  renderStatic();
   document.getElementById("prompt-tokens").value = state.prompt;
   document.getElementById("max-tokens").value = state.maxTokens;
-  const cal = P.calibration;
-  const pct = (x) => `${(x * 100).toFixed(1)} %`;
-  document.getElementById("calibration").textContent =
-    `Median error in generation speed: ${pct(cal["cuda/tg"].median)} on ${cal["cuda/tg"].n} NVIDIA results, ` +
-    `${pct(cal["metal/tg"].median)} on ${cal["metal/tg"].n} Apple Silicon results.`;
 
   const configs = document.getElementById("configs");
   configs.addEventListener("click", onConfigEvent);
@@ -502,5 +548,6 @@ async function main() {
 
 main().catch((e) => {
   document.getElementById("configs").replaceChildren(
-    h("p", { class: "error" }, `Could not start: ${e.message}. Serve it over HTTP with: llmsim web`));
+    h("p", { class: "error" }, t("app.error", { msg: e.message }).replace(
+      /^app\.error$/, `Could not start: ${e.message}. Serve it over HTTP with: llmsim web`)));
 });
