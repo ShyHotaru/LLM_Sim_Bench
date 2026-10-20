@@ -85,6 +85,18 @@ class WebServerTests(unittest.TestCase):
                 httpd.server_close()
 
 
+class PresetTests(unittest.TestCase):
+    def test_cpu_presets_have_memory_defaults(self):
+        from llm_sim_bench.profiles import CPU_PRESETS, ram_bandwidth_gbps
+
+        self.assertGreaterEqual(len(CPU_PRESETS), 30)
+        for cpu in CPU_PRESETS.values():
+            self.assertIn(cpu.vendor, ("AMD", "Intel"), cpu.name)
+            self.assertIn(cpu.segment, ("desktop", "workstation", "server"), cpu.name)
+            self.assertGreater(ram_bandwidth_gbps(cpu.mem_kind, cpu.mem_channels), 40, cpu.name)
+            self.assertGreater(cpu.fp32_tflops, 0.5, cpu.name)
+
+
 class UnifiedMemoryTests(unittest.TestCase):
     def test_gpu_budget_is_a_share_of_unified_memory(self):
         chip = APPLE_PRESETS["apple-m4-max-40c"]

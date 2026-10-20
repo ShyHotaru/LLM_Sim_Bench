@@ -107,13 +107,69 @@ GPU_PRESETS: dict[str, GPU] = {
     ]
 }
 
+def _cpu(name: str, vendor: str, segment: str, mem_kind: str, mem_channels: int,
+         *groups: tuple[int, float, float, int]) -> CPU:
+    """CPU preset from (cores, base GHz, max boost GHz, FP32 FLOPs/cycle) per core type.
+
+    The vector clock under an all-core load is taken as the midpoint of base and max
+    boost, a rough figure: CPU efficiency factors are not calibrated yet.
+    """
+    tflops = sum(n * (base + boost) / 2 * flops for n, base, boost, flops in groups) / 1000
+    return CPU(name, sum(g[0] for g in groups), round(tflops, 2), vendor, segment, mem_kind,
+               mem_channels)
+
+
+# FP32 FLOPs per cycle per core: Zen 3/Zen 4 and Intel client P-cores 32 (2x256-bit FMA;
+# Zen 4 runs AVX-512 on 256-bit units), Zen 5/Zen 5c in Ryzen 9000, Threadripper 9000 and
+# EPYC 9005 64 (full 512-bit datapath), Sapphire/Granite Rapids Xeons 64 (2x512-bit FMA),
+# Gracemont 16 and Skymont 32 (128-bit FMA pipes; less certain). Clocks, core counts and
+# memory support come from AMD product pages, Intel datasheets and Wikipedia
+# (see data/README.md).
 CPU_PRESETS: dict[str, CPU] = {
     c.name: c
     for c in [
-        CPU("i5-12400", 6, 0.77),
-        CPU("ryzen7-5800x", 8, 1.02),
-        CPU("i7-13700k", 16, 1.80),
-        CPU("ryzen9-7950x", 16, 2.30),
+        _cpu("ryzen5-5600x", "AMD", "desktop", "ddr4-3200", 2, (6, 3.7, 4.6, 32)),
+        _cpu("ryzen7-5800x", "AMD", "desktop", "ddr4-3200", 2, (8, 3.8, 4.7, 32)),
+        _cpu("ryzen7-5800x3d", "AMD", "desktop", "ddr4-3200", 2, (8, 3.4, 4.5, 32)),
+        _cpu("ryzen9-5950x", "AMD", "desktop", "ddr4-3200", 2, (16, 3.4, 4.9, 32)),
+        _cpu("ryzen5-7600x", "AMD", "desktop", "ddr5-5200", 2, (6, 4.7, 5.3, 32)),
+        _cpu("ryzen7-7800x3d", "AMD", "desktop", "ddr5-5200", 2, (8, 4.2, 5.0, 32)),
+        _cpu("ryzen9-7950x", "AMD", "desktop", "ddr5-5200", 2, (16, 4.5, 5.7, 32)),
+        _cpu("ryzen5-9600x", "AMD", "desktop", "ddr5-5600", 2, (6, 3.9, 5.4, 64)),
+        _cpu("ryzen7-9700x", "AMD", "desktop", "ddr5-5600", 2, (8, 3.8, 5.5, 64)),
+        _cpu("ryzen7-9800x3d", "AMD", "desktop", "ddr5-5600", 2, (8, 4.7, 5.2, 64)),
+        _cpu("ryzen9-9950x", "AMD", "desktop", "ddr5-5600", 2, (16, 4.3, 5.7, 64)),
+        _cpu("ryzen9-9950x3d", "AMD", "desktop", "ddr5-5600", 2, (16, 4.3, 5.7, 64)),
+        _cpu("threadripper-7970x", "AMD", "workstation", "ddr5-5200", 4, (32, 4.0, 5.3, 32)),
+        _cpu("threadripper-7980x", "AMD", "workstation", "ddr5-5200", 4, (64, 3.2, 5.1, 32)),
+        _cpu("threadripper-pro-7995wx", "AMD", "workstation", "ddr5-5200", 8,
+             (96, 2.5, 5.1, 32)),
+        _cpu("threadripper-9980x", "AMD", "workstation", "ddr5-6400", 4, (64, 3.2, 5.4, 64)),
+        _cpu("threadripper-pro-9995wx", "AMD", "workstation", "ddr5-6400", 8,
+             (96, 2.5, 5.4, 64)),
+        _cpu("epyc-9354", "AMD", "server", "ddr5-4800", 12, (32, 3.25, 3.8, 32)),
+        _cpu("epyc-9554", "AMD", "server", "ddr5-4800", 12, (64, 3.1, 3.75, 32)),
+        _cpu("epyc-9654", "AMD", "server", "ddr5-4800", 12, (96, 2.4, 3.7, 32)),
+        _cpu("epyc-9575f", "AMD", "server", "ddr5-6400", 12, (64, 3.3, 5.0, 64)),
+        _cpu("epyc-9755", "AMD", "server", "ddr5-6400", 12, (128, 2.7, 4.1, 64)),
+        _cpu("epyc-9965", "AMD", "server", "ddr5-6400", 12, (192, 2.25, 3.7, 64)),
+        _cpu("i5-12400", "Intel", "desktop", "ddr5-4800", 2, (6, 2.5, 4.4, 32)),
+        _cpu("i5-13600k", "Intel", "desktop", "ddr5-5600", 2, (6, 3.5, 5.1, 32),
+             (8, 2.6, 3.9, 16)),
+        _cpu("i7-13700k", "Intel", "desktop", "ddr5-5600", 2, (8, 3.4, 5.4, 32),
+             (8, 2.5, 4.2, 16)),
+        _cpu("i9-13900k", "Intel", "desktop", "ddr5-5600", 2, (8, 3.0, 5.8, 32),
+             (16, 2.2, 4.3, 16)),
+        _cpu("i9-14900k", "Intel", "desktop", "ddr5-5600", 2, (8, 3.2, 6.0, 32),
+             (16, 2.4, 4.4, 16)),
+        _cpu("core-ultra7-265k", "Intel", "desktop", "ddr5-6400", 2, (8, 3.9, 5.5, 32),
+             (12, 3.3, 4.6, 32)),
+        _cpu("core-ultra9-285k", "Intel", "desktop", "ddr5-6400", 2, (8, 3.7, 5.7, 32),
+             (16, 3.2, 4.6, 32)),
+        _cpu("xeon-w7-3465x", "Intel", "workstation", "ddr5-4800", 8, (28, 2.5, 4.8, 64)),
+        _cpu("xeon-w9-3495x", "Intel", "workstation", "ddr5-4800", 8, (56, 1.9, 4.8, 64)),
+        _cpu("xeon-platinum-8480plus", "Intel", "server", "ddr5-4800", 8, (56, 2.0, 3.8, 64)),
+        _cpu("xeon-6980p", "Intel", "server", "ddr5-6400", 12, (128, 2.0, 3.9, 64)),
     ]
 }
 

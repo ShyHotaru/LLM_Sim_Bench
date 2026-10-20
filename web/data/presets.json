@@ -26,40 +26,310 @@
  },
  "cpus": [
   {
-   "name": "i5-12400",
+   "name": "ryzen5-5600x",
    "cores": 6,
-   "fp32_tflops": 0.77,
-   "vendor": "",
-   "segment": "",
-   "mem_kind": "",
-   "mem_channels": 0
+   "fp32_tflops": 0.8,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr4-3200",
+   "mem_channels": 2
   },
   {
    "name": "ryzen7-5800x",
    "cores": 8,
-   "fp32_tflops": 1.02,
-   "vendor": "",
-   "segment": "",
-   "mem_kind": "",
-   "mem_channels": 0
+   "fp32_tflops": 1.09,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr4-3200",
+   "mem_channels": 2
   },
   {
-   "name": "i7-13700k",
+   "name": "ryzen7-5800x3d",
+   "cores": 8,
+   "fp32_tflops": 1.01,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr4-3200",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen9-5950x",
    "cores": 16,
-   "fp32_tflops": 1.8,
-   "vendor": "",
-   "segment": "",
-   "mem_kind": "",
-   "mem_channels": 0
+   "fp32_tflops": 2.12,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr4-3200",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen5-7600x",
+   "cores": 6,
+   "fp32_tflops": 0.96,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen7-7800x3d",
+   "cores": 8,
+   "fp32_tflops": 1.18,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 2
   },
   {
    "name": "ryzen9-7950x",
    "cores": 16,
-   "fp32_tflops": 2.3,
-   "vendor": "",
-   "segment": "",
-   "mem_kind": "",
-   "mem_channels": 0
+   "fp32_tflops": 2.61,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen5-9600x",
+   "cores": 6,
+   "fp32_tflops": 1.79,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen7-9700x",
+   "cores": 8,
+   "fp32_tflops": 2.38,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen7-9800x3d",
+   "cores": 8,
+   "fp32_tflops": 2.53,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen9-9950x",
+   "cores": 16,
+   "fp32_tflops": 5.12,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "ryzen9-9950x3d",
+   "cores": 16,
+   "fp32_tflops": 5.12,
+   "vendor": "AMD",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "threadripper-7970x",
+   "cores": 32,
+   "fp32_tflops": 4.76,
+   "vendor": "AMD",
+   "segment": "workstation",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 4
+  },
+  {
+   "name": "threadripper-7980x",
+   "cores": 64,
+   "fp32_tflops": 8.5,
+   "vendor": "AMD",
+   "segment": "workstation",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 4
+  },
+  {
+   "name": "threadripper-pro-7995wx",
+   "cores": 96,
+   "fp32_tflops": 11.67,
+   "vendor": "AMD",
+   "segment": "workstation",
+   "mem_kind": "ddr5-5200",
+   "mem_channels": 8
+  },
+  {
+   "name": "threadripper-9980x",
+   "cores": 64,
+   "fp32_tflops": 17.61,
+   "vendor": "AMD",
+   "segment": "workstation",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 4
+  },
+  {
+   "name": "threadripper-pro-9995wx",
+   "cores": 96,
+   "fp32_tflops": 24.27,
+   "vendor": "AMD",
+   "segment": "workstation",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 8
+  },
+  {
+   "name": "epyc-9354",
+   "cores": 32,
+   "fp32_tflops": 3.61,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 12
+  },
+  {
+   "name": "epyc-9554",
+   "cores": 64,
+   "fp32_tflops": 7.01,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 12
+  },
+  {
+   "name": "epyc-9654",
+   "cores": 96,
+   "fp32_tflops": 9.37,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 12
+  },
+  {
+   "name": "epyc-9575f",
+   "cores": 64,
+   "fp32_tflops": 17.0,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 12
+  },
+  {
+   "name": "epyc-9755",
+   "cores": 128,
+   "fp32_tflops": 27.85,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 12
+  },
+  {
+   "name": "epyc-9965",
+   "cores": 192,
+   "fp32_tflops": 36.56,
+   "vendor": "AMD",
+   "segment": "server",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 12
+  },
+  {
+   "name": "i5-12400",
+   "cores": 6,
+   "fp32_tflops": 0.66,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 2
+  },
+  {
+   "name": "i5-13600k",
+   "cores": 14,
+   "fp32_tflops": 1.24,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "i7-13700k",
+   "cores": 16,
+   "fp32_tflops": 1.56,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "i9-13900k",
+   "cores": 24,
+   "fp32_tflops": 1.96,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "i9-14900k",
+   "cores": 24,
+   "fp32_tflops": 2.05,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-5600",
+   "mem_channels": 2
+  },
+  {
+   "name": "core-ultra7-265k",
+   "cores": 20,
+   "fp32_tflops": 2.72,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 2
+  },
+  {
+   "name": "core-ultra9-285k",
+   "cores": 24,
+   "fp32_tflops": 3.2,
+   "vendor": "Intel",
+   "segment": "desktop",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 2
+  },
+  {
+   "name": "xeon-w7-3465x",
+   "cores": 28,
+   "fp32_tflops": 6.54,
+   "vendor": "Intel",
+   "segment": "workstation",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 8
+  },
+  {
+   "name": "xeon-w9-3495x",
+   "cores": 56,
+   "fp32_tflops": 12.01,
+   "vendor": "Intel",
+   "segment": "workstation",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 8
+  },
+  {
+   "name": "xeon-platinum-8480plus",
+   "cores": 56,
+   "fp32_tflops": 10.39,
+   "vendor": "Intel",
+   "segment": "server",
+   "mem_kind": "ddr5-4800",
+   "mem_channels": 8
+  },
+  {
+   "name": "xeon-6980p",
+   "cores": 128,
+   "fp32_tflops": 24.17,
+   "vendor": "Intel",
+   "segment": "server",
+   "mem_kind": "ddr5-6400",
+   "mem_channels": 12
   }
  ],
  "gpus": [

@@ -75,3 +75,24 @@ family, produced by `tools/measure_tokenizers.py` (needs `pip install tokenizers
 counts are stored; tokenizer files are cached in `.cache/` and never committed. Llama 2,
 Llama 3 and Gemma 2 tokenizers were read from ungated community mirrors of the gated official
 repositories.
+
+# Hardware preset sources
+
+Presets in `src/llm_sim_bench/profiles.py` are approximate public specs.
+
+- **AMD CPUs** (Ryzen 5000/7000/9000, Threadripper 7000/9000, EPYC 9004/9005): core counts,
+  base and boost clocks, memory channels and speeds from amd.com product pages, cross-checked
+  with Wikipedia.
+- **Intel CPUs**: intel.com and ARK were not reachable, so values come from Wikipedia (Alder
+  Lake, Raptor Lake, Arrow Lake, Sapphire Rapids, Granite Rapids), with base clocks and memory
+  speeds checked against Intel's 13th/14th Gen Core datasheet (743844) and execution units
+  against the Intel Optimization Reference Manual (671488).
+- **CPU FP32 throughput** = cores × midpoint of base and boost clock × FLOPs per cycle per core.
+  The Gracemont (16) and Skymont (32) FLOPs per cycle are inferred from published port layouts
+  rather than stated by Intel. CPU efficiency factors are not calibrated, so CPU prefill
+  estimates are rough.
+- **Default memory per CPU** is the fastest officially supported speed with one DIMM per
+  channel; more DIMMs per channel usually run slower, and Arrow Lake reaches DDR5-6400 only
+  with CUDIMMs.
+- **Apple M5 family**: Apple Newsroom announcements (October 2025, March 2026) and the Mac
+  Studio and MacBook Pro tech specs pages.
