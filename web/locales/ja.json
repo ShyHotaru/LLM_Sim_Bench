@@ -1,7 +1,7 @@
 {
   "app.tagline": "ハードウェアとモデルを選ぶと、メモリに収まるか、どれくらい速いかがわかり、その速度でトークンが流れる様子を確かめられます。",
   "app.description": "ローカルLLM環境を組む前にシミュレーションできます。メモリに収まるか、毎秒トークン数、同じ速度で流れる模擬出力を確認できます。",
-  "app.error": "起動できませんでした: {msg}。HTTPで配信してください: llmsim web",
+  "app.error": "アプリのデータを読み込めませんでした（{msg}）。ページを再読み込みしてください。ローカルのコピーから実行する場合はHTTPで配信してください: llmsim web",
   "lang.label": "言語",
 
   "config.section": "構成",
@@ -104,17 +104,18 @@
   "about.memory.title": "メモリ",
   "about.memory.body": "重み（パラメータ数 × 重みあたりのビット数）に、コンテキスト全体分のKVキャッシュを加えます。層単位でGPUから順に割り当て、残りはシステムRAMに置きます。Apple SiliconではGPUがユニファイドメモリの約75%まで使えます。",
   "about.decode.title": "生成",
-  "about.decode.body": "速度はメモリ帯域幅で決まります。トークンごとにアクティブな重みすべてと、それまでに溜まったKVキャッシュを読み込み、層ごとに固定のオーバーヘッドが加わります。",
+  "about.decode.body": "メモリ帯域幅で速度が決まります。トークンごとにアクティブな重みすべてと、それまでに溜まったKVキャッシュを読み込み、層ごとに固定のオーバーヘッドが加わります。",
   "about.prefill.title": "プロンプト処理",
-  "about.prefill.body": "速度は演算性能で決まります。プロンプトの1トークンにつき、アクティブなパラメータ1つあたり約2 FLOPかかります。",
+  "about.prefill.body": "演算性能で速度が決まります。プロンプトの1トークンにつき、アクティブなパラメータ1つあたり約2 FLOPかかります。",
   "about.calibration.title": "補正",
   "about.calibration.body": "効率係数は公開されているllama.cppのベンチマークに合わせて補正しています。",
-  "about.calibration.stats": "生成速度の誤差の中央値: NVIDIAの実測{cudaN}件で{cuda}、Apple Siliconの実測{metalN}件で{metal}。",
+  "about.calibration.stats": "バックエンド別の生成速度の誤差の中央値（実測件数）: {list}。",
   "about.disclaimer": "llama.cpp方式のオフロードで1件のリクエストを処理する場合の推定値です。大きなモデル、長いコンテキスト、CPUへのオフロードは補正範囲外の推定なので、保証値ではなく計画の目安としてご覧ください。",
 
   "footer.data": "データ:",
-  "footer.cuda": "llama.cpp CUDAスコアボード",
-  "footer.apple": "Apple Siliconスコアボード",
+  "footer.sources": "llama.cppスコアボードなどの公開ベンチマーク",
+  "footer.code": "ソースコード",
+  "footer.license": "ライセンス",
 
   "time.ms": "{n}ミリ秒",
   "time.s": "{n}秒",

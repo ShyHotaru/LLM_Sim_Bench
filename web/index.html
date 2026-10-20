@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LLM Sim Bench</title>
   <meta name="description" data-i18n-attr="content:app.description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LLM Sim Bench">
+  <meta property="og:description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fde'/%3E%3Cpath d='M8 22h4v-6H8zm6 0h4V10h-4zm6 0h4v-9h-4z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script type="module" src="js/app.js"></script>
 </head>
@@ -57,8 +62,8 @@
       <h2 id="about-title" data-i18n="about.title"></h2>
       <ul>
         <li><strong data-i18n="about.memory.title"></strong>: <span data-i18n="about.memory.body"></span></li>
-        <li><strong data-i18n="about.decode.title"></strong> <span data-i18n="about.decode.body"></span></li>
-        <li><strong data-i18n="about.prefill.title"></strong> <span data-i18n="about.prefill.body"></span></li>
+        <li><strong data-i18n="about.decode.title"></strong>: <span data-i18n="about.decode.body"></span></li>
+        <li><strong data-i18n="about.prefill.title"></strong>: <span data-i18n="about.prefill.body"></span></li>
         <li><strong data-i18n="about.calibration.title"></strong>: <span data-i18n="about.calibration.body"></span> <span id="calibration"></span></li>
       </ul>
       <p class="hint" data-i18n="about.disclaimer"></p>
@@ -66,8 +71,8 @@
   </main>
 
   <footer class="wrap site-footer">
-    <span>LLM Sim Bench</span>
-    <span><span data-i18n="footer.data"></span> <a href="https://github.com/ggml-org/llama.cpp/discussions/15013" data-i18n="footer.cuda"></a>, <a href="https://github.com/ggml-org/llama.cpp/discussions/4167" data-i18n="footer.apple"></a></span>
+    <span>LLM Sim Bench · <a href="https://github.com/ShyHotaru/LLM_Sim_Bench" data-i18n="footer.code">Source code</a> · <a href="https://github.com/ShyHotaru/LLM_Sim_Bench#license" data-i18n="footer.license">License</a></span>
+    <span><span data-i18n="footer.data">Data:</span> <a href="https://github.com/ShyHotaru/LLM_Sim_Bench/blob/main/data/README.md" data-i18n="footer.sources">llama.cpp scoreboards and other public benchmarks</a></span>
   </footer>
 </body>
 </html>

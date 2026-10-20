@@ -66,6 +66,10 @@ body {
 
 a { color: var(--accent); }
 
+/* Break Korean at spaces, and short Japanese labels at phrase boundaries, rather than inside words. */
+html:lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
+html:lang(ja) :is(label, h2, h3, button, summary, .badge, .legend, .bar-label, .headline) { word-break: auto-phrase; }
+
 .wrap {
   max-width: 1180px;
   margin: 0 auto;
@@ -95,12 +99,15 @@ h3 { font-size: 0.8rem; margin: 18px 0 8px; color: var(--muted); text-transform:
 }
 .configs > .panel { margin: 0; }
 
+.config { container-type: inline-size; }
 .config-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
+.config-head h2 { white-space: nowrap; }
 .config-head .tag {
   display: inline-grid;
   place-items: center;
@@ -144,15 +151,23 @@ h3 { font-size: 0.8rem; margin: 18px 0 8px; color: var(--muted); text-transform:
 
 .segmented {
   display: inline-flex;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 .segmented button {
   border: 0;
   border-radius: 0;
   background: transparent;
   padding: 6px 14px;
+  white-space: nowrap;
+}
+/* Narrow panels: tabs get their own full-width row under the title. */
+@container (max-width: 600px) {
+  .config-head h2 { flex: 1; }
+  .config-head .segmented { order: 3; flex: 1 1 100%; }
+  .config-head .segmented button { flex: 1 1 auto; padding: 6px 8px; white-space: normal; line-height: 1.25; }
 }
 .segmented button[aria-pressed="true"] {
   background: var(--accent);
@@ -164,6 +179,7 @@ h3 { font-size: 0.8rem; margin: 18px 0 8px; color: var(--muted); text-transform:
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
+.fields + .fields { margin-top: 10px; }
 
 label {
   display: flex;
@@ -273,6 +289,7 @@ button.link {
   display: flex;
 }
 .bar span { height: 100%; }
+.bar-label span:last-child { white-space: nowrap; }
 .bar .w { background: var(--bar-gpu); }
 .bar .kv { background: var(--bar-kv); }
 .bar .cpu { background: var(--bar-cpu); }
@@ -306,7 +323,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   flex-wrap: wrap;
 }
 .mock-controls { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
-.mock-controls label { width: 130px; }
+.mock-controls label { width: auto; min-width: 120px; }
+.mock-controls label > span { white-space: nowrap; }
 .hint { color: var(--muted); font-size: 0.85rem; margin: 10px 0; }
 
 .streams {
@@ -340,7 +358,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   white-space: pre-wrap;
   word-break: break-word;
 }
-.stream-out.waiting { color: var(--muted); }
+.stream-out.waiting { color: var(--muted); height: auto; }
 
 .about ul { padding-left: 18px; margin: 10px 0; }
 .about li { margin: 4px 0; }

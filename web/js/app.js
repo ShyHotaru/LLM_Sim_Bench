@@ -313,7 +313,8 @@ function renderConfig(cfg, i) {
     }
     settings.append(h("div", { class: "fields" },
       field(t("field.cpu"), groupedSelect("cpu", cpusFor(cfg.platform), cfg.cpu, (c) => t("option.cpu", { name: c.label || c.name, cores: c.cores }),
-        segmentGroup("cpu.segment"), { "data-focus-id": `${i}-cpu` })),
+        segmentGroup("cpu.segment"), { "data-focus-id": `${i}-cpu` }))));
+    settings.append(h("div", { class: "fields" },
       field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
       field(t("field.ramType"), select("ramKind", ramKinds().map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
       field(t("field.channels"), select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
@@ -327,7 +328,8 @@ function renderConfig(cfg, i) {
 
   settings.append(h("h3", {}, t("section.model")));
   settings.append(h("div", { class: "fields" },
-    field(t("field.model"), select("model", P.models.map((m) => [m.name, modelLabel(m)]), cfg.model, { "data-focus-id": `${i}-model` })),
+    field(t("field.model"), select("model", P.models.map((m) => [m.name, modelLabel(m)]), cfg.model, { "data-focus-id": `${i}-model` }))));
+  settings.append(h("div", { class: "fields" },
     field(t("field.quant"), select("quant", Object.entries(P.quant_bpw).map(([q, b]) => [q, `${q} (${b} bpw)`]), cfg.quant, { "data-focus-id": `${i}-quant` })),
     field(t("field.context"), select("context", CONTEXTS.map((c) => [c, t("option.context", { k: c / 1024 })]), cfg.context, { "data-focus-id": `${i}-ctx` })),
     field(t("field.kvCache"), select("kvBits", KV_BITS.map((b) => [b, b === 16 ? "F16" : `Q${b}`]), cfg.kvBits, { "data-focus-id": `${i}-kv` }))));
@@ -392,7 +394,8 @@ function renderWarnings(system, est) {
   const items = [];
   const deviceLess = system.gpus.filter((g) => P.calibration[`${g.backend}/pp`]
     && !(`${g.name}|${g.backend}` in P.efficiency.device_compute));
-  for (const g of new Set(deviceLess.map((x) => x.label || x.name))) {
+  const label = (g) => g.label || P.unified.find((a) => a.name === g.name)?.label || g.name;
+  for (const g of new Set(deviceLess.map(label))) {
     items.push(t("warn.prefillDevice", { device: g }));
   }
   if (backends.has("cpu") && !system.unified && !(`${system.cpu.name}|cpu` in P.efficiency.device_bandwidth)) {
@@ -456,12 +459,14 @@ function renderBars(system, est) {
     rows.push(bar(t("bar.ram", { reserve: gb(eff.ram_reserve_gb) }), system.ram.size_gb,
                   cpu ? [{ cls: "cpu", v: cpu.weights_gb + cpu.kv_gb }] : [], !est.fits));
   }
+  // Only the colors the bars actually use.
+  const onGpu = est.placements.some((p) => p.is_gpu);
   return h("div", {},
     h("div", { class: "bars" }, rows),
     h("div", { class: "legend" },
-      h("span", {}, h("i", { style: "background:var(--bar-gpu)" }), t("legend.weights")),
-      h("span", {}, h("i", { style: "background:var(--bar-kv)" }), t("legend.kv")),
-      h("span", {}, h("i", { style: "background:var(--bar-cpu)" }), t("legend.cpu"))));
+      onGpu ? h("span", {}, h("i", { style: "background:var(--bar-gpu)" }), t("legend.weights")) : null,
+      onGpu ? h("span", {}, h("i", { style: "background:var(--bar-kv)" }), t("legend.kv")) : null,
+      cpu ? h("span", {}, h("i", { style: "background:var(--bar-cpu)" }), t("legend.cpu")) : null));
 }
 
 function renderMeasured(cfg) {
@@ -583,7 +588,7 @@ function renderCredits() {
     t("mock.credit", { title: entry.title, author: entry.author, year: entry.first_published,
                        died: entry.author_died }), " · ",
     h("a", { href: entry.source.page }, entry.source.name),
-    notes ? h("details", { class: "credit-notes" }, h("summary", {}, t("mock.creditNotes")), notes) : null);
+    ...(notes ? [h("details", { class: "credit-notes" }, h("summary", {}, t("mock.creditNotes")), notes)] : []));
 }
 
 function tokenizerFor(cfg) {
@@ -613,8 +618,8 @@ function renderStreams() {
       h("div", { class: "stream-head" },
         h("strong", {}, state.configs.length > 1 ? `${LETTERS[i]} · ${label}` : label),
         h("span", { class: "tok" }, tok),
-        h("span", { class: "stats" }, t("mock.ready"))),
-      h("div", { class: "stream-out waiting", "aria-live": "off" }, ""));
+        h("span", { class: "stats" })),
+      h("div", { class: "stream-out waiting", "aria-live": "off" }, t("mock.ready")));
   }));
 }
 
@@ -635,7 +640,9 @@ async function startPlayback() {
         schedule: new Schedule({ turns, promptTokens: state.prompt, maxTokens: state.maxTokens,
                                  prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i }),
       });
-      el.querySelector(".stream-out").replaceChildren();
+      const out = el.querySelector(".stream-out");
+      out.replaceChildren();
+      out.classList.remove("waiting");
     } catch (e) {
       el.querySelector(".stats").textContent = e.message;
     }
@@ -790,12 +797,12 @@ function renderStatic() {
   document.documentElement.lang = lang;
   translateDom();
   document.getElementById("play").textContent = t(playback ? "mock.stop" : "mock.play");
-  const cal = P.calibration;
-  const pct = (x) => `${(x * 100).toFixed(1)}%`;
-  document.getElementById("calibration").textContent = t("about.calibration.stats", {
-    cuda: pct(cal["cuda/tg"].median), cudaN: cal["cuda/tg"].n,
-    metal: pct(cal["metal/tg"].median), metalN: cal["metal/tg"].n,
-  });
+  const list = ["cuda", "rocm", "vulkan", "sycl", "metal", "cpu"].filter((b) => P.calibration[`${b}/tg`])
+    .map((b) => {
+      const c = P.calibration[`${b}/tg`];
+      return `${BACKEND_NAMES[b]} ${(c.median * 100).toFixed(1)}% (${fmtInt(c.n)})`;
+    });
+  document.getElementById("calibration").textContent = t("about.calibration.stats", { list: list.join(", ") });
 }
 
 async function switchLang(code) {
@@ -875,7 +882,8 @@ async function main() {
 }
 
 main().catch((e) => {
-  document.getElementById("configs").replaceChildren(
-    h("p", { class: "error" }, t("app.error", { msg: e.message }).replace(
-      /^app\.error$/, `Could not start: ${e.message}. Serve it over HTTP with: llmsim web`)));
+  const msg = t("app.error", { msg: e.message }).replace(/^app\.error$/,
+    `Could not load the app data (${e.message}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsim web`);
+  document.querySelector("main").replaceChildren(h("p", { class: "panel error" }, msg));
+  if (!document.getElementById("lang").options.length) document.querySelector(".lang-picker").style.display = "none";
 });

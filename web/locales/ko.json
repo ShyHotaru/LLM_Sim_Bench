@@ -1,7 +1,7 @@
 {
   "app.tagline": "하드웨어와 모델을 고르면 메모리에 올라가는지, 얼마나 빠른지 보여 주고, 그 속도로 토큰이 흘러나오는 모습을 직접 볼 수 있습니다.",
   "app.description": "로컬 LLM 장비를 맞추기 전에 미리 시뮬레이션해 보세요. 메모리 적재 여부, 초당 토큰 수, 같은 속도로 재생되는 모의 출력을 확인할 수 있습니다.",
-  "app.error": "시작하지 못했습니다: {msg}. HTTP로 띄워 주세요: llmsim web",
+  "app.error": "앱 데이터를 불러오지 못했습니다({msg}). 페이지를 새로 고쳐 주세요. 로컬 사본에서 실행할 때는 HTTP로 띄워 주세요: llmsim web",
   "lang.label": "언어",
 
   "config.section": "구성",
@@ -104,17 +104,18 @@
   "about.memory.title": "메모리",
   "about.memory.body": "가중치(파라미터 수 × 가중치당 비트 수)에 전체 컨텍스트만큼의 KV 캐시를 더합니다. 레이어 단위로 GPU부터 채우고 나머지는 시스템 RAM에 둡니다. Apple Silicon에서는 GPU가 통합 메모리의 약 75%까지 쓸 수 있습니다.",
   "about.decode.title": "생성",
-  "about.decode.body": "속도는 메모리 대역폭이 좌우합니다. 토큰 하나마다 활성 가중치 전체와 그때까지 쌓인 KV 캐시를 읽고, 레이어마다 고정 오버헤드가 붙습니다.",
+  "about.decode.body": "메모리 대역폭이 속도를 좌우합니다. 토큰 하나마다 활성 가중치 전체와 그때까지 쌓인 KV 캐시를 읽고, 레이어마다 고정 오버헤드가 붙습니다.",
   "about.prefill.title": "프롬프트 처리",
-  "about.prefill.body": "속도는 연산 성능이 좌우합니다. 프롬프트 토큰 하나당 활성 파라미터 1개에 약 2 FLOP이 듭니다.",
+  "about.prefill.body": "연산 성능이 속도를 좌우합니다. 프롬프트 토큰 하나당 활성 파라미터 1개에 약 2 FLOP이 듭니다.",
   "about.calibration.title": "보정",
   "about.calibration.body": "효율 계수는 공개된 llama.cpp 벤치마크에 맞춰 보정했습니다.",
-  "about.calibration.stats": "생성 속도 오차 중앙값: NVIDIA 실측 {cudaN}건 기준 {cuda}, Apple Silicon 실측 {metalN}건 기준 {metal}.",
+  "about.calibration.stats": "백엔드별 생성 속도 오차 중앙값(실측 건수): {list}.",
   "about.disclaimer": "llama.cpp 방식의 오프로딩으로 요청 하나를 처리할 때의 추정치입니다. 큰 모델, 긴 컨텍스트, CPU 오프로드는 보정 범위 밖의 추정이므로 보장값이 아닌 계획용 참고치로 봐 주세요.",
 
   "footer.data": "데이터:",
-  "footer.cuda": "llama.cpp CUDA 스코어보드",
-  "footer.apple": "Apple Silicon 스코어보드",
+  "footer.sources": "llama.cpp 스코어보드 등 공개 벤치마크",
+  "footer.code": "소스 코드",
+  "footer.license": "라이선스",
 
   "time.ms": "{n}ms",
   "time.s": "{n}초",

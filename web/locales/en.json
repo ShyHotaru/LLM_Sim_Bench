@@ -1,7 +1,7 @@
 {
   "app.tagline": "Pick hardware and a model, see whether it fits and how fast it runs, then watch tokens stream at that speed.",
   "app.description": "Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.",
-  "app.error": "Could not start: {msg}. Serve it over HTTP with: llmsim web",
+  "app.error": "Could not load the app data ({msg}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsim web",
   "lang.label": "Language",
 
   "config.section": "Configurations",
@@ -104,17 +104,18 @@
   "about.memory.title": "Memory",
   "about.memory.body": "Weights (parameters × bits per weight) plus KV cache for the full context. Whole layers go to GPUs first, the rest to system RAM. On Apple Silicon the GPU may use about 75 % of unified memory.",
   "about.decode.title": "Decode",
-  "about.decode.body": "is memory-bandwidth bound: each token reads every active weight and the filled KV cache, plus a fixed per-layer overhead.",
+  "about.decode.body": "Bound by memory bandwidth. Each token reads every active weight and the filled KV cache, plus a fixed per-layer overhead.",
   "about.prefill.title": "Prefill",
-  "about.prefill.body": "is compute bound: about 2 FLOPs per active parameter per prompt token.",
+  "about.prefill.body": "Bound by compute: about 2 FLOPs per active parameter per prompt token.",
   "about.calibration.title": "Calibration",
   "about.calibration.body": "Efficiency factors are fitted to public llama.cpp benchmarks.",
-  "about.calibration.stats": "Median error in generation speed: {cuda} on {cudaN} NVIDIA results, {metal} on {metalN} Apple Silicon results.",
+  "about.calibration.stats": "Median error in generation speed by backend (number of measured results): {list}.",
   "about.disclaimer": "Estimates for a single request with llama.cpp-style offloading. Larger models, long contexts and CPU offload are extrapolations; treat results as planning guidance, not guarantees.",
 
   "footer.data": "Data:",
-  "footer.cuda": "llama.cpp CUDA scoreboard",
-  "footer.apple": "Apple Silicon scoreboard",
+  "footer.sources": "llama.cpp scoreboards and other public benchmarks",
+  "footer.code": "Source code",
+  "footer.license": "License",
 
   "time.ms": "{n} ms",
   "time.s": "{n} s",
