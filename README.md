@@ -70,7 +70,9 @@ source.
 The mock stream plays real text: an LLM-style answer or a multi-turn conversation in each
 language, or excerpts of public-domain books. Text is split into tokens at the rate measured
 with each model family's real tokenizer, so a Korean answer on a Llama 2 model streams far fewer
-characters per second than on Llama 3 at the same tokens per second. See
+characters per second than on Llama 3 at the same tokens per second. You can also stream your
+own text: it is kept only in your browser's local storage, never put into shared links, and
+split at the rate of the sample text in the language it looks like. See
 [`data/README.md`](data/README.md) for sources and licensing.
 
 Python is the reference implementation. `llmsim export-web` writes `web/data/presets.json`
@@ -173,7 +175,6 @@ Features:
 - Start playback at a given context fill to feel the slowdown at long contexts.
 - Show CPU-only measurements in the benchmark check table.
 - Use the text presets and tokenizer ratios in the CLI and the OpenAI-compatible mock server.
-- Optional custom text (kept in the browser only).
 - Concurrent-request simulation and report export (JSON/Markdown).
 
 ## Development

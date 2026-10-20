@@ -42,3 +42,17 @@ export function charsPerToken(ratios, textId, family) {
   const median = values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
   return { value: median, measured: false };
 }
+
+// Guess the language of free text from its letters, to borrow the ratio of the
+// sample text in that language. Hangul -> ko, kana or kanji -> ja, else en; a
+// CJK character counts as two Latin letters. Null when there are no letters.
+export function guessLang(text) {
+  const count = (re) => (text.match(re) || []).length;
+  const scores = {
+    ko: 2 * count(/\p{Script=Hangul}/gu),
+    ja: 2 * count(/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/gu),
+    en: count(/\p{Script=Latin}/gu),
+  };
+  const [best, score] = Object.entries(scores).reduce((a, b) => (b[1] > a[1] ? b : a));
+  return score ? best : null;
+}

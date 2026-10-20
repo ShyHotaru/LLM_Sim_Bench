@@ -5,7 +5,7 @@ import {
 import { Schedule } from "./mock.js";
 import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
-import { charsPerToken, chunkText } from "./tokenize.js";
+import { charsPerToken, chunkText, guessLang } from "./tokenize.js";
 
 const RAM_SIZES = [8, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536];
 const RAM_KINDS = ["ddr4-2666", "ddr4-3200", "ddr4-3600", "ddr5-4800", "ddr5-5600",
@@ -236,8 +236,10 @@ function loadState() {
   };
 }
 
+// Custom text never goes into the URL: a shared link falls back to the default text.
 function saveState() {
-  history.replaceState(null, "", `#${encodeState(state)}`);
+  const shared = state.text === CUSTOM ? { ...state, text: undefined } : state;
+  history.replaceState(null, "", `#${encodeState(shared)}`);
 }
 
 // ---------- estimate ----------
@@ -549,7 +551,28 @@ function changed() {
 
 const textCache = new Map();
 
+// The viewer's own text lives only in this browser (localStorage), never in the URL.
+const CUSTOM = "custom";
+const CUSTOM_KEY = "llmsim.customText";
+let customText = "";
+
+function loadCustomText() {
+  try {
+    return localStorage.getItem(CUSTOM_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveCustomText() {
+  try {
+    if (customText) localStorage.setItem(CUSTOM_KEY, customText);
+    else localStorage.removeItem(CUSTOM_KEY);
+  } catch { /* storage may be blocked or full; the text then lasts for this page only */ }
+}
+
 function textEntry(id = state.text) {
+  if (id === CUSTOM) return { id, kind: "answer", origin: "custom", lang: guessLang(customText) || lang };
   return TEXTS.texts.find((x) => x.id === id);
 }
 
@@ -558,6 +581,7 @@ function defaultTextId() {
 }
 
 async function loadText(entry) {
+  if (entry.id === CUSTOM) return customText;
   if (!textCache.has(entry.id)) {
     const resp = await fetch(`data/texts/${entry.file}`);
     if (!resp.ok) throw new Error(`${entry.file}: HTTP ${resp.status}`);
@@ -572,13 +596,19 @@ function renderTextPicker() {
     h("optgroup", { label: name },
       TEXTS.texts.filter((x) => x.lang === code).map((x) =>
         h("option", { value: x.id, selected: x.id === state.text },
-          x.author ? `${x.title} (${x.author})` : x.title)))));
+          x.author ? `${x.title} (${x.author})` : x.title)))),
+    h("option", { value: CUSTOM, selected: state.text === CUSTOM }, t("mock.custom.option")));
   renderCredits();
 }
 
 function renderCredits() {
   const entry = textEntry();
   const el = document.getElementById("credits");
+  document.getElementById("custom-text").hidden = entry.origin !== "custom";
+  if (entry.origin === "custom") {
+    el.replaceChildren(t("mock.custom.note"));
+    return;
+  }
   if (entry.origin === "authored") {
     el.replaceChildren(t("mock.authored"));
     return;
@@ -591,15 +621,19 @@ function renderCredits() {
     ...(notes ? [h("details", { class: "credit-notes" }, h("summary", {}, t("mock.creditNotes")), notes)] : []));
 }
 
+// Custom text borrows the ratio of the sample answer in the language it looks like.
 function tokenizerFor(cfg) {
   const m = P.models.find((x) => x.name === cfg.model);
-  const r = charsPerToken(P.tokenizers, state.text, m.tokenizer);
-  return { family: m.tokenizer, ...r };
+  const ref = state.text === CUSTOM ? textEntry().lang : null;
+  const r = charsPerToken(P.tokenizers, ref ? `${ref}-answer` : state.text, m.tokenizer);
+  return { family: m.tokenizer, ref, ...r };
 }
 
 function tokenizerLabel(tk) {
   const cpt = tk.value.toFixed(2);
-  return tk.measured ? t("mock.tokenizer", { family: tk.family, cpt }) : t("mock.tokenizerUnknown", { cpt });
+  if (!tk.measured) return t("mock.tokenizerUnknown", { cpt });
+  return tk.ref ? t("mock.tokenizerCustom", { family: tk.family, cpt, lang: LANGS[tk.ref] })
+    : t("mock.tokenizer", { family: tk.family, cpt });
 }
 
 function renderStreams() {
@@ -626,6 +660,10 @@ function renderStreams() {
 async function startPlayback() {
   const entry = textEntry();
   const content = await loadText(entry);
+  if (entry.id === CUSTOM && !content.trim()) {
+    for (const el of document.querySelectorAll(".stream .stats")) el.textContent = t("mock.custom.empty");
+    return;
+  }
   const streams = [];
   state.configs.forEach((cfg, i) => {
     const el = document.querySelector(`.stream[data-i="${i}"]`);
@@ -815,7 +853,7 @@ async function switchLang(code) {
   }
   await loadLocale(code);
   renderStatic();
-  renderCredits();
+  renderTextPicker();
   renderConfigs();
 }
 
@@ -826,6 +864,7 @@ async function main() {
     json("data/presets.json"), json("data/texts/manifest.json"), json("data/texts/credits.json"),
     loadLocale(code)]);
   state = loadState();
+  customText = loadCustomText();
 
   const picker = document.getElementById("lang");
   picker.replaceChildren(...Object.entries(LANGS).map(([c, name]) => h("option", { value: c, selected: c === code }, name)));
@@ -850,6 +889,19 @@ async function main() {
     state.text = e.target.value;
     renderCredits();
     changed();
+  });
+  const customInput = document.getElementById("custom-input");
+  customInput.value = customText;
+  customInput.addEventListener("input", () => {
+    customText = customInput.value;
+    saveCustomText();
+    stopPlayback();
+    renderStreams();
+  });
+  document.getElementById("custom-clear").addEventListener("click", () => {
+    customInput.value = "";
+    customInput.dispatchEvent(new Event("input"));
+    customInput.focus();
   });
   document.getElementById("prompt-tokens").value = state.prompt;
   document.getElementById("max-tokens").value = state.maxTokens;

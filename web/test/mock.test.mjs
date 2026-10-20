@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { Schedule } from "../js/mock.js";
-import { charsPerToken, chunkText } from "../js/tokenize.js";
+import { LANGS } from "../js/i18n.js";
+import { charsPerToken, chunkText, guessLang } from "../js/tokenize.js";
 
 const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf8"));
 const presets = read("../data/presets.json");
@@ -33,6 +34,24 @@ test("charsPerToken falls back to the median for unknown tokenizers", () => {
   const ratios = { chars_per_token: { t: { a: 1, b: 2, c: 4 } } };
   assert.deepEqual(charsPerToken(ratios, "t", "b"), { value: 2, measured: true });
   assert.deepEqual(charsPerToken(ratios, "t", ""), { value: 2, measured: false });
+});
+
+test("guessLang picks the language of free text", () => {
+  assert.equal(guessLang("RTX 4090의 VRAM은 24GB입니다"), "ko");
+  assert.equal(guessLang("吾輩は猫である。名前はまだ無い。"), "ja");
+  assert.equal(guessLang("Alice was beginning to get very tired."), "en");
+  assert.equal(guessLang("12345 !?"), null);
+  assert.equal(guessLang(""), null);
+});
+
+test("custom text can borrow a sample ratio in every UI language", () => {
+  // Custom text uses the ratio of the "<lang>-answer" sample for the language it looks like.
+  for (const code of Object.keys(LANGS)) {
+    const entry = manifest.texts.find((x) => x.id === `${code}-answer`);
+    assert.ok(entry, `${code}-answer missing`);
+    assert.equal(guessLang(readFileSync(new URL(`../data/texts/${entry.file}`, import.meta.url), "utf8")), code);
+    assert.ok(Object.keys(presets.tokenizers.chars_per_token[entry.id]).length > 0);
+  }
 });
 
 test("schedule paces a single text by prefill and decode speed", () => {

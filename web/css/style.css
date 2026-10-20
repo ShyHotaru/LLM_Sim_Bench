@@ -189,12 +189,12 @@ label {
   color: var(--muted);
 }
 
-select, input, button {
+select, input, textarea, button {
   font: inherit;
   color: var(--text);
 }
 
-select, input {
+select, input, textarea {
   width: 100%;
   min-width: 0;
   padding: 7px 8px;
@@ -388,6 +388,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 .mock-controls .text-picker { width: 260px; max-width: 100%; }
 .credits { font-size: 0.82rem; margin: 10px 0 0; color: var(--text); }
 .credit-notes { color: var(--muted); }
+.custom-text { margin-top: 10px; }
+.custom-text textarea { resize: vertical; line-height: 1.5; }
 .credit-notes summary { margin: 4px 0 0; font-size: 0.8rem; }
 .stream-head .tok { color: var(--muted); }
 .stream-out .msg { margin: 0 0 10px; }
