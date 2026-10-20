@@ -63,6 +63,10 @@ llmsim web            # then open http://127.0.0.1:8000
 Without installing, run `PYTHONPATH=src python -m llm_sim_bench web` from the repository root.
 The page must be served over HTTP; opening `index.html` as a file does not work.
 
+`.github/workflows/pages.yml` publishes `web/` to GitHub Pages after the tests pass on `main`.
+It deploys only once Pages is enabled in the repository settings with GitHub Actions as the
+source.
+
 The mock stream plays real text: an LLM-style answer or a multi-turn conversation in each
 language, or excerpts of public-domain books. Text is split into tokens at the rate measured
 with each model family's real tokenizer, so a Korean answer on a Llama 2 model streams far fewer
@@ -148,7 +152,7 @@ Before a public release:
 
 - Visual review, a final check that no sensitive information is included, and a license for
   the code and for the data.
-- GitHub Pages deployment workflow and a custom domain.
+- Enable GitHub Pages (the workflow is ready) and choose a custom domain.
 
 Calibration data:
 
