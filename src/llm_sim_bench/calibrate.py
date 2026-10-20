@@ -12,8 +12,8 @@ import statistics
 from dataclasses import dataclass, replace
 
 from .estimator import BACKENDS, Efficiency, backend_prefix, estimate
-from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRESETS, System,
-                       ram_bandwidth_gbps, unified_system)
+from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
+                       UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
 # Device used for records whose model fits fully in VRAM; it never runs layers.
 _HOST = (CPU("host", 8, 1.0), RAM(128, 51.2))
@@ -77,11 +77,15 @@ def usable(rec: dict) -> bool:
     CPU runs single-socket with nothing offloaded."""
     backend = _BACKEND_KEY.get(rec["software"]["backend"])
     model = MODEL_PRESETS.get(rec["model"]["name"])
-    if not backend or not model or rec["flags"] or system_for(rec) is None:
+    if (not backend or not model or rec["model"]["quant"] not in QUANT_BPW or rec["flags"]
+            or system_for(rec) is None):
         return False
+    ngl = rec["run"]["n_gpu_layers"]
     if backend == "cpu":
-        return rec["run"]["n_gpu_layers"] == 0 and rec["hardware"].get("sockets", 1) == 1
-    return rec["hardware"]["gpu_count"] == 1 and rec["run"]["n_gpu_layers"] >= model.n_layers
+        return ngl == 0 and rec["hardware"].get("sockets", 1) == 1
+    # -1 is llama-bench's default ("auto": as many layers as fit); predict() then only
+    # uses the record when the estimate places every layer on the GPU.
+    return rec["hardware"]["gpu_count"] == 1 and (ngl == -1 or ngl >= model.n_layers)
 
 
 def predict(rec: dict, eff: Efficiency) -> Point:

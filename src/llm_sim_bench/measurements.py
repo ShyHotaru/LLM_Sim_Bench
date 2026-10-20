@@ -11,8 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .profiles import QUANT_BPW
-
 BACKENDS = ("CUDA", "Metal", "ROCm", "Vulkan", "SYCL", "CPU")
 
 # section -> required keys
@@ -68,8 +66,8 @@ def validate(rec: dict) -> list[str]:
         errors.append("source.url must be https")
     if rec["software"]["backend"] not in BACKENDS:
         errors.append(f"unknown backend {rec['software']['backend']!r}")
-    if rec["model"]["quant"] not in QUANT_BPW:
-        errors.append(f"unknown quant {rec['model']['quant']!r}")
+    if not isinstance(rec["model"]["quant"], str) or not rec["model"]["quant"]:
+        errors.append("model.quant must be a string")
     res = rec["results"]
     if res["pp_tps"] is None and res["tg_tps"] is None:
         errors.append("no results")
