@@ -85,7 +85,8 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
     const usable = Math.max(0, vram - eff.vram_reserve_gb) * GB;
     const n = Math.min(remaining, Math.floor(usable / (layerW + layerKv)));
     if (n > 0) {
-      const [bwEff, cEff, layerS] = forBackend(eff, gpu.backend || "cuda");
+      const [bwEff, backendCEff, layerS] = forBackend(eff, gpu.backend || "cuda");
+      const cEff = eff.device_compute?.[`${gpu.name}|${gpu.backend || "cuda"}`] ?? backendCEff;
       placements.push({
         device: gpu.name, layers: n,
         weights_gb: (n * layerW) / GB, kv_gb: (n * layerKv) / GB,

@@ -132,5 +132,6 @@
   "warn.uncalibrated": "{backend}の実測データがまだないため、速度は補正されていない推定値です。",
   "warn.decodeUncalibrated": "{backend}の生成速度はまだ補正されていません（メモリ構成が分かる実測がありません）。",
   "warn.prefillUncalibrated": "{backend}のプロンプト処理速度はまだ補正されていません。",
+  "warn.prefillDevice": "{device}はこのバックエンドでのプロンプト処理の実測がないため、バックエンドの平均値を使っています。実際と大きく異なる場合があります。",
   "warn.moe": "MoE（専門家混合）モデルのルーティングのコストは反映していないため、生成速度が実際より速く出ることがあります。"
 }

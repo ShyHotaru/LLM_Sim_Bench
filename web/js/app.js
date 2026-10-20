@@ -347,6 +347,11 @@ function renderWarnings(system, est) {
   const backends = new Set(est.placements.map((p) => (p.is_gpu
     ? system.gpus.find((g) => g.name === p.device).backend : "cpu")));
   const items = [];
+  const deviceLess = system.gpus.filter((g) => P.calibration[`${g.backend}/pp`]
+    && !(`${g.name}|${g.backend}` in P.efficiency.device_compute));
+  for (const g of new Set(deviceLess.map((x) => x.label || x.name))) {
+    items.push(t("warn.prefillDevice", { device: g }));
+  }
   for (const b of backends) {
     const tg = P.calibration[`${b}/tg`];
     const pp = P.calibration[`${b}/pp`];

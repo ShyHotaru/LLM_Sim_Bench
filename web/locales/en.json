@@ -132,5 +132,6 @@
   "warn.uncalibrated": "No measured {backend} results yet, so its speeds are uncalibrated guesses.",
   "warn.decodeUncalibrated": "{backend} generation speed is not calibrated yet (no measurements with a known memory configuration).",
   "warn.prefillUncalibrated": "{backend} prompt processing speed is not calibrated yet.",
+  "warn.prefillDevice": "No prompt-processing measurements for {device} with this backend: its prompt speed uses the backend average and can be far off.",
   "warn.moe": "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic."
 }

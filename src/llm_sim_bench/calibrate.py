@@ -3,15 +3,17 @@
 Decode is fitted per backend as  1/tg = x / bandwidth_eff + layers * overhead,
 where x is the time per token at 100 % of peak bandwidth. The fit minimizes
 relative error so fast and slow devices count equally. Prefill efficiency is
-the median of measured / peak-compute speed.
+the median of measured / peak-compute speed, per backend and, for prompt
+processing, also per measured device (stored in device_calibration.json).
 """
 
 from __future__ import annotations
 
+import json
 import statistics
 from dataclasses import dataclass, replace
 
-from .estimator import BACKENDS, Efficiency, backend_prefix, estimate
+from .estimator import DEVICE_CALIBRATION, BACKENDS, Efficiency, backend_prefix, estimate
 from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
@@ -20,7 +22,8 @@ _HOST = (CPU("host", 8, 1.0), RAM(128, 51.2))
 _BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal", "ROCm": "rocm", "Vulkan": "vulkan",
                 "SYCL": "sycl", "CPU": "cpu"}
 # Peak hardware with no overhead: the fit's x values.
-_UNIT = Efficiency(**{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
+_UNIT = Efficiency(device_compute={},
+                   **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
                       for k, v in (("bandwidth", 1), ("compute", 1), ("layer_overhead_us", 0))})
 
 
@@ -33,6 +36,7 @@ class Point:
     tg_meas: float | None
     pp_pred: float | None = None
     tg_pred: float | None = None
+    device: str = ""  # "<preset>|<backend>" for GPUs, "" for CPU runs
 
     @property
     def pp_err(self) -> float | None:
@@ -100,8 +104,9 @@ def predict(rec: dict, eff: Efficiency) -> Point:
     if on_device and n_gen and (backend != "cpu" or _ram_bandwidth(rec["hardware"])):
         t = sum(1 / est.decode_tps_at(run["depth"] + i) for i in range(n_gen))
         tg = n_gen / t
+    device = "" if backend == "cpu" else f"{rec['hardware']['gpu_preset']}|{backend}"
     return Point(rec["id"], backend, model.n_layers, res["pp_tps"], res["tg_tps"],
-                 est.prefill_tps if on_device and n_prompt else None, tg)
+                 est.prefill_tps if on_device and n_prompt else None, tg, device)
 
 
 def fit(records: list[dict]) -> Efficiency:
@@ -120,7 +125,17 @@ def fit(records: list[dict]) -> Efficiency:
         pre = [p.pp_meas / p.pp_pred for p in pts if p.pp_meas and p.pp_pred]
         if pre:
             fitted[f"{prefix}_compute"] = round(statistics.median(pre), 3)
-    return replace(Efficiency(), **fitted)
+    by_device: dict[str, list[float]] = {}
+    for p in points:
+        if p.device and p.pp_meas and p.pp_pred:
+            by_device.setdefault(p.device, []).append(p.pp_meas / p.pp_pred)
+    devices = {d: round(statistics.median(v), 3) for d, v in sorted(by_device.items())}
+    return replace(Efficiency(), device_compute=devices, **fitted)
+
+
+def write_device_calibration(eff: Efficiency) -> None:
+    DEVICE_CALIBRATION.write_text(json.dumps({"compute": eff.device_compute}, indent=1) + "\n",
+                                  encoding="utf-8")
 
 
 def _fit_decode(rows: list[tuple[float, int, float]]) -> tuple[float, float]:

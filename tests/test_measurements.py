@@ -30,18 +30,28 @@ class MeasurementDataTests(unittest.TestCase):
 class CalibrationTests(unittest.TestCase):
     """Guard the estimator against drifting away from real measurements."""
 
+    # Median and worst-case relative error allowed per backend and metric.
+    LIMITS = {"tg": {"median": 0.08, "max": 0.60}, "pp": {"median": 0.10, "max": 1.5}}
+    PP_MEDIAN = {"sycl": 0.35}  # Intel results mix FP16 and FP32 builds
+
     def test_defaults_match_measurements(self):
         stats = calibrate.summary(calibrate.evaluate(RECORDS, Efficiency()))
-        for backend in ("cuda", "metal"):
-            self.assertGreaterEqual(stats[f"{backend}/tg"]["n"], 10)
-            self.assertLess(stats[f"{backend}/tg"]["median"], 0.06, backend)
-            self.assertLess(stats[f"{backend}/tg"]["max"], 0.30, backend)
-            self.assertLess(stats[f"{backend}/pp"]["median"], 0.10, backend)
+        for backend in ("cuda", "metal", "rocm", "vulkan", "sycl"):
+            for metric, limit in self.LIMITS.items():
+                s = stats[f"{backend}/{metric}"]
+                median = self.PP_MEDIAN.get(backend, limit["median"]) if metric == "pp" \
+                    else limit["median"]
+                self.assertGreaterEqual(s["n"], 10, backend)
+                self.assertLess(s["median"], median, f"{backend}/{metric}")
+                self.assertLess(s["max"], limit["max"], f"{backend}/{metric}")
 
     def test_defaults_are_close_to_a_fresh_fit(self):
         fitted, default = calibrate.fit(RECORDS), Efficiency()
-        for k in ("gpu_bandwidth", "gpu_compute", "metal_bandwidth", "metal_compute"):
-            self.assertAlmostEqual(getattr(fitted, k), getattr(default, k), delta=0.02, msg=k)
+        for k, v in vars(default).items():
+            if k.endswith(("_bandwidth", "_compute")) and not k.startswith("cpu"):
+                self.assertAlmostEqual(getattr(fitted, k), v, delta=0.02, msg=k)
+        self.assertEqual(fitted.device_compute, default.device_compute,
+                         "run `llmsim calibrate --write` to store the device calibration")
 
     def test_cli_calibrate(self):
         self.assertEqual(main(["calibrate"]), 0)

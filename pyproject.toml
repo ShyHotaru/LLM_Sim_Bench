@@ -15,3 +15,6 @@ llmsim = "llm_sim_bench.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+llm_sim_bench = ["device_calibration.json"]

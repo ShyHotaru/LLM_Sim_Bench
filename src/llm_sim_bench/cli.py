@@ -154,11 +154,15 @@ def cmd_calibrate(args):
     print("Current defaults")
     print(calibrate.format_report(records, Efficiency()))
     fitted = calibrate.fit(records)
-    print("\nFitted factors (copy into Efficiency defaults to adopt)")
-    for k in ("gpu_bandwidth", "gpu_compute", "gpu_layer_overhead_us", "metal_bandwidth",
-              "metal_compute", "metal_layer_overhead_us"):
-        print(f"  {k:<24} {getattr(fitted, k)}")
+    print("\nFitted backend factors (copy into Efficiency defaults to adopt)")
+    for k, v in vars(fitted).items():
+        if k != "device_compute" and v != getattr(Efficiency(), k):
+            print(f"  {k:<26} {v}")
+    print(f"Per-device prompt-processing efficiency: {len(fitted.device_compute)} devices")
     print(calibrate.format_report(records, fitted))
+    if args.write:
+        calibrate.write_device_calibration(fitted)
+        print("wrote device calibration")
     return 0
 
 
@@ -244,6 +248,8 @@ def parser() -> argparse.ArgumentParser:
     c = sub.add_parser("calibrate", help="fit efficiency factors to measurement records")
     c.add_argument("--data", help="measurement .jsonl file or directory "
                    "(default: data/measurements in the source tree)")
+    c.add_argument("--write", action="store_true",
+                   help="store the fitted per-device prompt-processing efficiency")
     c.set_defaults(func=cmd_calibrate)
 
     ex = sub.add_parser("export-web", help="write presets and golden tests for the web app")

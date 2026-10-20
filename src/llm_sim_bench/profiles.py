@@ -95,25 +95,94 @@ QUANT_BPW: dict[str, float] = {
     "BF16": 16.0,
 }
 
+_GPU_BACKEND = {"NVIDIA": "cuda", "AMD": "rocm", "Intel": "sycl"}
+
+
+def _gpu(name: str, label: str, vendor: str, segment: str, vram_gb: float, bandwidth_gbps: float,
+         fp16_tflops: float) -> GPU:
+    return GPU(name, vram_gb, bandwidth_gbps, fp16_tflops, _GPU_BACKEND[vendor], vendor, segment,
+               label)
+
+
+# Dense FP16 tensor/matrix TFLOPS without sparsity: GeForce parts with FP16 accumulate;
+# AMD "FP16 matrix" (RDNA2: packed FP16 vector, no matrix units); Intel XMX = INT8 TOPS / 2.
+# Some figures are derived from vendor "AI TOPS" (see data/README.md).
 GPU_PRESETS: dict[str, GPU] = {
     g.name: g
     for g in [
-        GPU("rtx2080ti-11gb", 11, 616, 108),
-        GPU("rtx3060-12gb", 12, 360, 51),
-        GPU("rtx3080-10gb", 10, 760, 119),
-        GPU("rtx3090-24gb", 24, 936, 142),
-        GPU("rtx3090ti-24gb", 24, 1008, 160),
-        GPU("rtx4060ti-8gb", 8, 288, 88),
-        GPU("rtx4060ti-16gb", 16, 288, 88),
-        GPU("rtx4070tisuper-16gb", 16, 672, 176),
-        GPU("rtx4080-16gb", 16, 717, 195),
-        GPU("rtx4080super-16gb", 16, 736, 209),
-        GPU("rtx4090-24gb", 24, 1008, 330),
-        GPU("rtx5060ti-16gb", 16, 448, 95),
-        GPU("rtx5070-12gb", 12, 672, 124),
-        GPU("rtx5070ti-16gb", 16, 896, 176),
-        GPU("rtx5080-16gb", 16, 960, 225),
-        GPU("rtx5090-32gb", 32, 1792, 419),
+        _gpu("rtx2060super-8gb", "RTX 2060 SUPER", "NVIDIA", "consumer", 8, 448, 57.4),
+        _gpu("rtx2070super-8gb", "RTX 2070 SUPER", "NVIDIA", "consumer", 8, 448, 72.5),
+        _gpu("rtx2080ti-11gb", "RTX 2080 Ti", "NVIDIA", "consumer", 11, 616, 107.6),
+        _gpu("rtx3060-12gb", "RTX 3060 12GB", "NVIDIA", "consumer", 12, 360, 51.2),
+        _gpu("rtx3060ti-8gb", "RTX 3060 Ti", "NVIDIA", "consumer", 8, 448, 64.8),
+        _gpu("rtx3070-8gb", "RTX 3070", "NVIDIA", "consumer", 8, 448, 81.3),
+        _gpu("rtx3080-10gb", "RTX 3080 10GB", "NVIDIA", "consumer", 10, 760, 119),
+        _gpu("rtx3080ti-12gb", "RTX 3080 Ti", "NVIDIA", "consumer", 12, 912, 136.4),
+        _gpu("rtx3090-24gb", "RTX 3090", "NVIDIA", "consumer", 24, 936, 142),
+        _gpu("rtx3090ti-24gb", "RTX 3090 Ti", "NVIDIA", "consumer", 24, 1008, 160),
+        _gpu("rtx4060-8gb", "RTX 4060", "NVIDIA", "consumer", 8, 272, 60.5),
+        _gpu("rtx4060ti-8gb", "RTX 4060 Ti 8GB", "NVIDIA", "consumer", 8, 288, 88.25),
+        _gpu("rtx4060ti-16gb", "RTX 4060 Ti 16GB", "NVIDIA", "consumer", 16, 288, 88.25),
+        _gpu("rtx4070-12gb", "RTX 4070", "NVIDIA", "consumer", 12, 504, 116.6),
+        _gpu("rtx4070super-12gb", "RTX 4070 SUPER", "NVIDIA", "consumer", 12, 504, 142),
+        _gpu("rtx4070tisuper-16gb", "RTX 4070 Ti SUPER", "NVIDIA", "consumer", 16, 672, 176.5),
+        _gpu("rtx4080-16gb", "RTX 4080", "NVIDIA", "consumer", 16, 716.8, 194.9),
+        _gpu("rtx4080super-16gb", "RTX 4080 SUPER", "NVIDIA", "consumer", 16, 736, 209),
+        _gpu("rtx4090-24gb", "RTX 4090", "NVIDIA", "consumer", 24, 1008, 330.3),
+        _gpu("rtx5060-8gb", "RTX 5060", "NVIDIA", "consumer", 8, 448, 76.75),
+        _gpu("rtx5060ti-16gb", "RTX 5060 Ti 16GB", "NVIDIA", "consumer", 16, 448, 94.9),
+        _gpu("rtx5070-12gb", "RTX 5070", "NVIDIA", "consumer", 12, 672, 123.5),
+        _gpu("rtx5070ti-16gb", "RTX 5070 Ti", "NVIDIA", "consumer", 16, 896, 175.8),
+        _gpu("rtx5080-16gb", "RTX 5080", "NVIDIA", "consumer", 16, 960, 225.1),
+        _gpu("rtx5090-32gb", "RTX 5090", "NVIDIA", "consumer", 32, 1792, 419),
+        _gpu("rtx-a4000-16gb", "RTX A4000", "NVIDIA", "workstation", 16, 448, 76.7),
+        _gpu("rtx-a5000-24gb", "RTX A5000", "NVIDIA", "workstation", 24, 768, 111.1),
+        _gpu("rtx-a6000-48gb", "RTX A6000", "NVIDIA", "workstation", 48, 768, 154.8),
+        _gpu("rtx4000ada-20gb", "RTX 4000 Ada", "NVIDIA", "workstation", 20, 360, 81.9),
+        _gpu("rtx6000ada-48gb", "RTX 6000 Ada", "NVIDIA", "workstation", 48, 960, 364.25),
+        _gpu("rtxpro4000-24gb", "RTX PRO 4000 Blackwell", "NVIDIA", "workstation", 24, 672, 147.25),
+        _gpu("rtxpro4500-32gb", "RTX PRO 4500 Blackwell", "NVIDIA", "workstation", 32, 896, 202.1),
+        _gpu("rtxpro6000-96gb", "RTX PRO 6000 Blackwell (Workstation)", "NVIDIA", "workstation",
+             96, 1792, 500),
+        _gpu("t4-16gb", "Tesla T4", "NVIDIA", "datacenter", 16, 320, 65),
+        _gpu("v100-sxm2-32gb", "Tesla V100 SXM2 32GB", "NVIDIA", "datacenter", 32, 900, 125),
+        _gpu("a10-24gb", "A10", "NVIDIA", "datacenter", 24, 600, 125),
+        _gpu("a100-pcie-40gb", "A100 40GB PCIe", "NVIDIA", "datacenter", 40, 1555, 312),
+        _gpu("a100-pcie-80gb", "A100 80GB PCIe", "NVIDIA", "datacenter", 80, 1935, 312),
+        _gpu("a100-sxm-80gb", "A100 80GB SXM", "NVIDIA", "datacenter", 80, 2039, 312),
+        _gpu("l4-24gb", "L4", "NVIDIA", "datacenter", 24, 300, 121),
+        _gpu("l40s-48gb", "L40S", "NVIDIA", "datacenter", 48, 864, 362.05),
+        _gpu("h100-pcie-80gb", "H100 PCIe", "NVIDIA", "datacenter", 80, 2000, 756.4),
+        _gpu("h100-sxm-80gb", "H100 SXM", "NVIDIA", "datacenter", 80, 3350, 989.5),
+        _gpu("h200-141gb", "H200", "NVIDIA", "datacenter", 141, 4800, 989.5),
+        _gpu("b200-180gb", "B200", "NVIDIA", "datacenter", 180, 8000, 2250),
+        _gpu("rx6800xt-16gb", "Radeon RX 6800 XT", "AMD", "consumer", 16, 512, 41.47),
+        _gpu("rx6900xt-16gb", "Radeon RX 6900 XT", "AMD", "consumer", 16, 512, 46.08),
+        _gpu("rx7600xt-16gb", "Radeon RX 7600 XT", "AMD", "consumer", 16, 288, 45.1),
+        _gpu("rx7800xt-16gb", "Radeon RX 7800 XT", "AMD", "consumer", 16, 624, 74.6),
+        _gpu("rx7900gre-16gb", "Radeon RX 7900 GRE", "AMD", "consumer", 16, 576, 92),
+        _gpu("rx7900xt-20gb", "Radeon RX 7900 XT", "AMD", "consumer", 20, 800, 103),
+        _gpu("rx7900xtx-24gb", "Radeon RX 7900 XTX", "AMD", "consumer", 24, 960, 123),
+        _gpu("rx9060xt-16gb", "Radeon RX 9060 XT 16GB", "AMD", "consumer", 16, 320, 103),
+        _gpu("rx9070-16gb", "Radeon RX 9070", "AMD", "consumer", 16, 640, 145),
+        _gpu("rx9070xt-16gb", "Radeon RX 9070 XT", "AMD", "consumer", 16, 640, 195),
+        _gpu("radeon-pro-w7800-32gb", "Radeon PRO W7800", "AMD", "workstation", 32, 576, 90.4),
+        _gpu("radeon-pro-w7900-48gb", "Radeon PRO W7900", "AMD", "workstation", 48, 864, 123),
+        _gpu("radeon-ai-pro-r9700-32gb", "Radeon AI PRO R9700", "AMD", "workstation", 32, 640,
+             191),
+        _gpu("mi100-32gb", "Instinct MI100", "AMD", "datacenter", 32, 1228.8, 184.6),
+        _gpu("mi210-64gb", "Instinct MI210", "AMD", "datacenter", 64, 1638.4, 181),
+        # MI250X is two GCDs that software sees as two GPUs; add two for the whole card.
+        _gpu("mi250x-gcd-64gb", "Instinct MI250X (one GCD)", "AMD", "datacenter", 64, 1638.4,
+             191.5),
+        _gpu("mi300x-192gb", "Instinct MI300X", "AMD", "datacenter", 192, 5300, 1307.4),
+        _gpu("mi325x-256gb", "Instinct MI325X", "AMD", "datacenter", 256, 6000, 1307.4),
+        _gpu("mi355x-288gb", "Instinct MI355X", "AMD", "datacenter", 288, 8000, 2516.6),
+        _gpu("arc-a770-16gb", "Arc A770 16GB", "Intel", "consumer", 16, 560, 131),
+        _gpu("arc-b570-10gb", "Arc B570", "Intel", "consumer", 10, 380, 101.5),
+        _gpu("arc-b580-12gb", "Arc B580", "Intel", "consumer", 12, 456, 116.5),
+        _gpu("arc-pro-b60-24gb", "Arc Pro B60", "Intel", "workstation", 24, 456, 98.5),
+        _gpu("arc-pro-b70-32gb", "Arc Pro B70", "Intel", "workstation", 32, 608, 183.5),
     ]
 }
 
@@ -239,7 +308,27 @@ APPLE_PRESETS: dict[str, UnifiedChip] = {
 }
 
 
-UNIFIED_PRESETS: dict[str, UnifiedChip] = {**APPLE_PRESETS}
+# Other unified-memory systems. Their GPU FP16 figures are not published and are derived:
+# DGX Spark from NVIDIA's "1 PFLOP FP4 with sparsity" with the GeForce Blackwell ratio (/8),
+# Ryzen AI Max from RDNA 3.5 compute units x 512 FP16 FLOPs/clock x boost clock. CPU figures
+# are rough.
+OTHER_UNIFIED: dict[str, UnifiedChip] = {
+    c.name: c
+    for c in [
+        UnifiedChip("nvidia-dgx-spark", 48, 273, 125, 20, 1.5, (128,), "NVIDIA", "cuda",
+                    label="DGX Spark (GB10)"),
+        UnifiedChip("nvidia-jetson-agx-orin-64gb", 16, 204.8, 43, 12, 0.42, (64,), "NVIDIA", "cuda",
+                    label="Jetson AGX Orin 64GB"),
+        UnifiedChip("amd-ryzen-ai-max-plus-395", 40, 256, 59.4, 16, 2.07, (128,), "AMD", "rocm",
+                    label="Ryzen AI Max+ 395 (Radeon 8060S)"),
+        UnifiedChip("amd-ryzen-ai-max-390", 32, 256, 45.9, 12, 1.55, (128,), "AMD", "rocm",
+                    label="Ryzen AI Max 390 (Radeon 8050S)"),
+        UnifiedChip("amd-ryzen-ai-max-385", 32, 256, 45.9, 8, 1.04, (128,), "AMD", "rocm",
+                    label="Ryzen AI Max 385 (Radeon 8050S)"),
+    ]
+}
+
+UNIFIED_PRESETS: dict[str, UnifiedChip] = {**APPLE_PRESETS, **OTHER_UNIFIED}
 
 
 def unified_system(chip: UnifiedChip, memory_gb: float) -> System:

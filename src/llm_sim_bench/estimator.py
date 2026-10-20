@@ -13,11 +13,19 @@ fraction of system RAM instead of dedicated VRAM.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .profiles import QUANT_BPW, Model, System
 
 GB = 1e9
+DEVICE_CALIBRATION = Path(__file__).with_name("device_calibration.json")
+
+
+def _device_compute() -> dict[str, float]:
+    """Prompt-processing efficiency per measured device, "<preset>|<backend>" -> fraction."""
+    return json.loads(DEVICE_CALIBRATION.read_text(encoding="utf-8"))["compute"]
 
 
 @dataclass(frozen=True)
@@ -29,27 +37,30 @@ class Efficiency:
     efficiency and a per-layer overhead; "cuda" uses the gpu_* fields.
     """
 
-    gpu_bandwidth: float = 0.87
-    gpu_compute: float = 0.56
-    gpu_layer_overhead_us: float = 32.0
+    gpu_bandwidth: float = 0.84
+    gpu_compute: float = 0.49
+    gpu_layer_overhead_us: float = 36.0
     metal_bandwidth: float = 0.99
     metal_compute: float = 0.66
     metal_layer_overhead_us: float = 72.0
-    rocm_bandwidth: float = 0.75
-    rocm_compute: float = 0.50
-    rocm_layer_overhead_us: float = 0.0
-    vulkan_bandwidth: float = 0.75
-    vulkan_compute: float = 0.50
-    vulkan_layer_overhead_us: float = 0.0
-    sycl_bandwidth: float = 0.75
-    sycl_compute: float = 0.50
-    sycl_layer_overhead_us: float = 0.0
+    rocm_bandwidth: float = 0.97
+    rocm_compute: float = 0.31
+    rocm_layer_overhead_us: float = 114.0
+    vulkan_bandwidth: float = 0.80
+    vulkan_compute: float = 0.40
+    vulkan_layer_overhead_us: float = 22.0
+    sycl_bandwidth: float = 0.85
+    sycl_compute: float = 0.10
+    sycl_layer_overhead_us: float = 58.0
     cpu_bandwidth: float = 0.60
     cpu_compute: float = 0.40
     cpu_layer_overhead_us: float = 0.0
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
+    # Measured devices reach very different shares of peak compute in prompt processing
+    # (data-center GPUs far less than consumer ones), so they override the backend value.
+    device_compute: dict[str, float] = field(default_factory=_device_compute)
 
     def for_backend(self, backend: str) -> tuple[float, float, float]:
         """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
@@ -136,6 +147,7 @@ def estimate(
         n = min(remaining, int(usable // (layer_w + layer_kv)))
         if n > 0:
             bw_eff, c_eff, layer_s = eff.for_backend(gpu.backend)
+            c_eff = eff.device_compute.get(f"{gpu.name}|{gpu.backend}", c_eff)
             placements.append(
                 Placement(gpu.name, n, n * layer_w / GB, n * layer_kv / GB,
                           gpu.bandwidth_gbps * bw_eff, gpu.fp16_tflops * c_eff, True,
