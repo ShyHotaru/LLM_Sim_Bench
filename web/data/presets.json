@@ -152,7 +152,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr4-3200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2020,
+   "label": "Ryzen 5 5600X"
   },
   {
    "name": "ryzen7-5800x",
@@ -161,7 +163,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr4-3200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2020,
+   "label": "Ryzen 7 5800X"
   },
   {
    "name": "ryzen7-5800x3d",
@@ -170,7 +174,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr4-3200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Ryzen 7 5800X3D"
   },
   {
    "name": "ryzen9-5950x",
@@ -179,7 +185,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr4-3200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2020,
+   "label": "Ryzen 9 5950X"
   },
   {
    "name": "ryzen5-7600x",
@@ -188,7 +196,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Ryzen 5 7600X"
   },
   {
    "name": "ryzen7-7700x",
@@ -197,7 +207,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Ryzen 7 7700X"
   },
   {
    "name": "ryzen7-7800x3d",
@@ -206,7 +218,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2023,
+   "label": "Ryzen 7 7800X3D"
   },
   {
    "name": "ryzen7-8700g",
@@ -215,7 +229,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 7 8700G"
   },
   {
    "name": "ryzen9-7900x",
@@ -224,7 +240,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Ryzen 9 7900X"
   },
   {
    "name": "ryzen9-7950x",
@@ -233,7 +251,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Ryzen 9 7950X"
   },
   {
    "name": "ryzen9-7950x3d",
@@ -242,7 +262,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2023,
+   "label": "Ryzen 9 7950X3D"
   },
   {
    "name": "ryzen5-9600x",
@@ -251,7 +273,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 5 9600X"
   },
   {
    "name": "ryzen7-9700x",
@@ -260,7 +284,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 7 9700X"
   },
   {
    "name": "ryzen7-9800x3d",
@@ -269,7 +295,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 7 9800X3D"
   },
   {
    "name": "ryzen9-9900x",
@@ -278,7 +306,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 9 9900X"
   },
   {
    "name": "ryzen9-9950x",
@@ -287,7 +317,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Ryzen 9 9950X"
   },
   {
    "name": "ryzen9-9950x3d",
@@ -296,7 +328,9 @@
    "vendor": "AMD",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2025,
+   "label": "Ryzen 9 9950X3D"
   },
   {
    "name": "threadripper-7970x",
@@ -305,7 +339,9 @@
    "vendor": "AMD",
    "segment": "workstation",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 4
+   "mem_channels": 4,
+   "year": 2023,
+   "label": "Threadripper 7970X"
   },
   {
    "name": "threadripper-7980x",
@@ -314,7 +350,9 @@
    "vendor": "AMD",
    "segment": "workstation",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 4
+   "mem_channels": 4,
+   "year": 2023,
+   "label": "Threadripper 7980X"
   },
   {
    "name": "threadripper-pro-7995wx",
@@ -323,7 +361,9 @@
    "vendor": "AMD",
    "segment": "workstation",
    "mem_kind": "ddr5-5200",
-   "mem_channels": 8
+   "mem_channels": 8,
+   "year": 2023,
+   "label": "Threadripper PRO 7995WX"
   },
   {
    "name": "threadripper-9980x",
@@ -332,7 +372,9 @@
    "vendor": "AMD",
    "segment": "workstation",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 4
+   "mem_channels": 4,
+   "year": 2025,
+   "label": "Threadripper 9980X"
   },
   {
    "name": "threadripper-pro-9995wx",
@@ -341,7 +383,9 @@
    "vendor": "AMD",
    "segment": "workstation",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 8
+   "mem_channels": 8,
+   "year": 2025,
+   "label": "Threadripper PRO 9995WX"
   },
   {
    "name": "epyc-9354",
@@ -350,7 +394,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2022,
+   "label": "EPYC 9354"
   },
   {
    "name": "epyc-9554",
@@ -359,7 +405,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2022,
+   "label": "EPYC 9554"
   },
   {
    "name": "epyc-9654",
@@ -368,7 +416,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2022,
+   "label": "EPYC 9654"
   },
   {
    "name": "epyc-9754",
@@ -377,7 +427,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2023,
+   "label": "EPYC 9754"
   },
   {
    "name": "epyc-9175f",
@@ -386,7 +438,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "EPYC 9175F"
   },
   {
    "name": "epyc-9575f",
@@ -395,7 +449,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "EPYC 9575F"
   },
   {
    "name": "epyc-9655p",
@@ -404,7 +460,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "EPYC 9655P"
   },
   {
    "name": "epyc-9755",
@@ -413,7 +471,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "EPYC 9755"
   },
   {
    "name": "epyc-9965",
@@ -422,7 +482,9 @@
    "vendor": "AMD",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "EPYC 9965"
   },
   {
    "name": "i5-12400",
@@ -431,7 +493,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Core i5-12400"
   },
   {
    "name": "i5-13600k",
@@ -440,7 +504,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Core i5-13600K"
   },
   {
    "name": "i5-14600k",
@@ -449,7 +515,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2023,
+   "label": "Core i5-14600K"
   },
   {
    "name": "i7-13700k",
@@ -458,7 +526,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Core i7-13700K"
   },
   {
    "name": "i9-13900k",
@@ -467,7 +537,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2022,
+   "label": "Core i9-13900K"
   },
   {
    "name": "i9-14900k",
@@ -476,7 +548,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-5600",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2023,
+   "label": "Core i9-14900K"
   },
   {
    "name": "core-ultra7-265k",
@@ -485,7 +559,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Core Ultra 7 265K"
   },
   {
    "name": "core-ultra9-285k",
@@ -494,7 +570,9 @@
    "vendor": "Intel",
    "segment": "desktop",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 2
+   "mem_channels": 2,
+   "year": 2024,
+   "label": "Core Ultra 9 285K"
   },
   {
    "name": "xeon-w7-3465x",
@@ -503,7 +581,9 @@
    "vendor": "Intel",
    "segment": "workstation",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 8
+   "mem_channels": 8,
+   "year": 2023,
+   "label": "Xeon w7-3465X"
   },
   {
    "name": "xeon-w9-3495x",
@@ -512,7 +592,9 @@
    "vendor": "Intel",
    "segment": "workstation",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 8
+   "mem_channels": 8,
+   "year": 2023,
+   "label": "Xeon w9-3495X"
   },
   {
    "name": "xeon-platinum-8480plus",
@@ -521,7 +603,9 @@
    "vendor": "Intel",
    "segment": "server",
    "mem_kind": "ddr5-4800",
-   "mem_channels": 8
+   "mem_channels": 8,
+   "year": 2023,
+   "label": "Xeon Platinum 8480+"
   },
   {
    "name": "xeon-6980p",
@@ -530,7 +614,9 @@
    "vendor": "Intel",
    "segment": "server",
    "mem_kind": "ddr5-6400",
-   "mem_channels": 12
+   "mem_channels": 12,
+   "year": 2024,
+   "label": "Xeon 6980P"
   }
  ],
  "gpus": [
@@ -542,7 +628,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 2060 SUPER"
+   "label": "RTX 2060 SUPER",
+   "year": 2019
   },
   {
    "name": "rtx2070super-8gb",
@@ -552,7 +639,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 2070 SUPER"
+   "label": "RTX 2070 SUPER",
+   "year": 2019
   },
   {
    "name": "rtx2080ti-11gb",
@@ -562,7 +650,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 2080 Ti"
+   "label": "RTX 2080 Ti",
+   "year": 2018
   },
   {
    "name": "rtx3060-12gb",
@@ -572,7 +661,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3060 12GB"
+   "label": "RTX 3060 12GB",
+   "year": 2021
   },
   {
    "name": "rtx3060ti-8gb",
@@ -582,7 +672,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3060 Ti"
+   "label": "RTX 3060 Ti",
+   "year": 2020
   },
   {
    "name": "rtx3070-8gb",
@@ -592,7 +683,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3070"
+   "label": "RTX 3070",
+   "year": 2020
   },
   {
    "name": "rtx3080-10gb",
@@ -602,7 +694,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3080 10GB"
+   "label": "RTX 3080 10GB",
+   "year": 2020
   },
   {
    "name": "rtx3080ti-12gb",
@@ -612,7 +705,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3080 Ti"
+   "label": "RTX 3080 Ti",
+   "year": 2021
   },
   {
    "name": "rtx3090-24gb",
@@ -622,7 +716,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3090"
+   "label": "RTX 3090",
+   "year": 2020
   },
   {
    "name": "rtx3090ti-24gb",
@@ -632,7 +727,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 3090 Ti"
+   "label": "RTX 3090 Ti",
+   "year": 2022
   },
   {
    "name": "rtx4060-8gb",
@@ -642,7 +738,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4060"
+   "label": "RTX 4060",
+   "year": 2023
   },
   {
    "name": "rtx4060ti-8gb",
@@ -652,7 +749,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4060 Ti 8GB"
+   "label": "RTX 4060 Ti 8GB",
+   "year": 2023
   },
   {
    "name": "rtx4060ti-16gb",
@@ -662,7 +760,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4060 Ti 16GB"
+   "label": "RTX 4060 Ti 16GB",
+   "year": 2023
   },
   {
    "name": "rtx4070-12gb",
@@ -672,7 +771,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4070"
+   "label": "RTX 4070",
+   "year": 2023
   },
   {
    "name": "rtx4070super-12gb",
@@ -682,7 +782,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4070 SUPER"
+   "label": "RTX 4070 SUPER",
+   "year": 2024
   },
   {
    "name": "rtx4070tisuper-16gb",
@@ -692,7 +793,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4070 Ti SUPER"
+   "label": "RTX 4070 Ti SUPER",
+   "year": 2024
   },
   {
    "name": "rtx4080-16gb",
@@ -702,7 +804,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4080"
+   "label": "RTX 4080",
+   "year": 2022
   },
   {
    "name": "rtx4080super-16gb",
@@ -712,7 +815,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4080 SUPER"
+   "label": "RTX 4080 SUPER",
+   "year": 2024
   },
   {
    "name": "rtx4090-24gb",
@@ -722,7 +826,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 4090"
+   "label": "RTX 4090",
+   "year": 2022
   },
   {
    "name": "rtx5060-8gb",
@@ -732,7 +837,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5060"
+   "label": "RTX 5060",
+   "year": 2025
   },
   {
    "name": "rtx5060ti-16gb",
@@ -742,7 +848,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5060 Ti 16GB"
+   "label": "RTX 5060 Ti 16GB",
+   "year": 2025
   },
   {
    "name": "rtx5070-12gb",
@@ -752,7 +859,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5070"
+   "label": "RTX 5070",
+   "year": 2025
   },
   {
    "name": "rtx5070ti-16gb",
@@ -762,7 +870,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5070 Ti"
+   "label": "RTX 5070 Ti",
+   "year": 2025
   },
   {
    "name": "rtx5080-16gb",
@@ -772,7 +881,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5080"
+   "label": "RTX 5080",
+   "year": 2025
   },
   {
    "name": "rtx5090-32gb",
@@ -782,7 +892,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "consumer",
-   "label": "RTX 5090"
+   "label": "RTX 5090",
+   "year": 2025
   },
   {
    "name": "rtx-a4000-16gb",
@@ -792,7 +903,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX A4000"
+   "label": "RTX A4000",
+   "year": 2021
   },
   {
    "name": "rtx-a5000-24gb",
@@ -802,7 +914,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX A5000"
+   "label": "RTX A5000",
+   "year": 2021
   },
   {
    "name": "rtx-a6000-48gb",
@@ -812,7 +925,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX A6000"
+   "label": "RTX A6000",
+   "year": 2020
   },
   {
    "name": "rtx4000ada-20gb",
@@ -822,7 +936,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX 4000 Ada"
+   "label": "RTX 4000 Ada",
+   "year": 2023
   },
   {
    "name": "rtx6000ada-48gb",
@@ -832,7 +947,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX 6000 Ada"
+   "label": "RTX 6000 Ada",
+   "year": 2022
   },
   {
    "name": "rtxpro4000-24gb",
@@ -842,7 +958,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX PRO 4000 Blackwell"
+   "label": "RTX PRO 4000 Blackwell",
+   "year": 2025
   },
   {
    "name": "rtxpro4500-32gb",
@@ -852,7 +969,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX PRO 4500 Blackwell"
+   "label": "RTX PRO 4500 Blackwell",
+   "year": 2025
   },
   {
    "name": "rtxpro6000-96gb",
@@ -862,7 +980,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "workstation",
-   "label": "RTX PRO 6000 Blackwell (Workstation)"
+   "label": "RTX PRO 6000 Blackwell (Workstation)",
+   "year": 2025
   },
   {
    "name": "t4-16gb",
@@ -872,7 +991,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "Tesla T4"
+   "label": "Tesla T4",
+   "year": 2018
   },
   {
    "name": "v100-sxm2-32gb",
@@ -882,7 +1002,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "Tesla V100 SXM2 32GB"
+   "label": "Tesla V100 SXM2 32GB",
+   "year": 2017
   },
   {
    "name": "a10-24gb",
@@ -892,7 +1013,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "A10"
+   "label": "A10",
+   "year": 2021
   },
   {
    "name": "a100-pcie-40gb",
@@ -902,7 +1024,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "A100 40GB PCIe"
+   "label": "A100 40GB PCIe",
+   "year": 2020
   },
   {
    "name": "a100-pcie-80gb",
@@ -912,7 +1035,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "A100 80GB PCIe"
+   "label": "A100 80GB PCIe",
+   "year": 2020
   },
   {
    "name": "a100-sxm-80gb",
@@ -922,7 +1046,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "A100 80GB SXM"
+   "label": "A100 80GB SXM",
+   "year": 2020
   },
   {
    "name": "l4-24gb",
@@ -932,7 +1057,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "L4"
+   "label": "L4",
+   "year": 2023
   },
   {
    "name": "l40s-48gb",
@@ -942,7 +1068,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "L40S"
+   "label": "L40S",
+   "year": 2023
   },
   {
    "name": "h100-pcie-80gb",
@@ -952,7 +1079,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "H100 PCIe"
+   "label": "H100 PCIe",
+   "year": 2022
   },
   {
    "name": "h100-sxm-80gb",
@@ -962,7 +1090,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "H100 SXM"
+   "label": "H100 SXM",
+   "year": 2022
   },
   {
    "name": "h200-141gb",
@@ -972,7 +1101,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "H200"
+   "label": "H200",
+   "year": 2024
   },
   {
    "name": "b200-180gb",
@@ -982,7 +1112,8 @@
    "backend": "cuda",
    "vendor": "NVIDIA",
    "segment": "datacenter",
-   "label": "B200"
+   "label": "B200",
+   "year": 2024
   },
   {
    "name": "rx6800xt-16gb",
@@ -992,7 +1123,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 6800 XT"
+   "label": "Radeon RX 6800 XT",
+   "year": 2020
   },
   {
    "name": "rx6900xt-16gb",
@@ -1002,7 +1134,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 6900 XT"
+   "label": "Radeon RX 6900 XT",
+   "year": 2020
   },
   {
    "name": "rx7600xt-16gb",
@@ -1012,7 +1145,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 7600 XT"
+   "label": "Radeon RX 7600 XT",
+   "year": 2024
   },
   {
    "name": "rx7800xt-16gb",
@@ -1022,7 +1156,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 7800 XT"
+   "label": "Radeon RX 7800 XT",
+   "year": 2023
   },
   {
    "name": "rx7900gre-16gb",
@@ -1032,7 +1167,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 7900 GRE"
+   "label": "Radeon RX 7900 GRE",
+   "year": 2023
   },
   {
    "name": "rx7900xt-20gb",
@@ -1042,7 +1178,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 7900 XT"
+   "label": "Radeon RX 7900 XT",
+   "year": 2022
   },
   {
    "name": "rx7900xtx-24gb",
@@ -1052,7 +1189,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 7900 XTX"
+   "label": "Radeon RX 7900 XTX",
+   "year": 2022
   },
   {
    "name": "rx9060xt-16gb",
@@ -1062,7 +1200,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 9060 XT 16GB"
+   "label": "Radeon RX 9060 XT 16GB",
+   "year": 2025
   },
   {
    "name": "rx9070-16gb",
@@ -1072,7 +1211,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 9070"
+   "label": "Radeon RX 9070",
+   "year": 2025
   },
   {
    "name": "rx9070xt-16gb",
@@ -1082,7 +1222,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "consumer",
-   "label": "Radeon RX 9070 XT"
+   "label": "Radeon RX 9070 XT",
+   "year": 2025
   },
   {
    "name": "radeon-pro-w7800-32gb",
@@ -1092,7 +1233,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "workstation",
-   "label": "Radeon PRO W7800"
+   "label": "Radeon PRO W7800",
+   "year": 2023
   },
   {
    "name": "radeon-pro-w7900-48gb",
@@ -1102,7 +1244,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "workstation",
-   "label": "Radeon PRO W7900"
+   "label": "Radeon PRO W7900",
+   "year": 2023
   },
   {
    "name": "radeon-ai-pro-r9700-32gb",
@@ -1112,7 +1255,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "workstation",
-   "label": "Radeon AI PRO R9700"
+   "label": "Radeon AI PRO R9700",
+   "year": 2025
   },
   {
    "name": "mi100-32gb",
@@ -1122,7 +1266,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI100"
+   "label": "Instinct MI100",
+   "year": 2020
   },
   {
    "name": "mi210-64gb",
@@ -1132,7 +1277,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI210"
+   "label": "Instinct MI210",
+   "year": 2022
   },
   {
    "name": "mi250x-gcd-64gb",
@@ -1142,7 +1288,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI250X (one GCD)"
+   "label": "Instinct MI250X (one GCD)",
+   "year": 2021
   },
   {
    "name": "mi300x-192gb",
@@ -1152,7 +1299,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI300X"
+   "label": "Instinct MI300X",
+   "year": 2023
   },
   {
    "name": "mi325x-256gb",
@@ -1162,7 +1310,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI325X"
+   "label": "Instinct MI325X",
+   "year": 2024
   },
   {
    "name": "mi355x-288gb",
@@ -1172,7 +1321,8 @@
    "backend": "rocm",
    "vendor": "AMD",
    "segment": "datacenter",
-   "label": "Instinct MI355X"
+   "label": "Instinct MI355X",
+   "year": 2025
   },
   {
    "name": "arc-a770-16gb",
@@ -1182,7 +1332,8 @@
    "backend": "sycl",
    "vendor": "Intel",
    "segment": "consumer",
-   "label": "Arc A770 16GB"
+   "label": "Arc A770 16GB",
+   "year": 2022
   },
   {
    "name": "arc-b570-10gb",
@@ -1192,7 +1343,8 @@
    "backend": "sycl",
    "vendor": "Intel",
    "segment": "consumer",
-   "label": "Arc B570"
+   "label": "Arc B570",
+   "year": 2025
   },
   {
    "name": "arc-b580-12gb",
@@ -1202,7 +1354,8 @@
    "backend": "sycl",
    "vendor": "Intel",
    "segment": "consumer",
-   "label": "Arc B580"
+   "label": "Arc B580",
+   "year": 2024
   },
   {
    "name": "arc-pro-b60-24gb",
@@ -1212,7 +1365,8 @@
    "backend": "sycl",
    "vendor": "Intel",
    "segment": "workstation",
-   "label": "Arc Pro B60"
+   "label": "Arc Pro B60",
+   "year": 2025
   },
   {
    "name": "arc-pro-b70-32gb",
@@ -1222,7 +1376,8 @@
    "backend": "sycl",
    "vendor": "Intel",
    "segment": "workstation",
-   "label": "Arc Pro B70"
+   "label": "Arc Pro B70",
+   "year": 2026
   }
  ],
  "unified": [
@@ -1240,7 +1395,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1"
+   "label": "M1",
+   "year": 2020
   },
   {
    "name": "apple-m1-8c",
@@ -1256,7 +1412,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1"
+   "label": "M1",
+   "year": 2020
   },
   {
    "name": "apple-m1-pro-14c",
@@ -1272,7 +1429,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Pro"
+   "label": "M1 Pro",
+   "year": 2020
   },
   {
    "name": "apple-m1-pro-16c",
@@ -1288,7 +1446,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Pro"
+   "label": "M1 Pro",
+   "year": 2020
   },
   {
    "name": "apple-m1-max-24c",
@@ -1304,7 +1463,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Max"
+   "label": "M1 Max",
+   "year": 2020
   },
   {
    "name": "apple-m1-max-32c",
@@ -1320,7 +1480,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Max"
+   "label": "M1 Max",
+   "year": 2020
   },
   {
    "name": "apple-m1-ultra-48c",
@@ -1336,7 +1497,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Ultra"
+   "label": "M1 Ultra",
+   "year": 2020
   },
   {
    "name": "apple-m1-ultra-64c",
@@ -1352,7 +1514,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M1 Ultra"
+   "label": "M1 Ultra",
+   "year": 2020
   },
   {
    "name": "apple-m2-8c",
@@ -1369,7 +1532,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2"
+   "label": "M2",
+   "year": 2022
   },
   {
    "name": "apple-m2-10c",
@@ -1386,7 +1550,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2"
+   "label": "M2",
+   "year": 2022
   },
   {
    "name": "apple-m2-pro-16c",
@@ -1402,7 +1567,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Pro"
+   "label": "M2 Pro",
+   "year": 2022
   },
   {
    "name": "apple-m2-pro-19c",
@@ -1418,7 +1584,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Pro"
+   "label": "M2 Pro",
+   "year": 2022
   },
   {
    "name": "apple-m2-max-30c",
@@ -1435,7 +1602,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Max"
+   "label": "M2 Max",
+   "year": 2022
   },
   {
    "name": "apple-m2-max-38c",
@@ -1452,7 +1620,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Max"
+   "label": "M2 Max",
+   "year": 2022
   },
   {
    "name": "apple-m2-ultra-60c",
@@ -1469,7 +1638,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Ultra"
+   "label": "M2 Ultra",
+   "year": 2022
   },
   {
    "name": "apple-m2-ultra-76c",
@@ -1486,7 +1656,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M2 Ultra"
+   "label": "M2 Ultra",
+   "year": 2022
   },
   {
    "name": "apple-m3-10c",
@@ -1503,7 +1674,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3"
+   "label": "M3",
+   "year": 2023
   },
   {
    "name": "apple-m3-pro-14c",
@@ -1519,7 +1691,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Pro"
+   "label": "M3 Pro",
+   "year": 2023
   },
   {
    "name": "apple-m3-pro-18c",
@@ -1535,7 +1708,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Pro"
+   "label": "M3 Pro",
+   "year": 2023
   },
   {
    "name": "apple-m3-max-30c",
@@ -1551,7 +1725,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Max"
+   "label": "M3 Max",
+   "year": 2023
   },
   {
    "name": "apple-m3-max-40c",
@@ -1568,7 +1743,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Max"
+   "label": "M3 Max",
+   "year": 2023
   },
   {
    "name": "apple-m3-ultra-60c",
@@ -1584,7 +1760,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Ultra"
+   "label": "M3 Ultra",
+   "year": 2023
   },
   {
    "name": "apple-m3-ultra-80c",
@@ -1601,7 +1778,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M3 Ultra"
+   "label": "M3 Ultra",
+   "year": 2023
   },
   {
    "name": "apple-m4-10c",
@@ -1618,7 +1796,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M4"
+   "label": "M4",
+   "year": 2024
   },
   {
    "name": "apple-m4-pro-16c",
@@ -1634,7 +1813,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M4 Pro"
+   "label": "M4 Pro",
+   "year": 2024
   },
   {
    "name": "apple-m4-pro-20c",
@@ -1651,7 +1831,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M4 Pro"
+   "label": "M4 Pro",
+   "year": 2024
   },
   {
    "name": "apple-m4-max-32c",
@@ -1666,7 +1847,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M4 Max"
+   "label": "M4 Max",
+   "year": 2024
   },
   {
    "name": "apple-m4-max-40c",
@@ -1683,7 +1865,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M4 Max"
+   "label": "M4 Max",
+   "year": 2024
   },
   {
    "name": "apple-m5-8c",
@@ -1700,7 +1883,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5"
+   "label": "M5",
+   "year": 2025
   },
   {
    "name": "apple-m5-10c",
@@ -1717,7 +1901,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5"
+   "label": "M5",
+   "year": 2025
   },
   {
    "name": "apple-m5-pro-16c",
@@ -1733,7 +1918,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Pro"
+   "label": "M5 Pro",
+   "year": 2025
   },
   {
    "name": "apple-m5-pro-20c",
@@ -1750,7 +1936,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Pro"
+   "label": "M5 Pro",
+   "year": 2025
   },
   {
    "name": "apple-m5-max-32c",
@@ -1765,7 +1952,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Max"
+   "label": "M5 Max",
+   "year": 2025
   },
   {
    "name": "apple-m5-max-40c",
@@ -1782,7 +1970,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Max"
+   "label": "M5 Max",
+   "year": 2025
   },
   {
    "name": "apple-m5-ultra-64c",
@@ -1798,7 +1987,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Ultra"
+   "label": "M5 Ultra",
+   "year": 2025
   },
   {
    "name": "apple-m5-ultra-80c",
@@ -1815,7 +2005,8 @@
    "vendor": "Apple",
    "backend": "metal",
    "gpu_fraction": null,
-   "label": "M5 Ultra"
+   "label": "M5 Ultra",
+   "year": 2025
   },
   {
    "name": "nvidia-dgx-spark",
@@ -1830,7 +2021,8 @@
    "vendor": "NVIDIA",
    "backend": "cuda",
    "gpu_fraction": null,
-   "label": "DGX Spark (GB10)"
+   "label": "DGX Spark (GB10)",
+   "year": 2025
   },
   {
    "name": "nvidia-jetson-agx-orin-64gb",
@@ -1845,7 +2037,8 @@
    "vendor": "NVIDIA",
    "backend": "cuda",
    "gpu_fraction": null,
-   "label": "Jetson AGX Orin 64GB"
+   "label": "Jetson AGX Orin 64GB",
+   "year": 2023
   },
   {
    "name": "amd-ryzen-ai-max-plus-395",
@@ -1860,7 +2053,8 @@
    "vendor": "AMD",
    "backend": "rocm",
    "gpu_fraction": null,
-   "label": "Ryzen AI Max+ 395 (Radeon 8060S)"
+   "label": "Ryzen AI Max+ 395 (Radeon 8060S)",
+   "year": 2025
   },
   {
    "name": "amd-ryzen-ai-max-390",
@@ -1875,7 +2069,8 @@
    "vendor": "AMD",
    "backend": "rocm",
    "gpu_fraction": null,
-   "label": "Ryzen AI Max 390 (Radeon 8050S)"
+   "label": "Ryzen AI Max 390 (Radeon 8050S)",
+   "year": 2025
   },
   {
    "name": "amd-ryzen-ai-max-385",
@@ -1890,7 +2085,8 @@
    "vendor": "AMD",
    "backend": "rocm",
    "gpu_fraction": null,
-   "label": "Ryzen AI Max 385 (Radeon 8050S)"
+   "label": "Ryzen AI Max 385 (Radeon 8050S)",
+   "year": 2025
   }
  ],
  "models": [

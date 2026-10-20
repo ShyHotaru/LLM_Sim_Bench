@@ -7,7 +7,7 @@ order-of-magnitude planning, not for exact benchmarking.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class GPU:
     vendor: str = ""
     segment: str = ""  # "consumer", "workstation" or "datacenter"
     label: str = ""  # display name, e.g. "Radeon RX 7900 XTX"
+    year: int = 0  # launch year, used to list newer parts first
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ class CPU:
     segment: str = ""  # "desktop", "workstation" or "server"
     mem_kind: str = ""  # fastest officially supported memory, e.g. "ddr5-5600"
     mem_channels: int = 0  # 64-bit memory channels per socket
+    year: int = 0  # launch year, used to list newer parts first
+    label: str = ""  # display name, e.g. "Ryzen 9 9950X3D"
 
 
 @dataclass(frozen=True)
@@ -80,6 +83,7 @@ class UnifiedChip:
     backend: str = "metal"
     gpu_fraction: float | None = None  # share of memory the GPU may use; None: Efficiency default
     label: str = ""  # display name, e.g. "M4 Max" or "DGX Spark"
+    year: int = 0  # launch year of the chip generation, used to list newer parts first
 
 
 # Effective bits per weight for common llama.cpp / GGUF quantizations.
@@ -187,6 +191,51 @@ GPU_PRESETS: dict[str, GPU] = {
     ]
 }
 
+# Launch years (vendor pages and Wikipedia, see data/README.md); lists show newer parts first.
+_GPU_YEARS = {
+    "rtx2060super-8gb": 2019, "rtx2070super-8gb": 2019, "rtx2080ti-11gb": 2018,
+    "rtx3060-12gb": 2021, "rtx3060ti-8gb": 2020, "rtx3070-8gb": 2020, "rtx3080-10gb": 2020,
+    "rtx3080ti-12gb": 2021, "rtx3090-24gb": 2020, "rtx3090ti-24gb": 2022, "rtx4060-8gb": 2023,
+    "rtx4060ti-8gb": 2023, "rtx4060ti-16gb": 2023, "rtx4070-12gb": 2023,
+    "rtx4070super-12gb": 2024, "rtx4070tisuper-16gb": 2024, "rtx4080-16gb": 2022,
+    "rtx4080super-16gb": 2024, "rtx4090-24gb": 2022, "rtx5060-8gb": 2025, "rtx5060ti-16gb": 2025,
+    "rtx5070-12gb": 2025, "rtx5070ti-16gb": 2025, "rtx5080-16gb": 2025, "rtx5090-32gb": 2025,
+    "rtx-a4000-16gb": 2021, "rtx-a5000-24gb": 2021, "rtx-a6000-48gb": 2020,
+    "rtx4000ada-20gb": 2023, "rtx6000ada-48gb": 2022, "rtxpro4000-24gb": 2025,
+    "rtxpro4500-32gb": 2025, "rtxpro6000-96gb": 2025, "t4-16gb": 2018, "v100-sxm2-32gb": 2017,
+    "a10-24gb": 2021, "a100-pcie-40gb": 2020, "a100-pcie-80gb": 2020, "a100-sxm-80gb": 2020,
+    "l4-24gb": 2023, "l40s-48gb": 2023, "h100-pcie-80gb": 2022, "h100-sxm-80gb": 2022,
+    "h200-141gb": 2024, "b200-180gb": 2024, "rx6800xt-16gb": 2020, "rx6900xt-16gb": 2020,
+    "rx7600xt-16gb": 2024, "rx7800xt-16gb": 2023, "rx7900gre-16gb": 2023, "rx7900xt-20gb": 2022,
+    "rx7900xtx-24gb": 2022, "rx9060xt-16gb": 2025, "rx9070-16gb": 2025, "rx9070xt-16gb": 2025,
+    "radeon-pro-w7800-32gb": 2023, "radeon-pro-w7900-48gb": 2023,
+    "radeon-ai-pro-r9700-32gb": 2025, "mi100-32gb": 2020, "mi210-64gb": 2022,
+    "mi250x-gcd-64gb": 2021, "mi300x-192gb": 2023, "mi325x-256gb": 2024, "mi355x-288gb": 2025,
+    "arc-a770-16gb": 2022, "arc-b570-10gb": 2025, "arc-b580-12gb": 2024, "arc-pro-b60-24gb": 2025,
+    "arc-pro-b70-32gb": 2026,
+}
+GPU_PRESETS = {k: replace(g, year=_GPU_YEARS[k]) for k, g in GPU_PRESETS.items()}
+
+
+def _cpu_label(name: str) -> str:
+    """Display name from a preset name: "ryzen9-9950x3d" -> "Ryzen 9 9950X3D"."""
+    m = re.fullmatch(r"ryzen(\d)-(\w+)", name)
+    if m:
+        return f"Ryzen {m.group(1)} {m.group(2).upper()}"
+    m = re.fullmatch(r"core-ultra(\d)-(\w+)", name)
+    if m:
+        return f"Core Ultra {m.group(1)} {m.group(2).upper()}"
+    m = re.fullmatch(r"xeon-(w\d)-(\w+)", name)
+    if m:
+        return f"Xeon {m.group(1)}-{m.group(2).upper()}"
+    if re.fullmatch(r"i\d-\w+", name):
+        return f"Core {name[:3]}{name[3:].upper()}"
+    words = name.replace("plus", "+").split("-")
+    fixed = {"epyc": "EPYC", "pro": "PRO", "threadripper": "Threadripper", "xeon": "Xeon",
+             "platinum": "Platinum"}
+    return " ".join(fixed.get(w, w if re.fullmatch(r"w\d", w) else w.upper()) for w in words)
+
+
 def _cpu(name: str, vendor: str, segment: str, mem_kind: str, mem_channels: int,
          *groups: tuple[int, float, float, int]) -> CPU:
     """CPU preset from (cores, base GHz, max boost GHz, FP32 FLOPs/cycle) per core type.
@@ -196,7 +245,7 @@ def _cpu(name: str, vendor: str, segment: str, mem_kind: str, mem_channels: int,
     """
     tflops = sum(n * (base + boost) / 2 * flops for n, base, boost, flops in groups) / 1000
     return CPU(name, sum(g[0] for g in groups), round(tflops, 2), vendor, segment, mem_kind,
-               mem_channels)
+               mem_channels, label=_cpu_label(name))
 
 
 # FP32 FLOPs per cycle per core: Zen 3/Zen 4 and Intel client P-cores 32 (2x256-bit FMA;
@@ -263,6 +312,22 @@ CPU_PRESETS: dict[str, CPU] = {
     ]
 }
 
+_CPU_YEARS = {
+    "ryzen5-5600x": 2020, "ryzen7-5800x": 2020, "ryzen7-5800x3d": 2022, "ryzen9-5950x": 2020,
+    "ryzen5-7600x": 2022, "ryzen7-7700x": 2022, "ryzen7-7800x3d": 2023, "ryzen7-8700g": 2024,
+    "ryzen9-7900x": 2022, "ryzen9-7950x": 2022, "ryzen9-7950x3d": 2023, "ryzen5-9600x": 2024,
+    "ryzen7-9700x": 2024, "ryzen7-9800x3d": 2024, "ryzen9-9900x": 2024, "ryzen9-9950x": 2024,
+    "ryzen9-9950x3d": 2025, "threadripper-7970x": 2023, "threadripper-7980x": 2023,
+    "threadripper-pro-7995wx": 2023, "threadripper-9980x": 2025, "threadripper-pro-9995wx": 2025,
+    "epyc-9354": 2022, "epyc-9554": 2022, "epyc-9654": 2022, "epyc-9754": 2023,
+    "epyc-9175f": 2024, "epyc-9575f": 2024, "epyc-9655p": 2024, "epyc-9755": 2024,
+    "epyc-9965": 2024, "i5-12400": 2022, "i5-13600k": 2022, "i5-14600k": 2023, "i7-13700k": 2022,
+    "i9-13900k": 2022, "i9-14900k": 2023, "core-ultra7-265k": 2024, "core-ultra9-285k": 2024,
+    "xeon-w7-3465x": 2023, "xeon-w9-3495x": 2023, "xeon-platinum-8480plus": 2023,
+    "xeon-6980p": 2024,
+}
+CPU_PRESETS = {k: replace(c, year=_CPU_YEARS[k]) for k, c in CPU_PRESETS.items()}
+
 # Per-GPU-core FP16 TFLOPS by generation: 128 ALUs x 2 FLOPs x GPU clock. M5 adds a
 # Neural Accelerator to every GPU core; Apple quotes over 4x M4's peak GPU AI compute.
 _APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404, "M5": 4 * 0.404}
@@ -272,7 +337,9 @@ def _apple(name: str, gpu_cores: int, bw: float, cpu_cores: int, cpu_tflops: flo
            memory: tuple[int, ...]) -> UnifiedChip:
     tflops = round(gpu_cores * _APPLE_CORE_GFLOPS[name.split()[0]], 1)
     slug = f"apple-{name.lower().replace(' ', '-')}-{gpu_cores}c"
-    return UnifiedChip(slug, gpu_cores, bw, tflops, cpu_cores, cpu_tflops, memory, label=name)
+    year = {"M1": 2020, "M2": 2022, "M3": 2023, "M4": 2024, "M5": 2025}[name.split()[0]]
+    return UnifiedChip(slug, gpu_cores, bw, tflops, cpu_cores, cpu_tflops, memory, label=name,
+                       year=year)
 
 
 APPLE_PRESETS: dict[str, UnifiedChip] = {
@@ -327,15 +394,15 @@ OTHER_UNIFIED: dict[str, UnifiedChip] = {
     c.name: c
     for c in [
         UnifiedChip("nvidia-dgx-spark", 48, 273, 125, 20, 1.5, (128,), "NVIDIA", "cuda",
-                    label="DGX Spark (GB10)"),
+                    label="DGX Spark (GB10)", year=2025),
         UnifiedChip("nvidia-jetson-agx-orin-64gb", 16, 204.8, 43, 12, 0.42, (64,), "NVIDIA", "cuda",
-                    label="Jetson AGX Orin 64GB"),
+                    label="Jetson AGX Orin 64GB", year=2023),
         UnifiedChip("amd-ryzen-ai-max-plus-395", 40, 256, 59.4, 16, 2.07, (128,), "AMD", "rocm",
-                    label="Ryzen AI Max+ 395 (Radeon 8060S)"),
+                    label="Ryzen AI Max+ 395 (Radeon 8060S)", year=2025),
         UnifiedChip("amd-ryzen-ai-max-390", 32, 256, 45.9, 12, 1.55, (128,), "AMD", "rocm",
-                    label="Ryzen AI Max 390 (Radeon 8050S)"),
+                    label="Ryzen AI Max 390 (Radeon 8050S)", year=2025),
         UnifiedChip("amd-ryzen-ai-max-385", 32, 256, 45.9, 8, 1.04, (128,), "AMD", "rocm",
-                    label="Ryzen AI Max 385 (Radeon 8050S)"),
+                    label="Ryzen AI Max 385 (Radeon 8050S)", year=2025),
     ]
 }
 

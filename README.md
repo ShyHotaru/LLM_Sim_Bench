@@ -48,8 +48,10 @@ Note      8/48 layers offloaded to CPU
 ## Web app
 
 `web/` is a static site with the same estimator ported to JavaScript: pick a PC (GPUs, CPU,
-RAM) or a Mac (chip, unified memory), a model and a quantization, and watch mock tokens stream
-at the simulated speed. Add a second configuration to compare both side by side. The whole setup is
+RAM), a Mac, a unified-memory PC (DGX Spark, Ryzen AI Max) or a server (data-center GPUs and
+server CPUs), a model and a quantization, and watch mock tokens stream at the simulated speed.
+Lists show the newest parts first, and a search box finds any GPU, CPU or chip and switches to
+the right tab. Add a second configuration to compare both side by side. The whole setup is
 kept in the URL, so a link reproduces it. The interface is available in English, Korean and
 Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style URL parameter, or
 the picker in the header.

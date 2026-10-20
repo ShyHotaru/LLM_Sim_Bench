@@ -22,6 +22,14 @@
   </header>
 
   <main class="wrap">
+    <section class="panel search" aria-labelledby="search-label">
+      <label class="search-box"><span id="search-label" data-i18n="search.label"></span>
+        <input id="part-search" type="search" autocomplete="off" spellcheck="false"
+               aria-controls="search-results" data-i18n-attr="placeholder:search.placeholder">
+      </label>
+      <ul id="search-results" class="search-results" hidden></ul>
+    </section>
+
     <section class="configs" id="configs" aria-label="Configurations" data-i18n-attr="aria-label:config.section"></section>
 
     <section class="panel mock" aria-labelledby="mock-title">

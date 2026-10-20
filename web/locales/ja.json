@@ -134,5 +134,16 @@
   "warn.prefillUncalibrated": "{backend}のプロンプト処理速度はまだ補正されていません。",
   "warn.prefillDevice": "{device}はこのバックエンドでのプロンプト処理の実測がないため、バックエンドの平均値を使っています。実際と大きく異なる場合があります。",
   "warn.cpuDevice": "{cpu}は生成速度の実測がないため、CPUの平均メモリ効率を使っています。CCDが1つのRyzenは実測でこれより約25%遅くなります。",
-  "warn.moe": "MoE（専門家混合）モデルのルーティングのコストは反映していないため、生成速度が実際より速く出ることがあります。"
+  "warn.moe": "MoE（専門家混合）モデルのルーティングのコストは反映していないため、生成速度が実際より速く出ることがあります。",
+
+  "platform.server": "サーバー",
+  "search.label": "部品を検索",
+  "search.placeholder": "例: 4090、7900 XTX、M4 Max、EPYC",
+  "search.none": "一致する部品がありません。",
+  "search.apply": "適用",
+  "search.applyTo": "{letter}に適用",
+  "search.kind.gpu": "GPU",
+  "search.kind.cpu": "CPU",
+  "search.kind.soc": "統合メモリ",
+  "search.cores": "{n}コア"
 }

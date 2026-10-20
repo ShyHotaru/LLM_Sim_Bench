@@ -134,5 +134,16 @@
   "warn.prefillUncalibrated": "{backend} prompt processing speed is not calibrated yet.",
   "warn.prefillDevice": "No prompt-processing measurements for {device} with this backend: its prompt speed uses the backend average and can be far off.",
   "warn.cpuDevice": "No decode measurements for the {cpu}: its memory efficiency uses the CPU average. Single-CCD Ryzen parts measure about 25 % slower than that.",
-  "warn.moe": "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic."
+  "warn.moe": "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic.",
+
+  "platform.server": "Server",
+  "search.label": "Find a part",
+  "search.placeholder": "e.g. 4090, 7900 XTX, M4 Max, EPYC",
+  "search.none": "No matching parts.",
+  "search.apply": "Use",
+  "search.applyTo": "Use in {letter}",
+  "search.kind.gpu": "GPU",
+  "search.kind.cpu": "CPU",
+  "search.kind.soc": "Unified memory",
+  "search.cores": "{n} cores"
 }

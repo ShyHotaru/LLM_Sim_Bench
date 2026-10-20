@@ -399,3 +399,27 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 }
 .warnings strong { color: var(--warn); }
 .warnings ul { margin: 4px 0 0; padding-left: 18px; }
+
+.search { margin-top: 16px; }
+.search-box { max-width: 520px; }
+.search-results {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.search-results li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.search-hit { display: flex; flex-direction: column; min-width: 0; }
+.search-meta { font-size: 0.8rem; color: var(--muted); }
+.search-actions { display: flex; gap: 6px; }
+.search-results li.search-empty { color: var(--muted); border-style: dashed; }

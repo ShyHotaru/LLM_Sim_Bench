@@ -3,6 +3,7 @@ import {
   LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
 } from "./i18n.js";
 import { Schedule } from "./mock.js";
+import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
 import { charsPerToken, chunkText } from "./tokenize.js";
 
@@ -38,6 +39,8 @@ const DEFAULT_CONFIG = {
   context: 8192,
   kvBits: 16,
 };
+// Defaults when a configuration moves to the server tab.
+const SERVER_DEFAULT = { gpu: "h100-sxm-80gb", cpu: "epyc-9654", ramGb: 512 };
 const DEFAULT_STATE = {
   configs: [DEFAULT_CONFIG],
   prompt: 1000,
@@ -124,7 +127,8 @@ function gpuLabel(g) {
   return `${g.label || g.name} · ${g.vram_gb} GB`;
 }
 
-// Options grouped as "<vendor> · <segment>" for GPUs and CPUs, "<vendor>" for SoCs.
+// Options grouped as "<vendor> · <segment>" for GPUs and CPUs, "<vendor>" for SoCs. Groups
+// keep the preset order (NVIDIA, AMD, Intel); within a group newer parts come first.
 function groupedSelect(key, items, value, labelOf, groupOf, extra) {
   const groups = new Map();
   for (const x of items) {
@@ -132,6 +136,7 @@ function groupedSelect(key, items, value, labelOf, groupOf, extra) {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push(x);
   }
+  for (const [g, xs] of groups) groups.set(g, newestFirst(xs));
   const option = (x) => h("option", { value: x.name, selected: x.name === value }, labelOf(x));
   return h("select", { "data-k": key, ...extra },
     [...groups].map(([label, xs]) => (label ? h("optgroup", { label }, xs.map(option)) : xs.map(option))));
@@ -140,6 +145,32 @@ function groupedSelect(key, items, value, labelOf, groupOf, extra) {
 const segmentGroup = (prefix) => (x) => (x.vendor ? `${x.vendor} · ${t(`${prefix}.${x.segment}`)}` : "");
 const appleChips = () => P.unified.filter((a) => a.vendor === "Apple");
 const otherChips = () => P.unified.filter((a) => a.vendor !== "Apple");
+// PC and server configurations share the same form; the server tab lists data-center GPUs
+// and server CPUs, the PC tab everything else.
+const isPcLike = (cfg) => cfg.platform === "pc" || cfg.platform === "server";
+const gpusFor = (platform) => P.gpus.filter((g) => (g.segment === "datacenter") === (platform === "server"));
+const cpusFor = (platform) => P.cpus.filter((c) => (c.segment === "server") === (platform === "server"));
+
+// Select a CPU together with the memory it supports; the user can still change the memory.
+function setCpu(cfg, name) {
+  const cpu = P.cpus.find((c) => c.name === name);
+  cfg.cpu = name;
+  if (cpu?.mem_kind) cfg.ramKind = cpu.mem_kind;
+  if (cpu?.mem_channels) cfg.ramChannels = cpu.mem_channels;
+}
+
+function switchPlatform(cfg, platform) {
+  const was = cfg.platform;
+  cfg.platform = platform;
+  if (!isPcLike(cfg)) return;
+  const allowed = gpusFor(platform).map((g) => g.name);
+  cfg.gpus = cfg.gpus.filter((g) => allowed.includes(g));
+  if (!cfg.gpus.length) cfg.gpus = [platform === "server" ? SERVER_DEFAULT.gpu : DEFAULT_CONFIG.gpus[0]];
+  if (!cpusFor(platform).some((c) => c.name === cfg.cpu)) {
+    setCpu(cfg, platform === "server" ? SERVER_DEFAULT.cpu : DEFAULT_CONFIG.cpu);
+  }
+  if (platform === "server" && was !== "server") cfg.ramGb = Math.max(cfg.ramGb, SERVER_DEFAULT.ramGb);
+}
 
 function activeChip(cfg) {
   if (cfg.platform === "apple") return P.unified.find((a) => a.name === cfg.chip);
@@ -149,7 +180,7 @@ function activeChip(cfg) {
 
 // Backend choices for a configuration: the vendors' defaults plus shared ones (Vulkan).
 function backendChoices(cfg) {
-  const vendors = cfg.platform === "pc"
+  const vendors = isPcLike(cfg)
     ? [...new Set(cfg.gpus.map((g) => P.gpus.find((x) => x.name === g)?.vendor).filter(Boolean))]
     : [activeChip(cfg)?.vendor].filter(Boolean);
   if (!vendors.length) return [];
@@ -163,9 +194,10 @@ function backendChoices(cfg) {
 function sanitizeConfig(c) {
   const cfg = { ...DEFAULT_CONFIG, ...(c && typeof c === "object" ? c : {}) };
   const has = (list, name) => list.some((x) => x.name === name);
-  cfg.platform = ["apple", "unified"].includes(cfg.platform) ? cfg.platform : "pc";
-  cfg.gpus = Array.isArray(cfg.gpus) ? cfg.gpus.filter((g) => has(P.gpus, g)).slice(0, 8) : [];
-  if (!has(P.cpus, cfg.cpu)) cfg.cpu = DEFAULT_CONFIG.cpu;
+  cfg.platform = ["apple", "unified", "server"].includes(cfg.platform) ? cfg.platform : "pc";
+  const pcLike = isPcLike(cfg) ? cfg.platform : "pc";
+  cfg.gpus = Array.isArray(cfg.gpus) ? cfg.gpus.filter((g) => has(gpusFor(pcLike), g)).slice(0, 8) : [];
+  if (!has(cpusFor(pcLike), cfg.cpu)) cfg.cpu = pcLike === "server" ? SERVER_DEFAULT.cpu : DEFAULT_CONFIG.cpu;
   if (!RAM_SIZES.includes(Number(cfg.ramGb))) cfg.ramGb = DEFAULT_CONFIG.ramGb;
   if (!ramKinds().includes(cfg.ramKind)) cfg.ramKind = DEFAULT_CONFIG.ramKind;
   if (!RAM_CHANNELS.includes(Number(cfg.ramChannels))) cfg.ramChannels = DEFAULT_CONFIG.ramChannels;
@@ -207,7 +239,7 @@ function saveState() {
 
 function systemSpec(cfg) {
   const backend = cfg.backend || undefined;
-  if (cfg.platform !== "pc") return { kind: "unified", chip: activeChip(cfg).name, memory_gb: cfg.memoryGb, backend };
+  if (!isPcLike(cfg)) return { kind: "unified", chip: activeChip(cfg).name, memory_gb: cfg.memoryGb, backend };
   return {
     kind: "pc", cpu: cfg.cpu, ram_gb: cfg.ramGb,
     ram_bandwidth_gbps: ramBandwidthGbps(cfg.ramKind, cfg.ramChannels), gpus: cfg.gpus, backend,
@@ -245,15 +277,16 @@ function renderConfig(cfg, i) {
     h("div", { class: "segmented", role: "group", "aria-label": t("config.platform") },
       h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, t("platform.pc")),
       h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac")),
-      otherChips().length ? h("button", { type: "button", "data-act": "platform", "data-v": "unified", "aria-pressed": String(cfg.platform === "unified") }, t("platform.unified")) : null),
+      otherChips().length ? h("button", { type: "button", "data-act": "platform", "data-v": "unified", "aria-pressed": String(cfg.platform === "unified") }, t("platform.unified")) : null,
+      h("button", { type: "button", "data-act": "platform", "data-v": "server", "aria-pressed": String(cfg.platform === "server") }, t("platform.server"))),
     state.configs.length > 1 ? h("button", { type: "button", class: "link", "data-act": "remove-config" }, t("config.remove")) : null));
 
   const settings = h("div", { class: "config-settings" });
   settings.append(h("h3", {}, t("section.hardware")));
-  if (cfg.platform !== "pc") {
+  if (!isPcLike(cfg)) {
     const chip = activeChip(cfg);
     const chipSelect = cfg.platform === "apple"
-      ? select("chip", appleChips().map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })
+      ? select("chip", newestFirst(appleChips()).map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })
       : groupedSelect("soc", otherChips(), cfg.soc, socLabel, (a) => a.vendor, { "data-focus-id": `${i}-soc` });
     settings.append(h("div", { class: "fields" },
       field(t(cfg.platform === "apple" ? "field.chip" : "field.system"), chipSelect),
@@ -262,14 +295,14 @@ function renderConfig(cfg, i) {
     cfg.gpus.forEach((g, j) => {
       settings.append(h("div", { class: "gpu-row" },
         field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }),
-          groupedSelect("gpu", P.gpus, g, gpuLabel, segmentGroup("gpu.segment"), { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
+          groupedSelect("gpu", gpusFor(cfg.platform), g, gpuLabel, segmentGroup("gpu.segment"), { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
         field(t("field.vram"), h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
         h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": t("gpu.remove", { n: j + 1 }) }, "✕")));
     });
     settings.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
       cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
     settings.append(h("div", { class: "fields" },
-      field(t("field.cpu"), groupedSelect("cpu", P.cpus, cfg.cpu, (c) => t("option.cpu", { name: c.name, cores: c.cores }),
+      field(t("field.cpu"), groupedSelect("cpu", cpusFor(cfg.platform), cfg.cpu, (c) => t("option.cpu", { name: c.label || c.name, cores: c.cores }),
         segmentGroup("cpu.segment"), { "data-focus-id": `${i}-cpu` })),
       field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
       field(t("field.ramType"), select("ramKind", ramKinds().map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
@@ -353,7 +386,7 @@ function renderWarnings(system, est) {
     items.push(t("warn.prefillDevice", { device: g }));
   }
   if (backends.has("cpu") && !system.unified && !(`${system.cpu.name}|cpu` in P.efficiency.device_bandwidth)) {
-    items.push(t("warn.cpuDevice", { cpu: system.cpu.name }));
+    items.push(t("warn.cpuDevice", { cpu: system.cpu.label || system.cpu.name }));
   }
   for (const b of backends) {
     const tg = P.calibration[`${b}/tg`];
@@ -422,7 +455,7 @@ function renderBars(system, est) {
 }
 
 function renderMeasured(cfg) {
-  const preset = cfg.platform !== "pc" ? activeChip(cfg).name : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
+  const preset = !isPcLike(cfg) ? activeChip(cfg).name : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
   const rows = preset ? P.measurements.filter((m) => m.preset === preset) : [];
   if (!rows.length) return null;
   const body = rows.map((m) => {
@@ -462,8 +495,8 @@ function onConfigEvent(e) {
   if (e.type === "click" && act) {
     const j = Number(act.dataset.j);
     switch (act.dataset.act) {
-      case "platform": cfg.platform = act.dataset.v; break;
-      case "add-gpu": cfg.gpus.push(cfg.gpus[cfg.gpus.length - 1] || "rtx3060-12gb"); break;
+      case "platform": switchPlatform(cfg, act.dataset.v); break;
+      case "add-gpu": cfg.gpus.push(cfg.gpus[cfg.gpus.length - 1] || gpusFor(cfg.platform)[0].name); break;
       case "remove-gpu": cfg.gpus.splice(j, 1); break;
       case "remove-config": state.configs.splice(i, 1); break;
       default: return;
@@ -477,11 +510,7 @@ function onConfigEvent(e) {
     if (k === "gpu") {
       cfg.gpus = cfg.gpus.map((g, j) => (j === Number(e.target.dataset.j) ? v : g));
     } else if (k === "cpu") {
-      // Switch memory to what the new CPU supports; the user can still change it.
-      const cpu = P.cpus.find((c) => c.name === v);
-      cfg.cpu = v;
-      if (cpu?.mem_kind) cfg.ramKind = cpu.mem_kind;
-      if (cpu?.mem_channels) cfg.ramChannels = cpu.mem_channels;
+      setCpu(cfg, v);
     } else {
       cfg[k] = ["ramGb", "ramChannels", "memoryGb", "context", "kvBits"].includes(k) ? Number(v) : v;
     }
@@ -491,6 +520,7 @@ function onConfigEvent(e) {
 }
 
 function changed() {
+  if (document.getElementById("part-search").value) renderSearch();
   stopPlayback();
   state.configs = state.configs.map((c) => sanitizeConfig({ ...c, gpus: [...c.gpus] }));
   saveState();
@@ -561,7 +591,7 @@ function renderStreams() {
     let tok = "";
     try {
       const m = P.models.find((x) => x.name === cfg.model);
-      const hw = cfg.platform !== "pc" ? chipName(activeChip(cfg))
+      const hw = !isPcLike(cfg) ? chipName(activeChip(cfg))
         : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : t("mock.cpuOnly"));
       label = `${hw} · ${m.name} ${cfg.quant}`;
       tok = tokenizerLabel(tokenizerFor(cfg));
@@ -680,6 +710,66 @@ function readMockInputs() {
   state.maxTokens = clamp(document.getElementById("max-tokens"), 1, 4000);
 }
 
+// ---------- part search ----------
+
+function partMeta({ kind, item }) {
+  if (kind === "gpu") {
+    return `${item.vendor} · ${t(`gpu.segment.${item.segment}`)} · ${item.vram_gb} GB · ${item.bandwidth_gbps} GB/s`;
+  }
+  if (kind === "cpu") {
+    return `${item.vendor} · ${t(`cpu.segment.${item.segment}`)} · ${t("search.cores", { n: item.cores })}` +
+      ` · ${item.mem_kind.toUpperCase()} × ${item.mem_channels}`;
+  }
+  return `${item.vendor} · ${item.bandwidth_gbps} GB/s · ${Math.max(...item.memory_options_gb)} GB`;
+}
+
+function renderSearch() {
+  const input = document.getElementById("part-search");
+  const list = document.getElementById("search-results");
+  const query = input.value.trim();
+  if (!query) {
+    list.hidden = true;
+    list.replaceChildren();
+    return;
+  }
+  const hits = searchParts(query, P);
+  list.hidden = false;
+  if (!hits.length) {
+    list.replaceChildren(h("li", { class: "search-empty" }, t("search.none")));
+    return;
+  }
+  const targets = state.configs.map((_, i) => i);
+  list.replaceChildren(...hits.map((hit) => h("li", {},
+    h("div", { class: "search-hit" },
+      h("strong", {}, hit.item.label || hit.item.name),
+      h("span", { class: "search-meta" }, `${t(`search.kind.${hit.kind}`)} · ${partMeta(hit)}`)),
+    h("div", { class: "search-actions" }, targets.map((i) => h("button", {
+      type: "button", "data-kind": hit.kind, "data-name": hit.item.name, "data-i": i,
+    }, targets.length > 1 ? t("search.applyTo", { letter: LETTERS[i] }) : t("search.apply")))))));
+}
+
+// Put a part into configuration i, switching to the tab that lists it.
+function applyPart(i, kind, name) {
+  const cfg = state.configs[i];
+  if (kind === "gpu") {
+    const gpu = P.gpus.find((g) => g.name === name);
+    switchPlatform(cfg, gpu.segment === "datacenter" ? "server" : "pc");
+    cfg.gpus = [name, ...cfg.gpus.slice(1)];
+  } else if (kind === "cpu") {
+    const cpu = P.cpus.find((c) => c.name === name);
+    switchPlatform(cfg, cpu.segment === "server" ? "server" : "pc");
+    setCpu(cfg, name);
+  } else {
+    const chip = P.unified.find((a) => a.name === name);
+    switchPlatform(cfg, chip.vendor === "Apple" ? "apple" : "unified");
+    if (chip.vendor === "Apple") cfg.chip = name;
+    else cfg.soc = name;
+  }
+  document.getElementById("part-search").value = "";
+  renderSearch();
+  changed();
+}
+
 // ---------- boot ----------
 
 function renderStatic() {
@@ -721,6 +811,20 @@ async function main() {
   picker.addEventListener("change", () => switchLang(picker.value));
   renderStatic();
   renderTextPicker();
+  const search = document.getElementById("part-search");
+  search.addEventListener("input", renderSearch);
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      search.value = "";
+      renderSearch();
+    } else if (e.key === "Enter") {
+      document.querySelector("#search-results button")?.click();
+    }
+  });
+  document.getElementById("search-results").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-kind]");
+    if (b) applyPart(Number(b.dataset.i), b.dataset.kind, b.dataset.name);
+  });
   document.getElementById("text").addEventListener("change", (e) => {
     state.text = e.target.value;
     renderCredits();
