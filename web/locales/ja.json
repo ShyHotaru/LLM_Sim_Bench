@@ -118,5 +118,19 @@
   "time.ms": "{n}ミリ秒",
   "time.s": "{n}秒",
   "time.minSec": "{m}分{s}秒",
-  "time.hourMin": "{h}時間{m}分"
+  "time.hourMin": "{h}時間{m}分",
+
+  "platform.unified": "統合メモリPC",
+  "field.system": "システム",
+  "field.backend": "バックエンド",
+  "backend.default": "GPUの既定",
+  "option.soc": "{name} · {bw} GB/s",
+  "gpu.segment.consumer": "コンシューマー",
+  "gpu.segment.workstation": "ワークステーション",
+  "gpu.segment.datacenter": "データセンター",
+  "warn.title": "推定値についての注意",
+  "warn.uncalibrated": "{backend}の実測データがまだないため、速度は補正されていない推定値です。",
+  "warn.decodeUncalibrated": "{backend}の生成速度はまだ補正されていません（メモリ構成が分かる実測がありません）。",
+  "warn.prefillUncalibrated": "{backend}のプロンプト処理速度はまだ補正されていません。",
+  "warn.moe": "MoE（専門家混合）モデルのルーティングのコストは反映していないため、生成速度が実際より速く出ることがあります。"
 }

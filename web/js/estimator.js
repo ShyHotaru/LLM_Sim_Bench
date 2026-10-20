@@ -18,41 +18,47 @@ export function activeB(model) {
   return model.active_params_b || model.params_b;
 }
 
+export const BACKENDS = ["cuda", "metal", "rocm", "vulkan", "sycl", "cpu"];
+
+// Efficiency field prefix for a backend ("cuda" predates the others as "gpu").
+export function backendPrefix(backend) {
+  if (!BACKENDS.includes(backend)) throw new Error(`Unknown backend ${backend}`);
+  return backend === "cuda" ? "gpu" : backend;
+}
+
 function forBackend(eff, backend) {
-  if (backend === "metal") {
-    return [eff.metal_bandwidth, eff.metal_compute, eff.metal_layer_overhead_us / 1e6];
-  }
-  if (backend === "cpu") {
-    return [eff.cpu_bandwidth, eff.cpu_compute, eff.cpu_layer_overhead_us / 1e6];
-  }
-  return [eff.gpu_bandwidth, eff.gpu_compute, eff.gpu_layer_overhead_us / 1e6];
+  const p = backendPrefix(backend);
+  return [eff[`${p}_bandwidth`], eff[`${p}_compute`], eff[`${p}_layer_overhead_us`] / 1e6];
 }
 
 // Build a system from the JSON spec shared with export.py:
-//   {kind: "pc", cpu, ram_gb, ram_bandwidth_gbps, gpus: [names]}
-//   {kind: "apple", chip, memory_gb}
+//   {kind: "pc", cpu, ram_gb, ram_bandwidth_gbps, gpus: [names], backend?: override}
+//   {kind: "unified", chip, memory_gb}
 export function buildSystem(spec, presets) {
   const find = (list, name, what) => {
     const hit = list.find((x) => x.name === name);
     if (!hit) throw new Error(`Unknown ${what} preset ${name}`);
     return hit;
   };
-  if (spec.kind === "apple") {
-    const chip = find(presets.apple, spec.chip, "Apple chip");
+  if (spec.kind === "unified" || spec.kind === "apple") {
+    const found = find(presets.unified, spec.chip, "unified-memory chip");
+    const chip = spec.backend ? { ...found, backend: spec.backend } : found;
     return {
       cpu: { name: `${chip.name}-cpu`, cores: chip.cpu_cores, fp32_tflops: chip.cpu_tflops },
       ram: { size_gb: spec.memory_gb, bandwidth_gbps: chip.bandwidth_gbps },
       gpus: [{
         name: chip.name, vram_gb: spec.memory_gb, bandwidth_gbps: chip.bandwidth_gbps,
-        fp16_tflops: chip.gpu_tflops, backend: "metal",
+        fp16_tflops: chip.gpu_tflops, backend: chip.backend, vendor: chip.vendor,
       }],
       unified: true,
+      gpu_fraction: chip.gpu_fraction,
     };
   }
+  const gpus = spec.gpus.map((g) => find(presets.gpus, g, "GPU"));
   return {
     cpu: find(presets.cpus, spec.cpu, "CPU"),
     ram: { size_gb: spec.ram_gb, bandwidth_gbps: spec.ram_bandwidth_gbps },
-    gpus: spec.gpus.map((g) => find(presets.gpus, g, "GPU")),
+    gpus: spec.backend ? gpus.map((g) => ({ ...g, backend: spec.backend })) : gpus,
     unified: false,
   };
 }
@@ -74,7 +80,8 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
   let remaining = model.n_layers;
   let gpuUsedGb = 0;
   for (const gpu of system.gpus) {
-    const vram = system.unified ? system.ram.size_gb * eff.unified_gpu_fraction : gpu.vram_gb;
+    const frac = system.gpu_fraction || eff.unified_gpu_fraction;
+    const vram = system.unified ? system.ram.size_gb * frac : gpu.vram_gb;
     const usable = Math.max(0, vram - eff.vram_reserve_gb) * GB;
     const n = Math.min(remaining, Math.floor(usable / (layerW + layerKv)));
     if (n > 0) {

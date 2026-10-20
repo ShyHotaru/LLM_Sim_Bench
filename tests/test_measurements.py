@@ -3,7 +3,7 @@ import unittest
 from llm_sim_bench import calibrate, measurements
 from llm_sim_bench.cli import main
 from llm_sim_bench.estimator import Efficiency, estimate
-from llm_sim_bench.profiles import APPLE_PRESETS, MODEL_PRESETS, apple_system
+from llm_sim_bench.profiles import UNIFIED_PRESETS, MODEL_PRESETS, unified_system
 
 RECORDS = measurements.load()
 
@@ -99,11 +99,11 @@ class PresetTests(unittest.TestCase):
 
 class UnifiedMemoryTests(unittest.TestCase):
     def test_gpu_budget_is_a_share_of_unified_memory(self):
-        chip = APPLE_PRESETS["apple-m4-max-40c"]
+        chip = UNIFIED_PRESETS["apple-m4-max-40c"]
         llama70 = MODEL_PRESETS["llama-3.1-70b"]
         # ~43 GB of weights: 48 GB x 0.75 is too small for the GPU, 64 GB is enough.
-        small = estimate(apple_system(chip, 48), llama70)
-        big = estimate(apple_system(chip, 64), llama70)
+        small = estimate(unified_system(chip, 48), llama70)
+        big = estimate(unified_system(chip, 64), llama70)
         self.assertEqual([p.is_gpu for p in small.placements], [True, False])
         self.assertEqual([p.is_gpu for p in big.placements], [True])
         self.assertTrue(big.fits)

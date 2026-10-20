@@ -24,9 +24,9 @@ GB = 1e9
 class Efficiency:
     """Fraction of theoretical peak that real runtimes typically reach.
 
-    CUDA and Metal values are fitted to llama.cpp scoreboard data with
-    `llmsim calibrate` (Metal on 2026 builds only); CPU values are not
-    calibrated yet.
+    Values are fitted to measured llama.cpp results with `llmsim calibrate`
+    (Metal on 2026 builds only). Each backend has a bandwidth and compute
+    efficiency and a per-layer overhead; "cuda" uses the gpu_* fields.
     """
 
     gpu_bandwidth: float = 0.87
@@ -35,6 +35,15 @@ class Efficiency:
     metal_bandwidth: float = 0.99
     metal_compute: float = 0.66
     metal_layer_overhead_us: float = 72.0
+    rocm_bandwidth: float = 0.75
+    rocm_compute: float = 0.50
+    rocm_layer_overhead_us: float = 0.0
+    vulkan_bandwidth: float = 0.75
+    vulkan_compute: float = 0.50
+    vulkan_layer_overhead_us: float = 0.0
+    sycl_bandwidth: float = 0.75
+    sycl_compute: float = 0.50
+    sycl_layer_overhead_us: float = 0.0
     cpu_bandwidth: float = 0.60
     cpu_compute: float = 0.40
     cpu_layer_overhead_us: float = 0.0
@@ -44,11 +53,19 @@ class Efficiency:
 
     def for_backend(self, backend: str) -> tuple[float, float, float]:
         """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
-        if backend == "metal":
-            return self.metal_bandwidth, self.metal_compute, self.metal_layer_overhead_us / 1e6
-        if backend == "cpu":
-            return self.cpu_bandwidth, self.cpu_compute, self.cpu_layer_overhead_us / 1e6
-        return self.gpu_bandwidth, self.gpu_compute, self.gpu_layer_overhead_us / 1e6
+        p = backend_prefix(backend)
+        return (getattr(self, f"{p}_bandwidth"), getattr(self, f"{p}_compute"),
+                getattr(self, f"{p}_layer_overhead_us") / 1e6)
+
+
+BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu")
+
+
+def backend_prefix(backend: str) -> str:
+    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu")."""
+    if backend not in BACKENDS:
+        raise ValueError(f"Unknown backend {backend!r}. Known: {', '.join(BACKENDS)}")
+    return "gpu" if backend == "cuda" else backend
 
 
 @dataclass
@@ -113,7 +130,8 @@ def estimate(
     remaining = model.n_layers
     gpu_used_gb = 0.0
     for gpu in system.gpus:
-        vram = system.ram.size_gb * eff.unified_gpu_fraction if system.unified else gpu.vram_gb
+        frac = system.gpu_fraction or eff.unified_gpu_fraction
+        vram = system.ram.size_gb * frac if system.unified else gpu.vram_gb
         usable = max(0.0, vram - eff.vram_reserve_gb) * GB
         n = min(remaining, int(usable // (layer_w + layer_kv)))
         if n > 0:

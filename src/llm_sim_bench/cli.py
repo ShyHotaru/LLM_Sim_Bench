@@ -9,8 +9,9 @@ from dataclasses import replace
 
 from .estimator import Estimate, estimate, format_estimate
 from .mock import MockEngine, StreamStats, count_tokens
-from .profiles import (APPLE_PRESETS, CPU, CPU_PRESETS, GPU, GPU_PRESETS, MODEL_PRESETS,
-                       QUANT_BPW, RAM, Model, System, apple_system, lookup, ram_bandwidth_gbps)
+from .profiles import (CPU, CPU_PRESETS, GPU, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
+                       UNIFIED_PRESETS, Model, System, lookup, ram_bandwidth_gbps,
+                       unified_system)
 
 DEFAULTS = {
     "cpu": "ryzen7-5800x",
@@ -52,8 +53,8 @@ def build(args) -> tuple[System, Model, dict]:
 
     apple = args.apple or cfg.get("apple")
     if apple:
-        chip = lookup(APPLE_PRESETS, apple, "Apple chip")
-        system = apple_system(chip, float(args.ram_gb or cfg.get("ram", {}).get(
+        chip = lookup(UNIFIED_PRESETS, apple, "unified-memory chip")
+        system = unified_system(chip, float(args.ram_gb or cfg.get("ram", {}).get(
             "size_gb", max(chip.memory_options_gb))))
     else:
         gpu_specs = [] if args.no_gpu else (args.gpu if args.gpu else cfg["gpu"])
@@ -100,7 +101,7 @@ def _estimate(args):
 def cmd_list(_args):
     print("CPUs:  ", ", ".join(CPU_PRESETS))
     print("GPUs:  ", ", ".join(GPU_PRESETS))
-    print("Apple: ", ", ".join(APPLE_PRESETS))
+    print("SoCs:  ", ", ".join(UNIFIED_PRESETS))
     print("Models:", ", ".join(MODEL_PRESETS))
     print("Quants:", ", ".join(QUANT_BPW))
     print("RAM:    any 'ddrN-SPEED' kind, e.g. ddr4-3200, ddr5-6000")
@@ -216,7 +217,8 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--ram-channels", type=int, help="number of memory channels")
     g.add_argument("--gpu", action="append", help="GPU preset (repeat for multi-GPU)")
     g.add_argument("--no-gpu", action="store_true", help="CPU-only system")
-    g.add_argument("--apple", help="Apple Silicon chip preset; --ram-gb sets unified memory")
+    g.add_argument("--apple", "--soc", dest="apple",
+                   help="unified-memory chip preset (Mac, DGX Spark, ...); --ram-gb sets memory")
     m = common.add_argument_group("model")
     m.add_argument("--model", help="model preset")
     m.add_argument("--quant", help="quantization, e.g. Q4_K_M")

@@ -118,5 +118,19 @@
   "time.ms": "{n} ms",
   "time.s": "{n} s",
   "time.minSec": "{m}m {s}s",
-  "time.hourMin": "{h}h {m}m"
+  "time.hourMin": "{h}h {m}m",
+
+  "platform.unified": "Unified-memory PC",
+  "field.system": "System",
+  "field.backend": "Backend",
+  "backend.default": "Default for the GPU",
+  "option.soc": "{name} · {bw} GB/s",
+  "gpu.segment.consumer": "Consumer",
+  "gpu.segment.workstation": "Workstation",
+  "gpu.segment.datacenter": "Data center",
+  "warn.title": "Estimate only",
+  "warn.uncalibrated": "No measured {backend} results yet, so its speeds are uncalibrated guesses.",
+  "warn.decodeUncalibrated": "{backend} generation speed is not calibrated yet (no measurements with a known memory configuration).",
+  "warn.prefillUncalibrated": "{backend} prompt processing speed is not calibrated yet.",
+  "warn.moe": "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic."
 }

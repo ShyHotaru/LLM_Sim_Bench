@@ -361,7 +361,7 @@
  {
   "input": {
    "system": {
-    "kind": "apple",
+    "kind": "unified",
     "chip": "apple-m4-max-40c",
     "memory_gb": 48
    },
@@ -422,7 +422,7 @@
  {
   "input": {
    "system": {
-    "kind": "apple",
+    "kind": "unified",
     "chip": "apple-m2-ultra-76c",
     "memory_gb": 192
    },
@@ -470,7 +470,7 @@
  {
   "input": {
    "system": {
-    "kind": "apple",
+    "kind": "unified",
     "chip": "apple-m1-8c",
     "memory_gb": 8
    },

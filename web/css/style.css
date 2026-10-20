@@ -389,3 +389,13 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 
 .measured .old-build { color: var(--muted); font-size: 0.75rem; }
 .measured p.old-build { margin: 6px 0 0; }
+
+.warnings {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.warnings strong { color: var(--warn); }
+.warnings ul { margin: 4px 0 0; padding-left: 18px; }

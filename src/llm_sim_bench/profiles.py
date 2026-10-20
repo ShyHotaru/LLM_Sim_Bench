@@ -16,7 +16,10 @@ class GPU:
     vram_gb: float
     bandwidth_gbps: float  # memory bandwidth, GB/s
     fp16_tflops: float  # dense FP16 tensor throughput
-    backend: str = "cuda"  # selects efficiency factors: "cuda" or "metal"
+    backend: str = "cuda"  # default runtime backend: "cuda", "metal", "rocm", "vulkan", "sycl"
+    vendor: str = ""
+    segment: str = ""  # "consumer", "workstation" or "datacenter"
+    label: str = ""  # display name, e.g. "Radeon RX 7900 XTX"
 
 
 @dataclass(frozen=True)
@@ -58,18 +61,25 @@ class System:
     cpu: CPU
     ram: RAM
     gpus: tuple[GPU, ...] = ()
-    unified: bool = False  # GPU shares system RAM (Apple Silicon); GPU vram_gb is ignored
+    unified: bool = False  # GPU shares system RAM; GPU vram_gb is ignored
+    gpu_fraction: float | None = None  # unified: share of RAM the GPU may use (default: Efficiency)
 
 
 @dataclass(frozen=True)
-class AppleChip:
+class UnifiedChip:
+    """A system on a chip whose CPU and GPU share one memory pool (Apple Silicon, DGX Spark)."""
+
     name: str
     gpu_cores: int
     bandwidth_gbps: float
-    gpu_tflops: float  # FP16 shader throughput (same rate as FP32 on Apple GPUs)
+    gpu_tflops: float  # dense FP16 throughput of the GPU
     cpu_cores: int
     cpu_tflops: float
     memory_options_gb: tuple[int, ...]
+    vendor: str = "Apple"
+    backend: str = "metal"
+    gpu_fraction: float | None = None  # share of memory the GPU may use; None: Efficiency default
+    label: str = ""  # display name, e.g. "M4 Max" or "DGX Spark"
 
 
 # Effective bits per weight for common llama.cpp / GGUF quantizations.
@@ -179,13 +189,13 @@ _APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404, "M5": 
 
 
 def _apple(name: str, gpu_cores: int, bw: float, cpu_cores: int, cpu_tflops: float,
-           memory: tuple[int, ...]) -> AppleChip:
+           memory: tuple[int, ...]) -> UnifiedChip:
     tflops = round(gpu_cores * _APPLE_CORE_GFLOPS[name.split()[0]], 1)
     slug = f"apple-{name.lower().replace(' ', '-')}-{gpu_cores}c"
-    return AppleChip(slug, gpu_cores, bw, tflops, cpu_cores, cpu_tflops, memory)
+    return UnifiedChip(slug, gpu_cores, bw, tflops, cpu_cores, cpu_tflops, memory, label=name)
 
 
-APPLE_PRESETS: dict[str, AppleChip] = {
+APPLE_PRESETS: dict[str, UnifiedChip] = {
     a.name: a
     for a in [
         _apple("M1", 7, 68, 8, 0.6, (8, 16)),
@@ -229,13 +239,18 @@ APPLE_PRESETS: dict[str, AppleChip] = {
 }
 
 
-def apple_system(chip: AppleChip, memory_gb: float) -> System:
-    """A Mac where CPU and GPU share one pool of unified memory."""
+UNIFIED_PRESETS: dict[str, UnifiedChip] = {**APPLE_PRESETS}
+
+
+def unified_system(chip: UnifiedChip, memory_gb: float) -> System:
+    """A Mac or other SoC system where CPU and GPU share one pool of unified memory."""
     return System(
         cpu=CPU(f"{chip.name}-cpu", chip.cpu_cores, chip.cpu_tflops),
         ram=RAM(memory_gb, chip.bandwidth_gbps, "unified"),
-        gpus=(GPU(chip.name, memory_gb, chip.bandwidth_gbps, chip.gpu_tflops, "metal"),),
+        gpus=(GPU(chip.name, memory_gb, chip.bandwidth_gbps, chip.gpu_tflops, chip.backend,
+                  chip.vendor),),
         unified=True,
+        gpu_fraction=chip.gpu_fraction,
     )
 
 

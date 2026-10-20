@@ -30,7 +30,9 @@ const DEFAULT_CONFIG = {
   ramKind: "ddr4-3200",
   ramChannels: 2,
   chip: "apple-m4-max-40c",
+  soc: "",
   memoryGb: 64,
+  backend: "",
   model: "qwen3-32b",
   quant: "Q4_K_M",
   context: 8192,
@@ -71,20 +73,6 @@ function select(key, options, value, extra = {}) {
     options.map(([v, label]) => h("option", { value: String(v), selected: String(v) === String(value) }, label)));
 }
 
-// CPU presets grouped by vendor and segment, e.g. "AMD · Server".
-function cpuSelect(value, extra) {
-  const groups = new Map();
-  for (const c of P.cpus) {
-    const key = c.vendor ? `${c.vendor} · ${t(`cpu.segment.${c.segment}`)}` : "";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(c);
-  }
-  const option = (c) => h("option", { value: c.name, selected: c.name === value },
-    t("option.cpu", { name: c.name, cores: c.cores }));
-  return h("select", { "data-k": "cpu", ...extra },
-    [...groups].map(([label, cpus]) => (label ? h("optgroup", { label }, cpus.map(option)) : cpus.map(option))));
-}
-
 function field(label, control) {
   return h("label", {}, label, control);
 }
@@ -116,24 +104,58 @@ function modelLabel(m) {
   return `${m.name} (${size})`;
 }
 
-// "apple-m4-max-40c" -> "M4 Max"
-function chipName(a) {
-  const [gen, ...tier] = a.name.replace(/^apple-/, "").replace(/-\d+c$/, "").split("-");
-  return [gen.toUpperCase(), ...tier.map((t) => t[0].toUpperCase() + t.slice(1))].join(" ");
-}
+const BACKEND_NAMES = { cuda: "CUDA", metal: "Metal", rocm: "ROCm", vulkan: "Vulkan", sycl: "SYCL", cpu: "CPU" };
+// Backends llama.cpp offers per GPU vendor; the first is the default.
+const VENDOR_BACKENDS = { NVIDIA: ["cuda", "vulkan"], AMD: ["rocm", "vulkan"], Intel: ["sycl", "vulkan"], Apple: ["metal"] };
+
+const chipName = (a) => a.label || a.name;
 
 function chipLabel(a) {
   return t("option.chip", { name: chipName(a), cores: a.gpu_cores, bw: a.bandwidth_gbps });
 }
 
-// "rtx4070tisuper-16gb" -> "RTX 4070 Ti SUPER"
-function gpuName(name) {
-  const m = /^rtx(\d+)(ti)?(super)?-/.exec(name);
-  return m ? `RTX ${m[1]}${m[2] ? " Ti" : ""}${m[3] ? " SUPER" : ""}` : name;
+function socLabel(a) {
+  return t("option.soc", { name: chipName(a), bw: a.bandwidth_gbps });
 }
 
+const gpuName = (name) => P.gpus.find((g) => g.name === name)?.label || name;
+
 function gpuLabel(g) {
-  return `${gpuName(g.name)} · ${g.vram_gb} GB`;
+  return `${g.label || g.name} · ${g.vram_gb} GB`;
+}
+
+// Options grouped as "<vendor> · <segment>" for GPUs and CPUs, "<vendor>" for SoCs.
+function groupedSelect(key, items, value, labelOf, groupOf, extra) {
+  const groups = new Map();
+  for (const x of items) {
+    const g = groupOf(x);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(x);
+  }
+  const option = (x) => h("option", { value: x.name, selected: x.name === value }, labelOf(x));
+  return h("select", { "data-k": key, ...extra },
+    [...groups].map(([label, xs]) => (label ? h("optgroup", { label }, xs.map(option)) : xs.map(option))));
+}
+
+const segmentGroup = (prefix) => (x) => (x.vendor ? `${x.vendor} · ${t(`${prefix}.${x.segment}`)}` : "");
+const appleChips = () => P.unified.filter((a) => a.vendor === "Apple");
+const otherChips = () => P.unified.filter((a) => a.vendor !== "Apple");
+
+function activeChip(cfg) {
+  if (cfg.platform === "apple") return P.unified.find((a) => a.name === cfg.chip);
+  if (cfg.platform === "unified") return P.unified.find((a) => a.name === cfg.soc);
+  return null;
+}
+
+// Backend choices for a configuration: the vendors' defaults plus shared ones (Vulkan).
+function backendChoices(cfg) {
+  const vendors = cfg.platform === "pc"
+    ? [...new Set(cfg.gpus.map((g) => P.gpus.find((x) => x.name === g)?.vendor).filter(Boolean))]
+    : [activeChip(cfg)?.vendor].filter(Boolean);
+  if (!vendors.length) return [];
+  const lists = vendors.map((v) => VENDOR_BACKENDS[v] || ["vulkan"]);
+  const shared = lists[0].filter((b) => lists.every((l) => l.includes(b)) && b !== lists[0][0]);
+  return ["", ...shared];
 }
 
 // ---------- state ----------
@@ -141,15 +163,20 @@ function gpuLabel(g) {
 function sanitizeConfig(c) {
   const cfg = { ...DEFAULT_CONFIG, ...(c && typeof c === "object" ? c : {}) };
   const has = (list, name) => list.some((x) => x.name === name);
-  cfg.platform = cfg.platform === "apple" ? "apple" : "pc";
+  cfg.platform = ["apple", "unified"].includes(cfg.platform) ? cfg.platform : "pc";
   cfg.gpus = Array.isArray(cfg.gpus) ? cfg.gpus.filter((g) => has(P.gpus, g)).slice(0, 8) : [];
   if (!has(P.cpus, cfg.cpu)) cfg.cpu = DEFAULT_CONFIG.cpu;
   if (!RAM_SIZES.includes(Number(cfg.ramGb))) cfg.ramGb = DEFAULT_CONFIG.ramGb;
   if (!ramKinds().includes(cfg.ramKind)) cfg.ramKind = DEFAULT_CONFIG.ramKind;
   if (!RAM_CHANNELS.includes(Number(cfg.ramChannels))) cfg.ramChannels = DEFAULT_CONFIG.ramChannels;
-  if (!has(P.apple, cfg.chip)) cfg.chip = DEFAULT_CONFIG.chip;
-  const chip = P.apple.find((a) => a.name === cfg.chip);
-  if (!chip.memory_options_gb.includes(Number(cfg.memoryGb))) cfg.memoryGb = Math.max(...chip.memory_options_gb);
+  if (!has(appleChips(), cfg.chip)) cfg.chip = DEFAULT_CONFIG.chip;
+  if (!has(otherChips(), cfg.soc)) cfg.soc = otherChips()[0]?.name || "";
+  if (cfg.platform === "unified" && !cfg.soc) cfg.platform = "pc";
+  const chip = activeChip(cfg);
+  if (chip && !chip.memory_options_gb.includes(Number(cfg.memoryGb))) {
+    cfg.memoryGb = Math.max(...chip.memory_options_gb);
+  }
+  if (!backendChoices(cfg).includes(cfg.backend)) cfg.backend = "";
   if (!has(P.models, cfg.model)) cfg.model = DEFAULT_CONFIG.model;
   if (!(cfg.quant in P.quant_bpw)) cfg.quant = DEFAULT_CONFIG.quant;
   if (!CONTEXTS.includes(Number(cfg.context))) cfg.context = DEFAULT_CONFIG.context;
@@ -179,10 +206,11 @@ function saveState() {
 // ---------- estimate ----------
 
 function systemSpec(cfg) {
-  if (cfg.platform === "apple") return { kind: "apple", chip: cfg.chip, memory_gb: cfg.memoryGb };
+  const backend = cfg.backend || undefined;
+  if (cfg.platform !== "pc") return { kind: "unified", chip: activeChip(cfg).name, memory_gb: cfg.memoryGb, backend };
   return {
     kind: "pc", cpu: cfg.cpu, ram_gb: cfg.ramGb,
-    ram_bandwidth_gbps: ramBandwidthGbps(cfg.ramKind, cfg.ramChannels), gpus: cfg.gpus,
+    ram_bandwidth_gbps: ramBandwidthGbps(cfg.ramKind, cfg.ramChannels), gpus: cfg.gpus, backend,
   };
 }
 
@@ -216,31 +244,42 @@ function renderConfig(cfg, i) {
       : h("h2", {}, h("span", { class: "tag", "aria-hidden": "true" }, LETTERS[i]), t("config.title", { letter: LETTERS[i] })),
     h("div", { class: "segmented", role: "group", "aria-label": t("config.platform") },
       h("button", { type: "button", "data-act": "platform", "data-v": "pc", "aria-pressed": String(cfg.platform === "pc") }, t("platform.pc")),
-      h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac"))),
+      h("button", { type: "button", "data-act": "platform", "data-v": "apple", "aria-pressed": String(cfg.platform === "apple") }, t("platform.mac")),
+      otherChips().length ? h("button", { type: "button", "data-act": "platform", "data-v": "unified", "aria-pressed": String(cfg.platform === "unified") }, t("platform.unified")) : null),
     state.configs.length > 1 ? h("button", { type: "button", class: "link", "data-act": "remove-config" }, t("config.remove")) : null));
 
   const settings = h("div", { class: "config-settings" });
   settings.append(h("h3", {}, t("section.hardware")));
-  if (cfg.platform === "apple") {
-    const chip = P.apple.find((a) => a.name === cfg.chip);
+  if (cfg.platform !== "pc") {
+    const chip = activeChip(cfg);
+    const chipSelect = cfg.platform === "apple"
+      ? select("chip", appleChips().map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })
+      : groupedSelect("soc", otherChips(), cfg.soc, socLabel, (a) => a.vendor, { "data-focus-id": `${i}-soc` });
     settings.append(h("div", { class: "fields" },
-      field(t("field.chip"), select("chip", P.apple.map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })),
+      field(t(cfg.platform === "apple" ? "field.chip" : "field.system"), chipSelect),
       field(t("field.unifiedMemory"), select("memoryGb", chip.memory_options_gb.map((m) => [m, `${m} GB`]), cfg.memoryGb, { "data-focus-id": `${i}-mem` }))));
   } else {
-    const gpuOptions = P.gpus.map((g) => [g.name, gpuLabel(g)]);
     cfg.gpus.forEach((g, j) => {
       settings.append(h("div", { class: "gpu-row" },
-        field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }), select("gpu", gpuOptions, g, { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
+        field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }),
+          groupedSelect("gpu", P.gpus, g, gpuLabel, segmentGroup("gpu.segment"), { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
         field(t("field.vram"), h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
         h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": t("gpu.remove", { n: j + 1 }) }, "✕")));
     });
     settings.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
       cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
     settings.append(h("div", { class: "fields" },
-      field(t("field.cpu"), cpuSelect(cfg.cpu, { "data-focus-id": `${i}-cpu` })),
+      field(t("field.cpu"), groupedSelect("cpu", P.cpus, cfg.cpu, (c) => t("option.cpu", { name: c.name, cores: c.cores }),
+        segmentGroup("cpu.segment"), { "data-focus-id": `${i}-cpu` })),
       field(t("field.ram"), select("ramGb", RAM_SIZES.map((s) => [s, `${s} GB`]), cfg.ramGb, { "data-focus-id": `${i}-ram` })),
       field(t("field.ramType"), select("ramKind", ramKinds().map((k) => [k, k.toUpperCase()]), cfg.ramKind, { "data-focus-id": `${i}-kind` })),
       field(t("field.channels"), select("ramChannels", RAM_CHANNELS.map((c) => [c, `${c} (${ramBandwidthGbps(cfg.ramKind, c).toFixed(0)} GB/s)`]), cfg.ramChannels, { "data-focus-id": `${i}-ch` }))));
+  }
+
+  const backends = backendChoices(cfg);
+  if (backends.length > 1) {
+    settings.append(h("div", { class: "fields" }, field(t("field.backend"), select("backend",
+      backends.map((b) => [b, b ? BACKEND_NAMES[b] : t("backend.default")]), cfg.backend, { "data-focus-id": `${i}-backend` }))));
   }
 
   settings.append(h("h3", {}, t("section.model")));
@@ -285,6 +324,7 @@ function renderResult(cfg) {
       metric(t("metric.reply", { n: fmtInt(state.maxTokens) }), fmtTime(ttft + gen))),
     renderBars(system, est),
     notes.length ? h("ul", { class: "notes" }, notes.map((note) => h("li", {}, note))) : null,
+    renderWarnings(system, est),
     renderMeasured(cfg));
   return result;
 }
@@ -300,6 +340,25 @@ function localizedNotes(cfg, system, est) {
   if (cpu && !est.fits) notes.push(t("note.ram", { need: gb(est.ram_needed_gb), free: gb(est.ram_free_gb) }));
   if (cpu && system.gpus.length) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
   return notes;
+}
+
+// Point out where the numbers rest on uncalibrated assumptions rather than measurements.
+function renderWarnings(system, est) {
+  const backends = new Set(est.placements.map((p) => (p.is_gpu
+    ? system.gpus.find((g) => g.name === p.device).backend : "cpu")));
+  const items = [];
+  for (const b of backends) {
+    const tg = P.calibration[`${b}/tg`];
+    const pp = P.calibration[`${b}/pp`];
+    const backend = BACKEND_NAMES[b];
+    if (!tg && !pp) items.push(t("warn.uncalibrated", { backend }));
+    else if (!tg) items.push(t("warn.decodeUncalibrated", { backend }));
+    else if (!pp) items.push(t("warn.prefillUncalibrated", { backend }));
+  }
+  if (est.model.active_params_b) items.push(t("warn.moe"));
+  if (!items.length) return null;
+  return h("div", { class: "warnings", role: "note" },
+    h("strong", {}, t("warn.title")), h("ul", {}, items.map((x) => h("li", {}, x))));
 }
 
 function metric(k, v) {
@@ -355,15 +414,16 @@ function renderBars(system, est) {
 }
 
 function renderMeasured(cfg) {
-  const preset = cfg.platform === "apple" ? cfg.chip : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
+  const preset = cfg.platform !== "pc" ? activeChip(cfg).name : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
   const rows = preset ? P.measurements.filter((m) => m.preset === preset) : [];
   if (!rows.length) return null;
   const body = rows.map((m) => {
-    const { est } = compute(cfg, m.model, m.quant, m.n_prompt + m.n_gen);
+    // Simulate with the backend the measurement used.
+    const { est } = compute({ ...cfg, backend: m.backend.toLowerCase() }, m.model, m.quant, m.n_prompt + m.n_gen);
     const tgEst = m.n_gen / genTime(est, 0, m.n_gen + 1);
-    const fa = m.backend === "CUDA" ? (m.flash_attn ? " · FA" : "") : "";
+    const fa = m.flash_attn ? " · FA" : "";
     return h("tr", {},
-      h("td", {}, `${m.quant}${fa}`, m.old_build ? h("span", { class: "old-build" }, ` ${t("measured.oldBuild")}`) : null),
+      h("td", {}, `${m.backend} · ${m.quant}${fa}`, m.old_build ? h("span", { class: "old-build" }, ` ${t("measured.oldBuild")}`) : null),
       h("td", {}, fmtTps(m.tg_tps)), h("td", {}, fmtTps(tgEst)),
       h("td", {}, fmtTps(m.pp_tps)), h("td", {}, fmtTps(est.prefill_tps)));
   });
@@ -493,7 +553,7 @@ function renderStreams() {
     let tok = "";
     try {
       const m = P.models.find((x) => x.name === cfg.model);
-      const hw = cfg.platform === "apple" ? chipName(P.apple.find((a) => a.name === cfg.chip))
+      const hw = cfg.platform !== "pc" ? chipName(activeChip(cfg))
         : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : t("mock.cpuOnly"));
       label = `${hw} · ${m.name} ${cfg.quant}`;
       tok = tokenizerLabel(tokenizerFor(cfg));

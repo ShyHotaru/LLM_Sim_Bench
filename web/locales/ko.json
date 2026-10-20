@@ -118,5 +118,19 @@
   "time.ms": "{n}ms",
   "time.s": "{n}초",
   "time.minSec": "{m}분 {s}초",
-  "time.hourMin": "{h}시간 {m}분"
+  "time.hourMin": "{h}시간 {m}분",
+
+  "platform.unified": "통합 메모리 PC",
+  "field.system": "시스템",
+  "field.backend": "백엔드",
+  "backend.default": "GPU 기본값",
+  "option.soc": "{name} · {bw} GB/s",
+  "gpu.segment.consumer": "소비자용",
+  "gpu.segment.workstation": "워크스테이션",
+  "gpu.segment.datacenter": "데이터센터",
+  "warn.title": "추정치 안내",
+  "warn.uncalibrated": "{backend} 실측 데이터가 아직 없어, 속도는 보정되지 않은 추정치입니다.",
+  "warn.decodeUncalibrated": "{backend} 생성 속도는 아직 보정되지 않았습니다 (메모리 구성이 확인된 실측이 없음).",
+  "warn.prefillUncalibrated": "{backend} 프롬프트 처리 속도는 아직 보정되지 않았습니다.",
+  "warn.moe": "MoE(전문가 혼합) 모델의 라우팅 비용은 반영되지 않아, 생성 속도가 실제보다 빠르게 나올 수 있습니다."
 }

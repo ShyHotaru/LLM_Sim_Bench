@@ -8,13 +8,13 @@ Regenerate with `llmsim export-web` after changing presets, data or the model.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from . import calibrate, measurements
 from .estimator import Efficiency, estimate
-from .profiles import (APPLE_PRESETS, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
-                       System, apple_system, lookup)
+from .profiles import (CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM, UNIFIED_PRESETS,
+                       System, lookup, unified_system)
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 TOKENIZER_RATIOS = Path(__file__).resolve().parents[2] / "data" / "tokenizer_ratios.json"
@@ -23,14 +23,20 @@ TOKENIZER_RATIOS = Path(__file__).resolve().parents[2] / "data" / "tokenizer_rat
 def build_system(spec: dict) -> System:
     """Build a System from the JSON spec shared with the web app.
 
-    {"kind": "pc", "cpu": name, "ram_gb": n, "ram_bandwidth_gbps": n, "gpus": [names]}
-    {"kind": "apple", "chip": name, "memory_gb": n}
+    {"kind": "pc", "cpu": name, "ram_gb": n, "ram_bandwidth_gbps": n, "gpus": [names],
+     "backend": optional override of every GPU's backend, e.g. "vulkan"}
+    {"kind": "unified", "chip": name, "memory_gb": n}
     """
-    if spec["kind"] == "apple":
-        return apple_system(lookup(APPLE_PRESETS, spec["chip"], "Apple chip"), spec["memory_gb"])
+    if spec["kind"] in ("unified", "apple"):
+        chip = lookup(UNIFIED_PRESETS, spec["chip"], "unified-memory chip")
+        if spec.get("backend"):
+            chip = replace(chip, backend=spec["backend"])
+        return unified_system(chip, spec["memory_gb"])
+    gpus = tuple(lookup(GPU_PRESETS, g, "GPU") for g in spec["gpus"])
+    if spec.get("backend"):
+        gpus = tuple(replace(g, backend=spec["backend"]) for g in gpus)
     return System(lookup(CPU_PRESETS, spec["cpu"], "CPU"),
-                  RAM(spec["ram_gb"], spec["ram_bandwidth_gbps"]),
-                  tuple(lookup(GPU_PRESETS, g, "GPU") for g in spec["gpus"]))
+                  RAM(spec["ram_gb"], spec["ram_bandwidth_gbps"]), gpus)
 
 
 GOLDEN_CASES = [
@@ -46,11 +52,11 @@ GOLDEN_CASES = [
       "gpus": ["rtx5090-32gb"]}, "gpt-oss-120b", "MXFP4", 131072, 16),
     ({"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 32, "ram_bandwidth_gbps": 51.2,
       "gpus": ["rtx4060ti-16gb"]}, "qwen3-30b-a3b", "Q4_K_M", 16384, 4),
-    ({"kind": "apple", "chip": "apple-m4-max-40c", "memory_gb": 48},
+    ({"kind": "unified", "chip": "apple-m4-max-40c", "memory_gb": 48},
      "llama-3.1-70b", "Q4_K_M", 8192, 16),
-    ({"kind": "apple", "chip": "apple-m2-ultra-76c", "memory_gb": 192},
+    ({"kind": "unified", "chip": "apple-m2-ultra-76c", "memory_gb": 192},
      "qwen3-32b", "Q6_K", 32768, 16),
-    ({"kind": "apple", "chip": "apple-m1-8c", "memory_gb": 8},
+    ({"kind": "unified", "chip": "apple-m1-8c", "memory_gb": 8},
      "llama-3.2-3b", "Q4_0", 4096, 16),
 ]
 
@@ -82,7 +88,7 @@ def presets(records: list[dict]) -> dict:
         "quant_bpw": QUANT_BPW,
         "cpus": [asdict(c) for c in CPU_PRESETS.values()],
         "gpus": [asdict(g) for g in GPU_PRESETS.values()],
-        "apple": [asdict(a) for a in APPLE_PRESETS.values()],
+        "unified": [asdict(a) for a in UNIFIED_PRESETS.values()],
         "models": [asdict(m) for m in MODEL_PRESETS.values()],
         "tokenizers": json.loads(TOKENIZER_RATIOS.read_text(encoding="utf-8")),
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),

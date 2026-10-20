@@ -6,6 +6,15 @@
   "metal_bandwidth": 0.99,
   "metal_compute": 0.66,
   "metal_layer_overhead_us": 72.0,
+  "rocm_bandwidth": 0.75,
+  "rocm_compute": 0.5,
+  "rocm_layer_overhead_us": 0.0,
+  "vulkan_bandwidth": 0.75,
+  "vulkan_compute": 0.5,
+  "vulkan_layer_overhead_us": 0.0,
+  "sycl_bandwidth": 0.75,
+  "sycl_compute": 0.5,
+  "sycl_layer_overhead_us": 0.0,
   "cpu_bandwidth": 0.6,
   "cpu_compute": 0.4,
   "cpu_layer_overhead_us": 0.0,
@@ -338,115 +347,163 @@
    "vram_gb": 11,
    "bandwidth_gbps": 616,
    "fp16_tflops": 108,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx3060-12gb",
    "vram_gb": 12,
    "bandwidth_gbps": 360,
    "fp16_tflops": 51,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx3080-10gb",
    "vram_gb": 10,
    "bandwidth_gbps": 760,
    "fp16_tflops": 119,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx3090-24gb",
    "vram_gb": 24,
    "bandwidth_gbps": 936,
    "fp16_tflops": 142,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx3090ti-24gb",
    "vram_gb": 24,
    "bandwidth_gbps": 1008,
    "fp16_tflops": 160,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4060ti-8gb",
    "vram_gb": 8,
    "bandwidth_gbps": 288,
    "fp16_tflops": 88,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4060ti-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 288,
    "fp16_tflops": 88,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4070tisuper-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 672,
    "fp16_tflops": 176,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4080-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 717,
    "fp16_tflops": 195,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4080super-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 736,
    "fp16_tflops": 209,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx4090-24gb",
    "vram_gb": 24,
    "bandwidth_gbps": 1008,
    "fp16_tflops": 330,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx5060ti-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 448,
    "fp16_tflops": 95,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx5070-12gb",
    "vram_gb": 12,
    "bandwidth_gbps": 672,
    "fp16_tflops": 124,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx5070ti-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 896,
    "fp16_tflops": 176,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx5080-16gb",
    "vram_gb": 16,
    "bandwidth_gbps": 960,
    "fp16_tflops": 225,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   },
   {
    "name": "rtx5090-32gb",
    "vram_gb": 32,
    "bandwidth_gbps": 1792,
    "fp16_tflops": 419,
-   "backend": "cuda"
+   "backend": "cuda",
+   "vendor": "",
+   "segment": "",
+   "label": ""
   }
  ],
- "apple": [
+ "unified": [
   {
    "name": "apple-m1-7c",
    "gpu_cores": 7,
@@ -457,7 +514,11 @@
    "memory_options_gb": [
     8,
     16
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1"
   },
   {
    "name": "apple-m1-8c",
@@ -469,7 +530,11 @@
    "memory_options_gb": [
     8,
     16
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1"
   },
   {
    "name": "apple-m1-pro-14c",
@@ -481,7 +546,11 @@
    "memory_options_gb": [
     16,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Pro"
   },
   {
    "name": "apple-m1-pro-16c",
@@ -493,7 +562,11 @@
    "memory_options_gb": [
     16,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Pro"
   },
   {
    "name": "apple-m1-max-24c",
@@ -505,7 +578,11 @@
    "memory_options_gb": [
     32,
     64
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Max"
   },
   {
    "name": "apple-m1-max-32c",
@@ -517,7 +594,11 @@
    "memory_options_gb": [
     32,
     64
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Max"
   },
   {
    "name": "apple-m1-ultra-48c",
@@ -529,7 +610,11 @@
    "memory_options_gb": [
     64,
     128
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Ultra"
   },
   {
    "name": "apple-m1-ultra-64c",
@@ -541,7 +626,11 @@
    "memory_options_gb": [
     64,
     128
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M1 Ultra"
   },
   {
    "name": "apple-m2-8c",
@@ -554,7 +643,11 @@
     8,
     16,
     24
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2"
   },
   {
    "name": "apple-m2-10c",
@@ -567,7 +660,11 @@
     8,
     16,
     24
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2"
   },
   {
    "name": "apple-m2-pro-16c",
@@ -579,7 +676,11 @@
    "memory_options_gb": [
     16,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Pro"
   },
   {
    "name": "apple-m2-pro-19c",
@@ -591,7 +692,11 @@
    "memory_options_gb": [
     16,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Pro"
   },
   {
    "name": "apple-m2-max-30c",
@@ -604,7 +709,11 @@
     32,
     64,
     96
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Max"
   },
   {
    "name": "apple-m2-max-38c",
@@ -617,7 +726,11 @@
     32,
     64,
     96
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Max"
   },
   {
    "name": "apple-m2-ultra-60c",
@@ -630,7 +743,11 @@
     64,
     128,
     192
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Ultra"
   },
   {
    "name": "apple-m2-ultra-76c",
@@ -643,7 +760,11 @@
     64,
     128,
     192
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M2 Ultra"
   },
   {
    "name": "apple-m3-10c",
@@ -656,7 +777,11 @@
     8,
     16,
     24
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3"
   },
   {
    "name": "apple-m3-pro-14c",
@@ -668,7 +793,11 @@
    "memory_options_gb": [
     18,
     36
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Pro"
   },
   {
    "name": "apple-m3-pro-18c",
@@ -680,7 +809,11 @@
    "memory_options_gb": [
     18,
     36
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Pro"
   },
   {
    "name": "apple-m3-max-30c",
@@ -692,7 +825,11 @@
    "memory_options_gb": [
     36,
     96
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Max"
   },
   {
    "name": "apple-m3-max-40c",
@@ -705,7 +842,11 @@
     48,
     64,
     128
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Max"
   },
   {
    "name": "apple-m3-ultra-60c",
@@ -717,7 +858,11 @@
    "memory_options_gb": [
     96,
     256
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Ultra"
   },
   {
    "name": "apple-m3-ultra-80c",
@@ -730,7 +875,11 @@
     96,
     256,
     512
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M3 Ultra"
   },
   {
    "name": "apple-m4-10c",
@@ -743,7 +892,11 @@
     16,
     24,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M4"
   },
   {
    "name": "apple-m4-pro-16c",
@@ -755,7 +908,11 @@
    "memory_options_gb": [
     24,
     48
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M4 Pro"
   },
   {
    "name": "apple-m4-pro-20c",
@@ -768,7 +925,11 @@
     24,
     48,
     64
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M4 Pro"
   },
   {
    "name": "apple-m4-max-32c",
@@ -779,7 +940,11 @@
    "cpu_tflops": 1.5,
    "memory_options_gb": [
     36
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M4 Max"
   },
   {
    "name": "apple-m4-max-40c",
@@ -792,7 +957,11 @@
     48,
     64,
     128
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M4 Max"
   },
   {
    "name": "apple-m5-8c",
@@ -805,7 +974,11 @@
     16,
     24,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5"
   },
   {
    "name": "apple-m5-10c",
@@ -818,7 +991,11 @@
     16,
     24,
     32
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5"
   },
   {
    "name": "apple-m5-pro-16c",
@@ -830,7 +1007,11 @@
    "memory_options_gb": [
     24,
     48
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Pro"
   },
   {
    "name": "apple-m5-pro-20c",
@@ -843,7 +1024,11 @@
     24,
     48,
     64
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Pro"
   },
   {
    "name": "apple-m5-max-32c",
@@ -854,7 +1039,11 @@
    "cpu_tflops": 1.9,
    "memory_options_gb": [
     36
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Max"
   },
   {
    "name": "apple-m5-max-40c",
@@ -867,7 +1056,11 @@
     48,
     64,
     128
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Max"
   },
   {
    "name": "apple-m5-ultra-64c",
@@ -879,7 +1072,11 @@
    "memory_options_gb": [
     96,
     256
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Ultra"
   },
   {
    "name": "apple-m5-ultra-80c",
@@ -892,7 +1089,11 @@
     96,
     256,
     512
-   ]
+   ],
+   "vendor": "Apple",
+   "backend": "metal",
+   "gpu_fraction": null,
+   "label": "M5 Ultra"
   }
  ],
  "models": [

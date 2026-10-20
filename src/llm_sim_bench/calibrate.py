@@ -11,16 +11,17 @@ from __future__ import annotations
 import statistics
 from dataclasses import dataclass, replace
 
-from .estimator import Efficiency, estimate
-from .profiles import (APPLE_PRESETS, CPU, GPU_PRESETS, MODEL_PRESETS, RAM, System,
-                       apple_system)
+from .estimator import BACKENDS, Efficiency, backend_prefix, estimate
+from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRESETS, System,
+                       ram_bandwidth_gbps, unified_system)
 
 # Device used for records whose model fits fully in VRAM; it never runs layers.
 _HOST = (CPU("host", 8, 1.0), RAM(128, 51.2))
-_BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal"}
+_BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal", "ROCm": "rocm", "Vulkan": "vulkan",
+                "SYCL": "sycl", "CPU": "cpu"}
 # Peak hardware with no overhead: the fit's x values.
-_UNIT = Efficiency(gpu_bandwidth=1, gpu_compute=1, gpu_layer_overhead_us=0,
-                   metal_bandwidth=1, metal_compute=1, metal_layer_overhead_us=0)
+_UNIT = Efficiency(**{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
+                      for k, v in (("bandwidth", 1), ("compute", 1), ("layer_overhead_us", 0))})
 
 
 @dataclass
@@ -46,54 +47,75 @@ def _rel(pred, meas):
     return None if pred is None or meas is None else pred / meas - 1
 
 
+def _ram_bandwidth(hw: dict) -> float | None:
+    """Bandwidth from a stated memory type and channel count, else None."""
+    kind, channels = hw.get("memory_type"), hw.get("ram_channels")
+    try:
+        return ram_bandwidth_gbps(kind, channels) if kind and channels else None
+    except ValueError:
+        return None
+
+
 def system_for(rec: dict) -> System | None:
-    preset = rec["hardware"]["gpu_preset"]
-    if preset in GPU_PRESETS:
-        return System(*_HOST, (GPU_PRESETS[preset],))
-    if preset in APPLE_PRESETS:
-        chip = APPLE_PRESETS[preset]
-        return apple_system(chip, max(chip.memory_options_gb))
+    hw = rec["hardware"]
+    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    if backend == "cpu":
+        cpu = CPU_PRESETS.get(hw.get("cpu_preset"))
+        # Capacity does not matter for speed; bandwidth may be unknown (prefill only).
+        return System(cpu, RAM(1024, _ram_bandwidth(hw) or 1.0)) if cpu else None
+    preset = hw["gpu_preset"]
+    if preset in GPU_PRESETS:  # the record's backend, e.g. Vulkan on an NVIDIA card
+        return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),))
+    if preset in UNIFIED_PRESETS:
+        chip = replace(UNIFIED_PRESETS[preset], backend=backend)
+        return unified_system(chip, max(chip.memory_options_gb))
     return None
 
 
 def usable(rec: dict) -> bool:
-    """Single-GPU, fully offloaded, known presets, not flagged."""
-    return (rec["software"]["backend"] in _BACKEND_KEY
-            and rec["hardware"]["gpu_count"] == 1
-            and system_for(rec) is not None
-            and rec["model"]["name"] in MODEL_PRESETS
-            and rec["run"]["n_gpu_layers"] >= MODEL_PRESETS[rec["model"]["name"]].n_layers
-            and not rec["flags"])
+    """Known presets and backend, not flagged; GPU runs single-GPU and fully offloaded,
+    CPU runs single-socket with nothing offloaded."""
+    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    model = MODEL_PRESETS.get(rec["model"]["name"])
+    if not backend or not model or rec["flags"] or system_for(rec) is None:
+        return False
+    if backend == "cpu":
+        return rec["run"]["n_gpu_layers"] == 0 and rec["hardware"].get("sockets", 1) == 1
+    return rec["hardware"]["gpu_count"] == 1 and rec["run"]["n_gpu_layers"] >= model.n_layers
 
 
 def predict(rec: dict, eff: Efficiency) -> Point:
     model = MODEL_PRESETS[rec["model"]["name"]]
+    backend = _BACKEND_KEY[rec["software"]["backend"]]
     run, res = rec["run"], rec["results"]
+    n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
     est = estimate(system_for(rec), model, rec["model"]["quant"],
-                   context=run["depth"] + max(run["n_prompt"], run["n_gen"]), eff=eff)
-    gpu_only = all(p.is_gpu for p in est.placements)
+                   context=run["depth"] + max(n_prompt, n_gen, 1), eff=eff)
+    on_device = backend == "cpu" or all(p.is_gpu for p in est.placements)
     tg = None
-    if gpu_only and run["n_gen"]:
-        t = sum(1 / est.decode_tps_at(run["depth"] + i) for i in range(run["n_gen"]))
-        tg = run["n_gen"] / t
-    return Point(rec["id"], _BACKEND_KEY[rec["software"]["backend"]], model.n_layers,
-                 res["pp_tps"], res["tg_tps"],
-                 est.prefill_tps if gpu_only and run["n_prompt"] else None, tg)
+    if on_device and n_gen and (backend != "cpu" or _ram_bandwidth(rec["hardware"])):
+        t = sum(1 / est.decode_tps_at(run["depth"] + i) for i in range(n_gen))
+        tg = n_gen / t
+    return Point(rec["id"], backend, model.n_layers, res["pp_tps"], res["tg_tps"],
+                 est.prefill_tps if on_device and n_prompt else None, tg)
 
 
 def fit(records: list[dict]) -> Efficiency:
-    """Return an Efficiency with CUDA and Metal factors fitted to the records."""
+    """Return an Efficiency with every measured backend's factors fitted to the records."""
     points = [predict(r, _UNIT) for r in records if usable(r)]
     fitted = {}
     for backend in sorted({p.backend for p in points}):
         pts = [p for p in points if p.backend == backend]
+        prefix = backend_prefix(backend)
         dec = [p for p in pts if p.tg_meas and p.tg_pred]
-        inv_eff, overhead = _fit_decode([(1 / p.tg_pred, p.layers, 1 / p.tg_meas) for p in dec])
+        if dec:
+            inv_eff, overhead = _fit_decode([(1 / p.tg_pred, p.layers, 1 / p.tg_meas)
+                                             for p in dec])
+            fitted[f"{prefix}_bandwidth"] = round(1 / inv_eff, 3)
+            fitted[f"{prefix}_layer_overhead_us"] = round(overhead * 1e6, 1)
         pre = [p.pp_meas / p.pp_pred for p in pts if p.pp_meas and p.pp_pred]
-        prefix = "gpu" if backend == "cuda" else backend
-        fitted[f"{prefix}_bandwidth"] = round(1 / inv_eff, 3)
-        fitted[f"{prefix}_layer_overhead_us"] = round(overhead * 1e6, 1)
-        fitted[f"{prefix}_compute"] = round(statistics.median(pre), 3)
+        if pre:
+            fitted[f"{prefix}_compute"] = round(statistics.median(pre), 3)
     return replace(Efficiency(), **fitted)
 
 
