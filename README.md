@@ -187,10 +187,11 @@ node --test web/test/*.test.mjs                     # JavaScript estimator vs. P
 
 | What | License |
 | --- | --- |
-| Code (everything outside `data/` and `web/data/`) | [MIT](LICENSE) |
+| Code (everything outside `data/`, `web/data/` and `web/fonts/`) | [MIT](LICENSE) |
 | Data in `data/` and `web/data/`, and the sample texts written for this project | [CC BY 4.0](LICENSE-DATA) |
 | SYCL scoreboard records (`data/measurements/llamacpp-sycl.jsonl`) | Not licensed by this project; the source asks for no commercial use |
 | Book excerpts in `web/data/texts/` | Public domain |
+| Fonts in `web/fonts/` (Noto Sans KR, Noto Sans JP, JetBrains Mono) | SIL Open Font License 1.1 |
 
 Benchmark results come from public llama.cpp scoreboards, OpenBenchmarking.org and other
 sources; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for each source's terms.

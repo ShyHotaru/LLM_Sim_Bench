@@ -56,6 +56,16 @@ The Llama 2, Llama 3 and Gemma 2 tokenizers were read from ungated community cop
 gated official repositories (recorded in the file). `tools/measure_tokenizers.py` now reads the
 official repositories, which require accepting each license on Hugging Face.
 
+## Fonts
+
+The web app ships three fonts in `web/fonts/`, unmodified Google Fonts builds as packaged by
+[Fontsource](https://fontsource.org/). Each directory holds the font's `OFL.txt`.
+
+| Font | Copyright | License |
+| --- | --- | --- |
+| Noto Sans KR, Noto Sans JP | Adobe (with Reserved Font Name "Source") | SIL Open Font License 1.1 |
+| JetBrains Mono | The JetBrains Mono Project Authors | SIL Open Font License 1.1 |
+
 ## Hardware specifications
 
 Preset specs in `src/llm_sim_bench/profiles.py` are approximate public figures from vendor

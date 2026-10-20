@@ -195,7 +195,8 @@ def make_web_server(host: str, port: int):
         # reject for module scripts.
         extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
                           ".js": "text/javascript", ".mjs": "text/javascript",
-                          ".json": "application/json", ".css": "text/css"}
+                          ".json": "application/json", ".css": "text/css",
+                          ".woff2": "font/woff2"}
 
     handler = functools.partial(Handler, directory=str(WEB_DIR))
     return http.server.ThreadingHTTPServer((host, port), handler)
