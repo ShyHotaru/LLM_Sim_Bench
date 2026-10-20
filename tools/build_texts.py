@@ -5,7 +5,8 @@ web/data/texts/<file> and its provenance to web/data/texts/credits.json.
 Authored texts are written by hand and are left alone.
 
 - Aozora Bunko (青空文庫) allows free reuse of public-domain files and asks that
-  the bibliographic notes (底本, 入力, 校正) be kept; they go into credits.json.
+  the bibliographic notes (底本, 入力, 校正, file history and the 「青空文庫作成
+  ファイル」 note) be kept; they go into credits.json.
 - Project Gutenberg's site is for human visitors only, so its texts are fetched
   from the GITenberg mirror on GitHub. The Project Gutenberg header, license and
   any mention of the name are removed from the excerpt, as its license requires
@@ -57,10 +58,7 @@ def aozora(raw: bytes, limit: int) -> tuple[str, str]:
     text = text.split("")[0]
     notes = html.unescape(re.sub(r"<[^>]+>", "", bib))
     lines = [line.strip() for line in notes.splitlines() if line.strip()]
-    # Keep 底本 through the file history; drop the generic Aozora footer.
-    end = next((i for i, line in enumerate(lines) if line.startswith("青空文庫作成ファイル")),
-               len(lines))
-    return _cut(text, limit, "。」\n"), " / ".join(lines[:end])
+    return _cut(text, limit, "。」\n"), " / ".join(lines)
 
 
 def gutenberg(raw: bytes, limit: int, start: str) -> str:
