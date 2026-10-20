@@ -45,6 +45,21 @@ Decode    ~16.0 tok/s (empty context)  ->  ~13.6 tok/s (full context)
 Note      8/48 layers offloaded to CPU
 ```
 
+## Web app
+
+`web/` is a static site with the same estimator ported to JavaScript: pick a PC (GPUs, CPU,
+RAM) or a Mac (chip, unified memory), a model and a quantization, compare two configurations
+side by side, and watch both stream mock tokens at their simulated speed. The whole setup is
+kept in the URL, so a link reproduces it.
+
+```bash
+python -m http.server -d web 8000   # then open http://127.0.0.1:8000
+```
+
+Python is the reference implementation. `llmsim export-web` writes `web/data/presets.json`
+and the golden test vectors in `web/test/golden.json`; rerun it after changing presets,
+measurement data or the estimator, then run `node --test web/test/*.test.mjs`.
+
 ## Configuring a virtual system
 
 Every option can be passed as a flag or in a TOML file (`--config`); flags win.
@@ -116,4 +131,6 @@ offload are extrapolations.
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=src python -m llm_sim_bench export-web   # regenerate web data
+node --test web/test/*.test.mjs                     # JavaScript estimator vs. Python
 ```

@@ -1,4 +1,4 @@
-"""Command-line interface: `llmsim list | estimate | run | serve | calibrate`."""
+"""Command-line interface: `llmsim list | estimate | run | serve | calibrate | export-web`."""
 
 from __future__ import annotations
 
@@ -161,6 +161,19 @@ def cmd_calibrate(args):
     return 0
 
 
+def cmd_export_web(args):
+    from . import export
+
+    if args.check:
+        stale = export.stale()
+        for path in stale:
+            print(f"out of date: {path}", file=sys.stderr)
+        return 1 if stale else 0
+    for path in export.write():
+        print(f"wrote {path}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     g = common.add_argument_group("virtual system")
@@ -198,6 +211,10 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--data", help="measurement .jsonl file or directory "
                    "(default: data/measurements in the source tree)")
     c.set_defaults(func=cmd_calibrate)
+
+    ex = sub.add_parser("export-web", help="write presets and golden tests for the web app")
+    ex.add_argument("--check", action="store_true", help="only verify the files are current")
+    ex.set_defaults(func=cmd_export_web)
 
     sv = sub.add_parser("serve", parents=[common], help="run a mock OpenAI-compatible API")
     sv.add_argument("--host", default="127.0.0.1")

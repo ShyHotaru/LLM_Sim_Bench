@@ -47,6 +47,14 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(main(["calibrate"]), 0)
 
 
+class ExportTests(unittest.TestCase):
+    def test_web_files_are_current(self):
+        from llm_sim_bench import export
+
+        self.assertEqual(export.stale(RECORDS), [],
+                         "run `llmsim export-web` to regenerate the web data")
+
+
 class UnifiedMemoryTests(unittest.TestCase):
     def test_gpu_budget_is_a_share_of_unified_memory(self):
         chip = APPLE_PRESETS["apple-m4-max-40c"]
