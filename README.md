@@ -144,10 +144,33 @@ or device without measurements, or a mixture-of-experts model).
 
 ## Roadmap
 
-- More calibration data: CPU-only, AMD, long-context (`llama-bench -d`) and larger models.
-- AMD GPU presets.
-- Concurrent-request simulation and a small benchmark harness that replays a prompt set.
-- Report export (JSON/Markdown) for comparing candidate builds side by side.
+Before a public release:
+
+- Visual review, a final check that no sensitive information is included, and a license for
+  the code and for the data.
+- GitHub Pages deployment workflow and a custom domain.
+
+Calibration data:
+
+- Long-context results (`llama-bench -d`): decode slowdown and prompt processing at depth are
+  modeled but not calibrated.
+- Larger models and multi-GPU layer splits (all GPU data is Llama 2 7B on one GPU).
+- Mixture-of-experts routing overhead (currently excluded from calibration and flagged).
+- CPU prompt processing on more CPUs (only native-build data for a few CPUs).
+- Apple M1–M4 on current llama.cpp builds (only 2023 builds are recorded), an M6 preset, and
+  the M5 Ultra prompt-processing gap.
+- Intel SYCL FP16 vs. FP32 builds as a separate option.
+- Prompt processing for unmeasured data-center GPUs (H200, B200, MI325X, MI355X).
+- A human pass over transcribed scoreboard tables (they were read with an automated
+  summarizer and spot-checked).
+
+Features:
+
+- Start playback at a given context fill to feel the slowdown at long contexts.
+- Show CPU-only measurements in the benchmark check table.
+- Use the text presets and tokenizer ratios in the CLI and the OpenAI-compatible mock server.
+- Optional custom text (kept in the browser only).
+- Concurrent-request simulation and report export (JSON/Markdown).
 
 ## Development
 

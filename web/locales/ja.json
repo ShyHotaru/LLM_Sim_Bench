@@ -31,6 +31,7 @@
 
   "gpu.add": "+ GPUを追加",
   "gpu.addFirst": "+ GPUを追加（現在はCPUのみ）",
+  "gpu.showDatacenter": "データセンター向けGPUも表示",
   "gpu.remove": "GPU {n} を削除",
 
   "cpu.segment.desktop": "デスクトップ",

@@ -34,6 +34,7 @@ const DEFAULT_CONFIG = {
   soc: "",
   memoryGb: 64,
   backend: "",
+  showDatacenter: false,
   model: "qwen3-32b",
   quant: "Q4_K_M",
   context: 8192,
@@ -148,7 +149,9 @@ const otherChips = () => P.unified.filter((a) => a.vendor !== "Apple");
 // PC and server configurations share the same form; the server tab lists data-center GPUs
 // and server CPUs, the PC tab everything else.
 const isPcLike = (cfg) => cfg.platform === "pc" || cfg.platform === "server";
-const gpusFor = (platform) => P.gpus.filter((g) => (g.segment === "datacenter") === (platform === "server"));
+// The PC tab can opt in to data-center cards (e.g. an A100 PCIe in a workstation).
+const gpusFor = (platform, withDatacenter = false) => P.gpus.filter((g) => (platform === "server"
+  ? g.segment === "datacenter" : withDatacenter || g.segment !== "datacenter"));
 const cpusFor = (platform) => P.cpus.filter((c) => (c.segment === "server") === (platform === "server"));
 
 // Select a CPU together with the memory it supports; the user can still change the memory.
@@ -163,7 +166,7 @@ function switchPlatform(cfg, platform) {
   const was = cfg.platform;
   cfg.platform = platform;
   if (!isPcLike(cfg)) return;
-  const allowed = gpusFor(platform).map((g) => g.name);
+  const allowed = gpusFor(platform, cfg.showDatacenter).map((g) => g.name);
   cfg.gpus = cfg.gpus.filter((g) => allowed.includes(g));
   if (!cfg.gpus.length) cfg.gpus = [platform === "server" ? SERVER_DEFAULT.gpu : DEFAULT_CONFIG.gpus[0]];
   if (!cpusFor(platform).some((c) => c.name === cfg.cpu)) {
@@ -196,7 +199,9 @@ function sanitizeConfig(c) {
   const has = (list, name) => list.some((x) => x.name === name);
   cfg.platform = ["apple", "unified", "server"].includes(cfg.platform) ? cfg.platform : "pc";
   const pcLike = isPcLike(cfg) ? cfg.platform : "pc";
-  cfg.gpus = Array.isArray(cfg.gpus) ? cfg.gpus.filter((g) => has(gpusFor(pcLike), g)).slice(0, 8) : [];
+  cfg.showDatacenter = cfg.showDatacenter === true;
+  cfg.gpus = Array.isArray(cfg.gpus)
+    ? cfg.gpus.filter((g) => has(gpusFor(pcLike, cfg.showDatacenter), g)).slice(0, 8) : [];
   if (!has(cpusFor(pcLike), cfg.cpu)) cfg.cpu = pcLike === "server" ? SERVER_DEFAULT.cpu : DEFAULT_CONFIG.cpu;
   if (!RAM_SIZES.includes(Number(cfg.ramGb))) cfg.ramGb = DEFAULT_CONFIG.ramGb;
   if (!ramKinds().includes(cfg.ramKind)) cfg.ramKind = DEFAULT_CONFIG.ramKind;
@@ -295,12 +300,17 @@ function renderConfig(cfg, i) {
     cfg.gpus.forEach((g, j) => {
       settings.append(h("div", { class: "gpu-row" },
         field(j === 0 ? t("field.gpu") : t("field.gpuN", { n: j + 1 }),
-          groupedSelect("gpu", gpusFor(cfg.platform), g, gpuLabel, segmentGroup("gpu.segment"), { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
+          groupedSelect("gpu", gpusFor(cfg.platform, cfg.showDatacenter), g, gpuLabel, segmentGroup("gpu.segment"), { "data-j": j, "data-focus-id": `${i}-gpu-${j}` })),
         field(t("field.vram"), h("input", { value: `${P.gpus.find((x) => x.name === g).vram_gb} GB`, disabled: true })),
         h("button", { type: "button", "data-act": "remove-gpu", "data-j": j, "aria-label": t("gpu.remove", { n: j + 1 }) }, "✕")));
     });
     settings.append(h("button", { type: "button", class: "link", "data-act": "add-gpu" },
       cfg.gpus.length ? t("gpu.add") : t("gpu.addFirst")));
+    if (cfg.platform === "pc") {
+      settings.append(h("label", { class: "check" },
+        h("input", { type: "checkbox", "data-k": "showDatacenter", checked: cfg.showDatacenter, "data-focus-id": `${i}-dc` }),
+        t("gpu.showDatacenter")));
+    }
     settings.append(h("div", { class: "fields" },
       field(t("field.cpu"), groupedSelect("cpu", cpusFor(cfg.platform), cfg.cpu, (c) => t("option.cpu", { name: c.label || c.name, cores: c.cores }),
         segmentGroup("cpu.segment"), { "data-focus-id": `${i}-cpu` })),
@@ -496,7 +506,7 @@ function onConfigEvent(e) {
     const j = Number(act.dataset.j);
     switch (act.dataset.act) {
       case "platform": switchPlatform(cfg, act.dataset.v); break;
-      case "add-gpu": cfg.gpus.push(cfg.gpus[cfg.gpus.length - 1] || gpusFor(cfg.platform)[0].name); break;
+      case "add-gpu": cfg.gpus.push(cfg.gpus[cfg.gpus.length - 1] || gpusFor(cfg.platform, cfg.showDatacenter)[0].name); break;
       case "remove-gpu": cfg.gpus.splice(j, 1); break;
       case "remove-config": state.configs.splice(i, 1); break;
       default: return;
@@ -507,7 +517,10 @@ function onConfigEvent(e) {
   if (e.type === "change" && e.target.dataset.k) {
     const k = e.target.dataset.k;
     const v = e.target.value;
-    if (k === "gpu") {
+    if (k === "showDatacenter") {
+      cfg.showDatacenter = e.target.checked;
+      switchPlatform(cfg, "pc");  // drops data-center cards when unchecked, keeping one GPU
+    } else if (k === "gpu") {
       cfg.gpus = cfg.gpus.map((g, j) => (j === Number(e.target.dataset.j) ? v : g));
     } else if (k === "cpu") {
       setCpu(cfg, v);
@@ -753,7 +766,8 @@ function applyPart(i, kind, name) {
   const cfg = state.configs[i];
   if (kind === "gpu") {
     const gpu = P.gpus.find((g) => g.name === name);
-    switchPlatform(cfg, gpu.segment === "datacenter" ? "server" : "pc");
+    const keepPc = cfg.platform === "pc" && cfg.showDatacenter;
+    switchPlatform(cfg, gpu.segment === "datacenter" && !keepPc ? "server" : "pc");
     cfg.gpus = [name, ...cfg.gpus.slice(1)];
   } else if (kind === "cpu") {
     const cpu = P.cpus.find((c) => c.name === name);

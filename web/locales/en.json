@@ -31,6 +31,7 @@
 
   "gpu.add": "+ Add another GPU",
   "gpu.addFirst": "+ Add a GPU (currently CPU only)",
+  "gpu.showDatacenter": "Also list data-center GPUs",
   "gpu.remove": "Remove GPU {n}",
 
   "cpu.segment.desktop": "Desktop",
