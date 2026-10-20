@@ -150,9 +150,9 @@ or device without measurements, or a mixture-of-experts model).
 
 Before a public release:
 
-- Visual review, a final check that no sensitive information is included, and a license for
-  the code and for the data.
 - Enable GitHub Pages (the workflow is ready) and choose a custom domain.
+- Ask the SYCL scoreboard's author whether its data may be used without the non-commercial
+  restriction.
 
 Calibration data:
 
@@ -183,3 +183,15 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 PYTHONPATH=src python -m llm_sim_bench export-web   # regenerate web data
 node --test web/test/*.test.mjs                     # JavaScript estimator vs. Python
 ```
+
+## License
+
+| What | License |
+| --- | --- |
+| Code (everything outside `data/` and `web/data/`) | [MIT](LICENSE) |
+| Data in `data/` and `web/data/`, and the sample texts written for this project | [CC BY 4.0](LICENSE-DATA) |
+| SYCL scoreboard records (`data/measurements/llamacpp-sycl.jsonl`) | Not licensed by this project; the source asks for no commercial use |
+| Book excerpts in `web/data/texts/` | Public domain |
+
+Benchmark results come from public llama.cpp scoreboards, OpenBenchmarking.org and other
+sources; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for each source's terms.

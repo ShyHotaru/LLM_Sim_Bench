@@ -11,12 +11,20 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`): M5 Pro, M5 Max, M5 Ultra, M6 | 15 |
 | `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021) | 46 |
 | `measurements/llamacpp-vulkan.jsonl` | [llama.cpp Vulkan scoreboard (#10879)](https://github.com/ggml-org/llama.cpp/discussions/10879) | 237 |
-| `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313) | 104 |
-| `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [AMD's EPYC llama.cpp article](https://www.amd.com/en/developer/resources/technical-articles/2026/llama-cpp-on-amd-epyc.html), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1606 |
+| `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313); its opening post asks that the data not be used for commercial purposes (see [Licensing](#licensing)) | 104 |
+| `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1594 |
 
 GPU scoreboard records are Llama 2 7B Q4_0 (SYCL also lists other models), `llama-bench -p 512
 -n 128`. Values were transcribed from the scoreboard tables on the `retrieved` date. Only the
 numbers and hardware descriptions were copied; contributor names were not.
+
+## Licensing
+
+This project's compilation of the records is licensed under CC BY 4.0
+([`LICENSE-DATA`](../LICENSE-DATA)); the results themselves were reported by the sources above.
+The SYCL scoreboard's opening post asks that its data not be used for commercial purposes, so
+`llamacpp-sycl.jsonl` is excluded from that license. See
+[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) for each source's terms.
 
 ## Record schema
 
@@ -86,9 +94,10 @@ The web mock streams real text instead of filler. Texts live in `web/data/texts/
 
 `tokenizer_ratios.json` holds the measured characters per token for every text and tokenizer
 family, produced by `tools/measure_tokenizers.py` (needs `pip install tokenizers`). Only the
-counts are stored; tokenizer files are cached in `.cache/` and never committed. Llama 2,
-Llama 3 and Gemma 2 tokenizers were read from ungated community mirrors of the gated official
-repositories.
+counts are stored; tokenizer files are cached in `.cache/` and never committed. The stored
+Llama 2, Llama 3 and Gemma 2 ratios were measured with tokenizers read from ungated community
+mirrors of the gated official repositories (the file records which); the tool now reads the
+official repositories and needs an `HF_TOKEN` for an account that accepted their licenses.
 
 # Hardware preset sources
 

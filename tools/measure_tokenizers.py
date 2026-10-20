@@ -8,13 +8,21 @@ files are cached under .cache/ and never committed.
 This is a development tool and needs `pip install tokenizers`; the package
 itself stays dependency-free.
 
-Usage: python tools/measure_tokenizers.py
+The Llama 2, Llama 3 and Gemma 2 tokenizers live in gated repositories: accept
+each license on Hugging Face and set HF_TOKEN before running. Using them binds
+you to the Llama 2 Community License, the Meta Llama 3 Community License and
+the Gemma Terms of Use. The ratios stored in the repository were measured with
+copies of those tokenizers from ungated community mirrors; the repos actually
+used are recorded in data/tokenizer_ratios.json.
+
+Usage: HF_TOKEN=... python tools/measure_tokenizers.py
 """
 
 from __future__ import annotations
 
 import datetime
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -26,12 +34,12 @@ CACHE = ROOT / ".cache" / "tokenizers"
 
 # family -> (Hugging Face repo holding tokenizer.json, license of that tokenizer)
 FAMILIES = {
-    "llama2": ("NousResearch/Llama-2-7b-hf", "Llama 2 Community License"),
+    "llama2": ("meta-llama/Llama-2-7b-hf", "Llama 2 Community License"),
     "mistral": ("mistralai/Mistral-7B-v0.1", "Apache-2.0"),
-    "llama3": ("NousResearch/Meta-Llama-3-8B", "Meta Llama 3 Community License"),
+    "llama3": ("meta-llama/Meta-Llama-3-8B", "Meta Llama 3 Community License"),
     "qwen2.5": ("Qwen/Qwen2.5-7B-Instruct", "Apache-2.0"),
     "qwen3": ("Qwen/Qwen3-8B", "Apache-2.0"),
-    "gemma2": ("unsloth/gemma-2-9b-it", "Gemma Terms of Use"),
+    "gemma2": ("google/gemma-2-9b-it", "Gemma Terms of Use"),
     "gpt-oss": ("openai/gpt-oss-20b", "Apache-2.0"),
 }
 
@@ -42,7 +50,9 @@ def tokenizer_file(repo: str) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         url = f"https://huggingface.co/{repo}/resolve/main/tokenizer.json"
         print(f"downloading {url}", file=sys.stderr)
-        with urllib.request.urlopen(url, timeout=300) as resp:
+        token = os.environ.get("HF_TOKEN")
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"} if token else {})
+        with urllib.request.urlopen(req, timeout=300) as resp:
             path.write_bytes(resp.read())
     return path
 
