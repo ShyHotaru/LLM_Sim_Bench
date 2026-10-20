@@ -44,8 +44,6 @@
 
   "badge.noFit": "メモリに収まりません",
   "badge.cpuOnly": "CPUのみ",
-  "badge.fitsGpu": "GPUメモリにすべて収まります",
-  "badge.fitsVram": "VRAMにすべて収まります",
   "badge.layersOnCpu": "{total}層中 {cpu}層がCPUで実行",
 
   "result.unit": "tok/s 生成速度（空のコンテキスト）",

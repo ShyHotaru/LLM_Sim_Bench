@@ -296,7 +296,8 @@ function renderConfig(cfg, i) {
       ? select("chip", newestFirst(appleChips()).map((a) => [a.name, chipLabel(a)]), cfg.chip, { "data-focus-id": `${i}-chip` })
       : groupedSelect("soc", otherChips(), cfg.soc, socLabel, (a) => a.vendor, { "data-focus-id": `${i}-soc` });
     settings.append(h("div", { class: "fields" },
-      field(t(cfg.platform === "apple" ? "field.chip" : "field.system"), chipSelect),
+      field(t(cfg.platform === "apple" ? "field.chip" : "field.system"), chipSelect)));
+    settings.append(h("div", { class: "fields" },
       field(t("field.unifiedMemory"), select("memoryGb", chip.memory_options_gb.map((m) => [m, `${m} GB`]), cfg.memoryGb, { "data-focus-id": `${i}-mem` }))));
   } else {
     cfg.gpus.forEach((g, j) => {
@@ -350,11 +351,11 @@ function renderResult(cfg) {
   const { system, est } = res;
   const gpuLayers = est.placements.filter((p) => p.is_gpu).reduce((a, p) => a + p.layers, 0);
   const n = est.model.n_layers;
-  let badge;
-  if (!est.fits) badge = h("span", { class: "badge bad" }, t("badge.noFit"));
-  else if (!system.gpus.length) badge = h("span", { class: "badge warn" }, t("badge.cpuOnly"));
-  else if (gpuLayers === n) badge = h("span", { class: "badge ok" }, t(system.unified ? "badge.fitsGpu" : "badge.fitsVram"));
-  else badge = h("span", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
+  // Only problems get a status line; the memory bars already show a model that fits.
+  let badge = null;
+  if (!est.fits) badge = h("p", { class: "badge bad" }, t("badge.noFit"));
+  else if (!system.gpus.length) badge = h("p", { class: "badge warn" }, t("badge.cpuOnly"));
+  else if (gpuLayers < n) badge = h("p", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
 
   const ttft = state.prompt / est.prefill_tps;
   const gen = genTime(est, state.prompt, state.maxTokens);
@@ -385,7 +386,8 @@ function localizedNotes(cfg, system, est) {
     notes.push(t("note.context", { context: fmtInt(cfg.context), max: fmtInt(est.model.max_context) }));
   }
   if (cpu && !est.fits) notes.push(t("note.ram", { need: gb(est.ram_needed_gb), free: gb(est.ram_free_gb) }));
-  if (cpu && system.gpus.length) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
+  // When the model fits, the status line already says how many layers run on the CPU.
+  if (cpu && system.gpus.length && !est.fits) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
   return notes;
 }
 
@@ -686,7 +688,7 @@ async function startPlayback() {
     }
   });
   playback = { streams, start: performance.now(), raf: 0 };
-  document.getElementById("play").textContent = t("mock.stop");
+  setPlaying(true);
   tick();
 }
 
@@ -694,7 +696,14 @@ function stopPlayback() {
   if (!playback) return;
   cancelAnimationFrame(playback.raf);
   playback = null;
-  document.getElementById("play").textContent = t("mock.play");
+  setPlaying(false);
+}
+
+function setPlaying(on) {
+  const button = document.getElementById("play");
+  button.textContent = t(on ? "mock.stop" : "mock.play");
+  button.classList.toggle("playing", on);
+  document.getElementById("streams").classList.toggle("live", on);
 }
 
 // Append events [s.shown, n) to the output, one block per message.

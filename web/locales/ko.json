@@ -44,8 +44,6 @@
 
   "badge.noFit": "메모리에 올라가지 않음",
   "badge.cpuOnly": "CPU만 사용",
-  "badge.fitsGpu": "GPU 메모리에 모두 올라감",
-  "badge.fitsVram": "VRAM에 모두 올라감",
   "badge.layersOnCpu": "{total}개 레이어 중 {cpu}개가 CPU에서 실행",
 
   "result.unit": "tok/s 생성 속도 (빈 컨텍스트)",
