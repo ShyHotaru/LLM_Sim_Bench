@@ -3,30 +3,83 @@
 Decode is treated as memory-bandwidth bound: every generated token reads
 all active weights plus the KV cache filled so far. Prefill is treated as
 compute bound: roughly 2 FLOPs per active parameter per prompt token.
+Each layer also costs a fixed per-token overhead (kernel launches and
+synchronization), which dominates on fast GPUs with small models.
 Layers are offloaded to GPUs first (like llama.cpp's n_gpu_layers) and the
 rest stays in system RAM. Devices run layers sequentially, so per-token
-times add up.
+times add up. On unified-memory systems (Apple Silicon) the GPU budget is a
+fraction of system RAM instead of dedicated VRAM.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .profiles import QUANT_BPW, Model, System
 
 GB = 1e9
+DEVICE_CALIBRATION = Path(__file__).with_name("device_calibration.json")
+
+
+def _device(kind: str) -> dict[str, float]:
+    """Per-device efficiency from measurements, "<preset>|<backend>" -> fraction."""
+    return json.loads(DEVICE_CALIBRATION.read_text(encoding="utf-8"))[kind]
 
 
 @dataclass(frozen=True)
 class Efficiency:
-    """Fraction of theoretical peak that real runtimes typically reach."""
+    """Fraction of theoretical peak that real runtimes typically reach.
 
-    gpu_bandwidth: float = 0.75
-    cpu_bandwidth: float = 0.60
-    gpu_compute: float = 0.50
-    cpu_compute: float = 0.40
+    Values are fitted to measured llama.cpp results with `llmsimbench calibrate`
+    (Metal on 2026 builds only). Each backend has a bandwidth and compute
+    efficiency and a per-layer overhead; "cuda" uses the gpu_* fields.
+    """
+
+    gpu_bandwidth: float = 0.84
+    gpu_compute: float = 0.49
+    gpu_layer_overhead_us: float = 36.0
+    metal_bandwidth: float = 0.99
+    metal_compute: float = 0.66
+    metal_layer_overhead_us: float = 72.0
+    rocm_bandwidth: float = 0.97
+    rocm_compute: float = 0.31
+    rocm_layer_overhead_us: float = 114.0
+    vulkan_bandwidth: float = 0.80
+    vulkan_compute: float = 0.40
+    vulkan_layer_overhead_us: float = 22.0
+    sycl_bandwidth: float = 0.85
+    sycl_compute: float = 0.10
+    sycl_layer_overhead_us: float = 58.0
+    cpu_bandwidth: float = 0.79
+    cpu_compute: float = 0.35
+    cpu_layer_overhead_us: float = 119.0
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
+    unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
+    # Measured devices reach very different shares of peak compute in prompt processing
+    # (data-center GPUs far less than consumer ones), so they override the backend value.
+    device_compute: dict[str, float] = field(default_factory=lambda: _device("compute"))
+    # CPUs differ in how much DRAM bandwidth reaches the cores (single-CCD Ryzen parts are
+    # limited by their fabric link), so measured CPUs override cpu_bandwidth for decode.
+    device_bandwidth: dict[str, float] = field(default_factory=lambda: _device("bandwidth"))
+
+    def for_backend(self, backend: str) -> tuple[float, float, float]:
+        """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
+        p = backend_prefix(backend)
+        return (getattr(self, f"{p}_bandwidth"), getattr(self, f"{p}_compute"),
+                getattr(self, f"{p}_layer_overhead_us") / 1e6)
+
+
+BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu")
+
+
+def backend_prefix(backend: str) -> str:
+    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu")."""
+    if backend not in BACKENDS:
+        raise ValueError(f"Unknown backend {backend!r}. Known: {', '.join(BACKENDS)}")
+    return "gpu" if backend == "cuda" else backend
 
 
 @dataclass
@@ -38,6 +91,7 @@ class Placement:
     bandwidth_gbps: float
     tflops: float
     is_gpu: bool
+    overhead_s: float = 0.0  # fixed per-token time for this device's layers
 
 
 @dataclass
@@ -88,27 +142,38 @@ def estimate(
 
     placements: list[Placement] = []
     remaining = model.n_layers
+    gpu_used_gb = 0.0
     for gpu in system.gpus:
-        usable = max(0.0, gpu.vram_gb - eff.vram_reserve_gb) * GB
+        frac = system.gpu_fraction or eff.unified_gpu_fraction
+        vram = system.ram.size_gb * frac if system.unified else gpu.vram_gb
+        usable = max(0.0, vram - eff.vram_reserve_gb) * GB
         n = min(remaining, int(usable // (layer_w + layer_kv)))
         if n > 0:
+            bw_eff, c_eff, layer_s = eff.for_backend(gpu.backend)
+            c_eff = eff.device_compute.get(f"{gpu.name}|{gpu.backend}", c_eff)
             placements.append(
                 Placement(gpu.name, n, n * layer_w / GB, n * layer_kv / GB,
-                          gpu.bandwidth_gbps * eff.gpu_bandwidth,
-                          gpu.fp16_tflops * eff.gpu_compute, True)
+                          gpu.bandwidth_gbps * bw_eff, gpu.fp16_tflops * c_eff, True,
+                          n * layer_s)
             )
             remaining -= n
+            gpu_used_gb += n * (layer_w + layer_kv) / GB
 
     fits = True
     if remaining:
         cpu_gb = remaining * (layer_w + layer_kv) / GB
+        bw_eff, c_eff, layer_s = eff.for_backend("cpu")
+        bw_eff = eff.device_bandwidth.get(f"{system.cpu.name}|cpu", bw_eff)
+        c_eff = eff.device_compute.get(f"{system.cpu.name}|cpu", c_eff)
         placements.append(
             Placement(f"cpu:{system.cpu.name}", remaining, remaining * layer_w / GB,
                       remaining * layer_kv / GB,
-                      system.ram.bandwidth_gbps * eff.cpu_bandwidth,
-                      system.cpu.fp32_tflops * eff.cpu_compute, False)
+                      system.ram.bandwidth_gbps * bw_eff,
+                      system.cpu.fp32_tflops * c_eff, False, remaining * layer_s)
         )
         ram_free = system.ram.size_gb - eff.ram_reserve_gb
+        if system.unified:
+            ram_free -= gpu_used_gb
         if cpu_gb > ram_free:
             fits = False
             notes.append(f"needs {cpu_gb:.1f} GB in RAM but only {ram_free:.1f} GB is free; "
@@ -123,7 +188,7 @@ def estimate(
     for p in placements:
         frac = p.layers / model.n_layers
         bw = p.bandwidth_gbps * GB
-        base_time += p.weights_gb * GB * active_ratio / bw
+        base_time += p.weights_gb * GB * active_ratio / bw + p.overhead_s
         kv_terms.append((kv_tok * frac, bw))
         prefill_time += 2 * model.active_b * 1e9 * frac / (p.tflops * 1e12)
 

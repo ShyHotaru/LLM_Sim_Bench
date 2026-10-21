@@ -1,0 +1,51 @@
+name: pages
+
+# Deploys web/ to GitHub Pages after the test suite passes. Nothing is published until
+# Pages is enabled in the repository settings (Settings > Pages > Source: GitHub Actions);
+# until then the "Set up Pages" step fails and no deployment happens.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a queued run waits instead of cancelling the one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+      - name: Assemble the site
+        # Only what the page loads; web/test and web/package.json stay out.
+        run: |
+          mkdir _site
+          cp -r web/index.html web/css web/js web/data web/locales web/fonts web/brand _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

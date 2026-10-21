@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Sim Bench</title>
+  <meta name="description" data-i18n-attr="content:app.description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LLM Sim Bench">
+  <meta property="og:description" content="Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070908'/%3E%3Crect x='11' y='7' width='10' height='18' fill='%2339ff88'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="fonts/noto-sans-kr/font.css">
+  <link rel="stylesheet" href="fonts/noto-sans-jp/font.css">
+  <link rel="stylesheet" href="fonts/jetbrains-mono/font.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <div>
+        <h1>LLM Sim Bench</h1>
+        <p class="tagline" data-i18n="app.tagline"></p>
+      </div>
+      <label class="lang-picker"><span data-i18n="lang.label">Language</span>
+        <select id="lang"></select>
+      </label>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel search" aria-labelledby="search-label">
+      <label class="search-box"><span id="search-label" data-i18n="search.label"></span>
+        <input id="part-search" type="search" autocomplete="off" spellcheck="false"
+               aria-controls="search-results" data-i18n-attr="placeholder:search.placeholder">
+      </label>
+      <ul id="search-results" class="search-results" hidden></ul>
+    </section>
+
+    <section class="configs" id="configs" aria-label="Configurations" data-i18n-attr="aria-label:config.section"></section>
+
+    <section class="panel mock" aria-labelledby="mock-title">
+      <div class="mock-head">
+        <h2 id="mock-title" data-i18n="mock.title"></h2>
+        <div class="mock-controls">
+          <label class="text-picker"><span data-i18n="mock.text"></span>
+            <select id="text"></select>
+          </label>
+          <label><span data-i18n="mock.promptTokens"></span>
+            <input id="prompt-tokens" type="number" min="1" max="200000" step="100" value="1000">
+          </label>
+          <label><span data-i18n="mock.outputTokens"></span>
+            <input id="max-tokens" type="number" min="1" max="4000" step="50" value="300">
+          </label>
+          <button id="play" class="primary" type="button" data-i18n="mock.play"></button>
+        </div>
+      </div>
+      <p class="credits" id="credits"></p>
+      <div class="custom-text" id="custom-text" hidden>
+        <label><span data-i18n="mock.custom.label"></span>
+          <textarea id="custom-input" rows="5" maxlength="50000" spellcheck="false"
+                    data-i18n-attr="placeholder:mock.custom.placeholder"></textarea>
+        </label>
+        <button id="custom-clear" type="button" class="link" data-i18n="mock.custom.clear"></button>
+      </div>
+      <p class="hint" data-i18n="mock.hint"></p>
+      <div class="streams" id="streams"></div>
+    </section>
+
+    <section class="panel about" aria-labelledby="about-title">
+      <h2 id="about-title" data-i18n="about.title"></h2>
+      <ul>
+        <li><strong data-i18n="about.memory.title"></strong>: <span data-i18n="about.memory.body"></span></li>
+        <li><strong data-i18n="about.decode.title"></strong>: <span data-i18n="about.decode.body"></span></li>
+        <li><strong data-i18n="about.prefill.title"></strong>: <span data-i18n="about.prefill.body"></span></li>
+        <li><strong data-i18n="about.calibration.title"></strong>: <span data-i18n="about.calibration.body"></span> <span id="calibration"></span></li>
+      </ul>
+      <p class="hint" data-i18n="about.disclaimer"></p>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>LLM Sim Bench · <a href="https://github.com/ShyHotaru/LLM_Sim_Bench" data-i18n="footer.code">Source code</a> · <a href="https://github.com/ShyHotaru/LLM_Sim_Bench#license" data-i18n="footer.license">License</a></span>
+    <span><span data-i18n="footer.data">Data:</span> <a href="https://github.com/ShyHotaru/LLM_Sim_Bench/blob/main/data/README.md" data-i18n="footer.sources">llama.cpp scoreboards and other public benchmarks</a></span>
+    <div class="signature"><a class="author" href="https://shyhotaru.com/" aria-label="Shy Hotaru" title="Shy Hotaru"></a></div>
+  </footer>
+</body>
+</html>

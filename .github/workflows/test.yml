@@ -1,0 +1,27 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Python tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v
+      - name: Web data is up to date
+        run: PYTHONPATH=src python -m llm_sim_bench export-web --check
+      - name: JavaScript tests
+        run: node --test web/test/*.test.mjs

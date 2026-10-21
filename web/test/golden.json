@@ -1,0 +1,518 @@
+[
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "ryzen7-5800x",
+    "ram_gb": 64,
+    "ram_bandwidth_gbps": 51.2,
+    "gpus": [
+     "rtx3080-10gb"
+    ]
+   },
+   "model": "qwen2.5-14b",
+   "quant": "Q4_K_M",
+   "context": 8192,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 9.0465,
+   "kv_gb": 1.610612736,
+   "fits": true,
+   "placements": [
+    {
+     "device": "rtx3080-10gb",
+     "layers": 40,
+     "weights_gb": 7.53875,
+     "kv_gb": 1.34217728,
+     "bandwidth_gbps": 638.4,
+     "tflops": 71.28099999999999,
+     "is_gpu": true,
+     "overhead_s": 0.00144
+    },
+    {
+     "device": "cpu:ryzen7-5800x",
+     "layers": 8,
+     "weights_gb": 1.50775,
+     "kv_gb": 0.268435456,
+     "bandwidth_gbps": 40.44800000000001,
+     "tflops": 0.3815,
+     "is_gpu": false,
+     "overhead_s": 0.000952
+    }
+   ],
+   "prefill_tps": 75.31561366253634,
+   "decode_tps_empty": 19.426123236416878,
+   "decode_tps_full": 16.606870905020493,
+   "decode_tps_at": [
+    [
+     0,
+     19.426123236416878
+    ],
+    [
+     1000,
+     19.031725547711275
+    ],
+    [
+     4096,
+     17.90620671187582
+    ]
+   ],
+   "notes": [
+    "8/48 layers offloaded to CPU"
+   ]
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "i7-13700k",
+    "ram_gb": 32,
+    "ram_bandwidth_gbps": 89.6,
+    "gpus": [
+     "rtx4090-24gb"
+    ]
+   },
+   "model": "llama-3.1-8b",
+   "quant": "Q8_0",
+   "context": 32768,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 8.531875,
+   "kv_gb": 4.294967296,
+   "fits": true,
+   "placements": [
+    {
+     "device": "rtx4090-24gb",
+     "layers": 32,
+     "weights_gb": 8.531875,
+     "kv_gb": 4.294967296,
+     "bandwidth_gbps": 846.7199999999999,
+     "tflops": 180.34380000000002,
+     "is_gpu": true,
+     "overhead_s": 0.001152
+    }
+   ],
+   "prefill_tps": 11229.377334993776,
+   "decode_tps_empty": 89.06001883328253,
+   "decode_tps_full": 61.346458537198316,
+   "decode_tps_at": [
+    [
+     0,
+     89.06001883328253
+    ],
+    [
+     1000,
+     87.84889323031523
+    ],
+    [
+     16384,
+     72.65001944324973
+    ]
+   ],
+   "notes": []
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "ryzen9-7950x",
+    "ram_gb": 64,
+    "ram_bandwidth_gbps": 96,
+    "gpus": [
+     "rtx3090-24gb",
+     "rtx3090-24gb"
+    ]
+   },
+   "model": "llama-3.1-70b",
+   "quant": "Q4_K_M",
+   "context": 8192,
+   "kv_bits": 8
+  },
+  "expected": {
+   "weights_gb": 43.15425,
+   "kv_gb": 1.34217728,
+   "fits": true,
+   "placements": [
+    {
+     "device": "rtx3090-24gb",
+     "layers": 41,
+     "weights_gb": 22.116553125,
+     "kv_gb": 0.687865856,
+     "bandwidth_gbps": 786.24,
+     "tflops": 72.42,
+     "is_gpu": true,
+     "overhead_s": 0.001476
+    },
+    {
+     "device": "rtx3090-24gb",
+     "layers": 39,
+     "weights_gb": 21.037696875,
+     "kv_gb": 0.654311424,
+     "bandwidth_gbps": 786.24,
+     "tflops": 72.42,
+     "is_gpu": true,
+     "overhead_s": 0.001404
+    }
+   ],
+   "prefill_tps": 512.8895184135977,
+   "decode_tps_empty": 17.310961434469966,
+   "decode_tps_full": 16.814084137940494,
+   "decode_tps_at": [
+    [
+     0,
+     17.310961434469966
+    ],
+    [
+     1000,
+     17.248739521770272
+    ],
+    [
+     4096,
+     17.058905398394238
+    ]
+   ],
+   "notes": []
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "i5-12400",
+    "ram_gb": 16,
+    "ram_bandwidth_gbps": 51.2,
+    "gpus": []
+   },
+   "model": "llama-3.1-70b",
+   "quant": "Q4_K_M",
+   "context": 4096,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 43.15425,
+   "kv_gb": 1.34217728,
+   "fits": false,
+   "placements": [
+    {
+     "device": "cpu:i5-12400",
+     "layers": 80,
+     "weights_gb": 43.15425,
+     "kv_gb": 1.34217728,
+     "bandwidth_gbps": 40.44800000000001,
+     "tflops": 0.23099999999999998,
+     "is_gpu": false,
+     "overhead_s": 0.00952
+    }
+   ],
+   "prefill_tps": 1.6359773371104813,
+   "decode_tps_empty": 0.9289994580107654,
+   "decode_tps_full": 0.9012178067455453,
+   "decode_tps_at": [
+    [
+     0,
+     0.9289994580107654
+    ],
+    [
+     1000,
+     0.9220599687050004
+    ],
+    [
+     2048,
+     0.9148977775900695
+    ]
+   ],
+   "notes": [
+    "needs 44.5 GB in RAM but only 12.0 GB is free; it would page to disk"
+   ]
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "ryzen9-7950x",
+    "ram_gb": 128,
+    "ram_bandwidth_gbps": 96,
+    "gpus": [
+     "rtx5090-32gb"
+    ]
+   },
+   "model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "context": 131072,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 62.15625,
+   "kv_gb": 9.663676416,
+   "fits": true,
+   "placements": [
+    {
+     "device": "rtx5090-32gb",
+     "layers": 15,
+     "weights_gb": 25.8984375,
+     "kv_gb": 4.02653184,
+     "bandwidth_gbps": 1505.28,
+     "tflops": 195.673,
+     "is_gpu": true,
+     "overhead_s": 0.00054
+    },
+    {
+     "device": "cpu:ryzen9-7950x",
+     "layers": 21,
+     "weights_gb": 36.2578125,
+     "kv_gb": 5.637144576,
+     "bandwidth_gbps": 84.576,
+     "tflops": 1.7930700000000002,
+     "is_gpu": false,
+     "overhead_s": 0.002499
+    }
+   ],
+   "prefill_tps": 299.3966223344246,
+   "decode_tps_empty": 44.49204248511217,
+   "decode_tps_full": 10.89292687810919,
+   "decode_tps_at": [
+    [
+     0,
+     44.49204248511217
+    ],
+    [
+     1000,
+     43.46909363987039
+    ],
+    [
+     65536,
+     17.501086342385427
+    ]
+   ],
+   "notes": [
+    "21/36 layers offloaded to CPU"
+   ]
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "pc",
+    "cpu": "ryzen7-5800x",
+    "ram_gb": 32,
+    "ram_bandwidth_gbps": 51.2,
+    "gpus": [
+     "rtx4060ti-16gb"
+    ]
+   },
+   "model": "qwen3-30b-a3b",
+   "quant": "Q4_K_M",
+   "context": 16384,
+   "kv_bits": 4
+  },
+  "expected": {
+   "weights_gb": 18.643125,
+   "kv_gb": 0.402653184,
+   "fits": true,
+   "placements": [
+    {
+     "device": "rtx4060ti-16gb",
+     "layers": 37,
+     "weights_gb": 14.3707421875,
+     "kv_gb": 0.310378496,
+     "bandwidth_gbps": 241.92,
+     "tflops": 43.2425,
+     "is_gpu": true,
+     "overhead_s": 0.001332
+    },
+    {
+     "device": "cpu:ryzen7-5800x",
+     "layers": 11,
+     "weights_gb": 4.2723828125,
+     "kv_gb": 0.092274688,
+     "bandwidth_gbps": 40.44800000000001,
+     "tflops": 0.3815,
+     "is_gpu": false,
+     "overhead_s": 0.001309
+    }
+   ],
+   "prefill_tps": 244.9621195880254,
+   "decode_tps_empty": 48.78847858447749,
+   "decode_tps_full": 41.56113813186389,
+   "decode_tps_at": [
+    [
+     0,
+     48.78847858447749
+    ],
+    [
+     1000,
+     48.27608558170865
+    ],
+    [
+     8192,
+     44.885739893265196
+    ]
+   ],
+   "notes": [
+    "11/48 layers offloaded to CPU"
+   ]
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "unified",
+    "chip": "apple-m4-max-40c",
+    "memory_gb": 48
+   },
+   "model": "llama-3.1-70b",
+   "quant": "Q4_K_M",
+   "context": 8192,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 43.15425,
+   "kv_gb": 2.68435456,
+   "fits": false,
+   "placements": [
+    {
+     "device": "apple-m4-max-40c",
+     "layers": 61,
+     "weights_gb": 32.905115625,
+     "kv_gb": 2.046820352,
+     "bandwidth_gbps": 540.54,
+     "tflops": 10.692,
+     "is_gpu": true,
+     "overhead_s": 0.004392
+    },
+    {
+     "device": "cpu:apple-m4-max-40c-cpu",
+     "layers": 19,
+     "weights_gb": 10.249134375,
+     "kv_gb": 0.637534208,
+     "bandwidth_gbps": 431.34000000000003,
+     "tflops": 0.595,
+     "is_gpu": false,
+     "overhead_s": 0.002261
+    }
+   ],
+   "prefill_tps": 15.05320794143831,
+   "decode_tps_empty": 10.95426134816371,
+   "decode_tps_full": 10.356970834595602,
+   "decode_tps_at": [
+    [
+     0,
+     10.95426134816371
+    ],
+    [
+     1000,
+     10.877684168849825
+    ],
+    [
+     4096,
+     10.64724595223099
+    ]
+   ],
+   "notes": [
+    "needs 10.9 GB in RAM but only 9.0 GB is free; it would page to disk",
+    "19/80 layers offloaded to CPU"
+   ]
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "unified",
+    "chip": "apple-m2-ultra-76c",
+    "memory_gb": 192
+   },
+   "model": "qwen3-32b",
+   "quant": "Q6_K",
+   "context": 32768,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 26.895999999999997,
+   "kv_gb": 8.589934592,
+   "fits": true,
+   "placements": [
+    {
+     "device": "apple-m2-ultra-76c",
+     "layers": 64,
+     "weights_gb": 26.895999999999997,
+     "kv_gb": 8.589934592,
+     "bandwidth_gbps": 792.0,
+     "tflops": 17.952,
+     "is_gpu": true,
+     "overhead_s": 0.004608
+    }
+   ],
+   "prefill_tps": 273.6585365853659,
+   "decode_tps_empty": 25.92850228589867,
+   "decode_tps_full": 20.237395590738068,
+   "decode_tps_at": [
+    [
+     0,
+     25.92850228589867
+    ],
+    [
+     1000,
+     25.707875438851612
+    ],
+    [
+     16384,
+     22.73216300210361
+    ]
+   ],
+   "notes": []
+  }
+ },
+ {
+  "input": {
+   "system": {
+    "kind": "unified",
+    "chip": "apple-m1-8c",
+    "memory_gb": 8
+   },
+   "model": "llama-3.2-3b",
+   "quant": "Q4_0",
+   "context": 4096,
+   "kv_bits": 16
+  },
+  "expected": {
+   "weights_gb": 1.8256875,
+   "kv_gb": 0.469762048,
+   "fits": true,
+   "placements": [
+    {
+     "device": "apple-m1-8c",
+     "layers": 28,
+     "weights_gb": 1.8256875,
+     "kv_gb": 0.469762048,
+     "bandwidth_gbps": 67.32,
+     "tflops": 1.7160000000000002,
+     "is_gpu": true,
+     "overhead_s": 0.002016
+    }
+   ],
+   "prefill_tps": 267.2897196261682,
+   "decode_tps_empty": 34.322341914336874,
+   "decode_tps_full": 27.690409253340416,
+   "decode_tps_at": [
+    [
+     0,
+     34.322341914336874
+    ],
+    [
+     1000,
+     32.426298976969534
+    ],
+    [
+     2048,
+     30.651750688217856
+    ]
+   ],
+   "notes": []
+  }
+ }
+]

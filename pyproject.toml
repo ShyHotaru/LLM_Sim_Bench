@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,11 +7,16 @@ name = "llm-sim-bench"
 version = "0.1.0"
 description = "Simulate local LLM hardware (CPU, RAM, GPU) and models, estimate tokens/sec, and run a speed-matched mock server before you build."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "LICENSE-DATA", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-llmsim = "llm_sim_bench.cli:main"
+llmsimbench = "llm_sim_bench.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+llm_sim_bench = ["device_calibration.json"]
