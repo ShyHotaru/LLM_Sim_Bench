@@ -32,7 +32,7 @@ def _device(kind: str) -> dict[str, float]:
 class Efficiency:
     """Fraction of theoretical peak that real runtimes typically reach.
 
-    Values are fitted to measured llama.cpp results with `llmsim calibrate`
+    Values are fitted to measured llama.cpp results with `llmsimbench calibrate`
     (Metal on 2026 builds only). Each backend has a bandwidth and compute
     efficiency and a per-layer overhead; "cuda" uses the gpu_* fields.
     """

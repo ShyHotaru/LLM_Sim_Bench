@@ -1,4 +1,4 @@
-# Example virtual rig. Use with: llmsim estimate --config examples/rtx3080_desktop.toml
+# Example virtual rig. Use with: llmsimbench estimate --config examples/rtx3080_desktop.toml
 # Any table can name a `preset` and override fields, or define every field itself.
 
 cpu = "ryzen7-5800x"

@@ -2,7 +2,7 @@
 
 Python is the reference implementation. The web app reads presets.json, and
 its JavaScript estimator is tested against golden.json so the two stay in sync.
-Regenerate with `llmsim export-web` after changing presets, data or the model.
+Regenerate with `llmsimbench export-web` after changing presets, data or the model.
 """
 
 from __future__ import annotations

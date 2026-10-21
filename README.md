@@ -21,12 +21,12 @@ Requires Python 3.11+. No third-party dependencies.
 
 ```bash
 pip install -e .
-llmsim list
-llmsim estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx 8192
-llmsim run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
-llmsim estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
-llmsim serve --config examples/rtx3080_desktop.toml --port 8000
-llmsim calibrate
+llmsimbench list
+llmsimbench estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx 8192
+llmsimbench run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
+llmsimbench estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
+llmsimbench serve --config examples/rtx3080_desktop.toml --port 8000
+llmsimbench calibrate
 ```
 
 Without installing: `PYTHONPATH=src python -m llm_sim_bench ...`
@@ -57,7 +57,7 @@ Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style U
 the picker in the header.
 
 ```bash
-llmsim web            # then open http://127.0.0.1:8000
+llmsimbench web       # then open http://127.0.0.1:8000
 ```
 
 Without installing, run `PYTHONPATH=src python -m llm_sim_bench web` from the repository root.
@@ -75,7 +75,7 @@ own text: it is kept only in your browser's local storage, never put into shared
 split at the rate of the sample text in the language it looks like. See
 [`data/README.md`](data/README.md) for sources and licensing.
 
-Python is the reference implementation. `llmsim export-web` writes `web/data/presets.json`
+Python is the reference implementation. `llmsimbench export-web` writes `web/data/presets.json`
 and the golden test vectors in `web/test/golden.json`; rerun it after changing presets,
 measurement data or the estimator, then run `node --test web/test/*.test.mjs`.
 
@@ -97,7 +97,7 @@ Custom hardware or models that are not presets can be defined field-by-field in 
 
 ## Mock OpenAI-compatible server
 
-`llmsim serve` exposes `GET /v1/models` and `POST /v1/chat/completions` (streaming and
+`llmsimbench serve` exposes `GET /v1/models` and `POST /v1/chat/completions` (streaming and
 non-streaming). Point any OpenAI client or chat UI at `http://127.0.0.1:8000/v1` with any API
 key. Time-to-first-token follows the simulated prefill speed for the prompt length, and each
 token after that follows the simulated decode speed at the current context fill.
@@ -122,7 +122,7 @@ Efficiency factors for every backend are fitted to public llama.cpp results
 ([`data/`](data/README.md)): the CUDA, ROCm, Vulkan, SYCL and Apple Silicon scoreboards and
 CPU-only runs. Metal uses only results from 2026 builds, because 2023 builds had much more
 per-token overhead. Measured devices also get their own prompt-processing factor, and
-measured CPUs their own memory-bandwidth factor. `llmsim calibrate` refits everything and
+measured CPUs their own memory-bandwidth factor. `llmsimbench calibrate` refits everything and
 prints the error against every record (`--write` stores the per-device factors); the test
 suite fails if the defaults drift from the data. Current median error:
 

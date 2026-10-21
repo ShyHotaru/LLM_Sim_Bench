@@ -944,7 +944,7 @@ async function main() {
 
 main().catch((e) => {
   const msg = t("app.error", { msg: e.message }).replace(/^app\.error$/,
-    `Could not load the app data (${e.message}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsim web`);
+    `Could not load the app data (${e.message}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsimbench web`);
   document.querySelector("main").replaceChildren(h("p", { class: "panel error" }, msg));
   if (!document.getElementById("lang").options.length) document.querySelector(".lang-picker").style.display = "none";
 });

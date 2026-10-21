@@ -56,7 +56,7 @@ class CalibrationTests(unittest.TestCase):
                 self.assertAlmostEqual(getattr(fitted, k), v, delta=0.02, msg=k)
         for k in ("device_compute", "device_bandwidth"):
             self.assertEqual(getattr(fitted, k), getattr(default, k),
-                             "run `llmsim calibrate --write` to store the device calibration")
+                             "run `llmsimbench calibrate --write` to store the device calibration")
 
     def test_cli_calibrate(self):
         self.assertEqual(main(["calibrate"]), 0)
@@ -67,7 +67,7 @@ class ExportTests(unittest.TestCase):
         from llm_sim_bench import export
 
         self.assertEqual(export.stale(RECORDS), [],
-                         "run `llmsim export-web` to regenerate the web data")
+                         "run `llmsimbench export-web` to regenerate the web data")
 
 
 class WebServerTests(unittest.TestCase):

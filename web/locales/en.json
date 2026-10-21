@@ -1,7 +1,7 @@
 {
   "app.tagline": "Pick hardware and a model, see whether it fits and how fast it runs, then watch tokens stream at that speed.",
   "app.description": "Simulate a local LLM rig before you build it: memory fit, tokens per second, and a speed-matched mock stream you can watch.",
-  "app.error": "Could not load the app data ({msg}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsim web",
+  "app.error": "Could not load the app data ({msg}). Reload the page. When running it from a local copy, serve it over HTTP with: llmsimbench web",
   "lang.label": "Language",
 
   "config.section": "Configurations",

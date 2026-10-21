@@ -1,4 +1,4 @@
-"""Command-line interface: `llmsim list | estimate | run | serve | calibrate | export-web | web`."""
+"""Command-line interface: `llmsimbench list | estimate | run | serve | calibrate | export-web | web`."""
 
 from __future__ import annotations
 
@@ -188,7 +188,7 @@ def make_web_server(host: str, port: int):
     from .export import WEB_DIR
 
     if not (WEB_DIR / "index.html").is_file():
-        raise OSError(f"web app not found at {WEB_DIR}; run llmsim from a source checkout")
+        raise OSError(f"web app not found at {WEB_DIR}; run llmsimbench from a source checkout")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         # Windows can map .js to text/plain via the registry, which browsers
@@ -234,7 +234,7 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--decode-tps", type=float, help="force a fixed decode tok/s")
     s.add_argument("--prefill-tps", type=float, help="force a fixed prefill tok/s")
 
-    p = argparse.ArgumentParser(prog="llmsim", description=__doc__)
+    p = argparse.ArgumentParser(prog="llmsimbench", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="show available presets").set_defaults(func=cmd_list)
     sub.add_parser("estimate", parents=[common], help="estimate memory and tok/s"

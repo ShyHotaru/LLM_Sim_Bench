@@ -1,7 +1,7 @@
 # Measurement data
 
 Real-world llama.cpp benchmark results used to calibrate and test the estimator
-(`llmsim calibrate`, `tests/test_measurements.py`).
+(`llmsimbench calibrate`, `tests/test_measurements.py`).
 
 ## Files
 
@@ -67,7 +67,7 @@ guess.
 - Prompt-processing efficiency differs strongly between devices (data-center GPUs reach far
   less of their peak at this batch size than consumer cards; Intel results mix FP16 and FP32
   builds), so every measured device gets its own factor in
-  `src/llm_sim_bench/device_calibration.json` (`llmsim calibrate --write`). The same file
+  `src/llm_sim_bench/device_calibration.json` (`llmsimbench calibrate --write`). The same file
   holds per-CPU decode bandwidth factors: single-CCD Ryzen parts reach about 0.6 of their
   DRAM bandwidth, dual-CCD parts about 0.85.
 - Mixture-of-experts models are excluded from calibration (routing is not modeled).
