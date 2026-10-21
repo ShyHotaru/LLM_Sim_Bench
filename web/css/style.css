@@ -83,7 +83,7 @@ a { color: var(--accent); }
 
 /* Break Korean at spaces, and short Japanese labels at phrase boundaries, rather than inside words. */
 html:lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
-html:lang(ja) :is(label, h2, h3, button, summary, .badge, .legend, .bar-label, .headline) { word-break: auto-phrase; }
+html:lang(ja) :is(label, h2, h3, button, summary, .badge, .legend, .bar-label, .headline, .site-footer) { word-break: auto-phrase; }
 
 .wrap {
   max-width: 1180px;
@@ -453,6 +453,18 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   padding-top: 16px;
   padding-bottom: 32px;
 }
+
+/* The author's logo on its own row, drawn in the text color through a mask. */
+.site-footer .signature { flex-basis: 100%; margin-top: 14px; }
+.site-footer .author {
+  display: block;
+  width: 132px;  /* the logo is 6.6 times as wide as it is tall */
+  height: 20px;
+  background: var(--muted);
+  -webkit-mask: url(../brand/shy-hotaru.svg) left center / contain no-repeat;
+  mask: url(../brand/shy-hotaru.svg) left center / contain no-repeat;
+}
+.site-footer .author:hover { background: var(--text); }
 
 .error { color: var(--bad); }
 

@@ -3,7 +3,8 @@
 LLM Sim Bench bundles data and text from the sources below. Each keeps its own terms; the
 project's licenses ([`LICENSE`](LICENSE) for code, [`LICENSE-DATA`](LICENSE-DATA) for data)
 apply only to this project's own work. Record-level sources are listed in
-[`data/README.md`](data/README.md).
+[`data/README.md`](data/README.md). The author's logo in `web/brand/` is not licensed at all
+(see [`web/brand/README.md`](web/brand/README.md)).
 
 ## Benchmark results
 

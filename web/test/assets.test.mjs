@@ -5,9 +5,12 @@ import { test } from "node:test";
 const web = new URL("../", import.meta.url);
 const read = (p) => readFileSync(new URL(p, web), "utf8");
 const local = (html) => [...html.matchAll(/(?:href|src)="([^"#:]+)"/g)].map((m) => m[1]);
+// Files the stylesheet loads (the footer logo mask), relative to web/.
+const fromCss = () => [...read("css/style.css").matchAll(/url\(\.\.\/([^)]+)\)/g)].map((m) => m[1]);
 
-test("every file the page links exists", () => {
-  for (const path of local(read("index.html"))) assert.ok(existsSync(new URL(path, web)), path);
+test("every file the page and its stylesheet link exists", () => {
+  assert.ok(fromCss().includes("brand/shy-hotaru.svg"));
+  for (const path of [...local(read("index.html")), ...fromCss()]) assert.ok(existsSync(new URL(path, web)), path);
 });
 
 test("every font file exists and ships with its license", () => {
@@ -25,7 +28,7 @@ test("every font file exists and ships with its license", () => {
 test("the Pages workflow copies everything the page links", () => {
   const workflow = readFileSync(new URL("../.github/workflows/pages.yml", web), "utf8");
   const copied = workflow.match(/cp -r (.+) _site\//)[1].split(/\s+/).map((p) => p.replace(/^web\//, ""));
-  for (const path of local(read("index.html"))) {
+  for (const path of [...local(read("index.html")), ...fromCss()]) {
     assert.ok(copied.includes(path.split("/")[0]), `${path} is not copied to the site`);
   }
 });
