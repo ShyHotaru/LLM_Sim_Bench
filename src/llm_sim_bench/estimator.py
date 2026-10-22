@@ -65,35 +65,35 @@ class Efficiency:
     efficiency and a per-layer overhead; "cuda" uses the gpu_* fields.
     """
 
-    gpu_bandwidth: float = 0.84
-    gpu_compute: float = 0.49
+    gpu_bandwidth: float = 0.83
+    gpu_compute: float = 0.48
     gpu_layer_overhead_us: float = 36.0
-    metal_bandwidth: float = 0.97
-    metal_compute: float = 0.66
+    metal_bandwidth: float = 0.96
+    metal_compute: float = 0.65
     metal_layer_overhead_us: float = 77.0
-    rocm_bandwidth: float = 0.97
-    rocm_compute: float = 0.33
+    rocm_bandwidth: float = 0.95
+    rocm_compute: float = 0.32
     rocm_layer_overhead_us: float = 114.0
-    vulkan_bandwidth: float = 0.80
-    vulkan_compute: float = 0.40
+    vulkan_bandwidth: float = 0.79
+    vulkan_compute: float = 0.38
     vulkan_layer_overhead_us: float = 22.0
-    sycl_bandwidth: float = 0.85
+    sycl_bandwidth: float = 0.84
     sycl_compute: float = 0.07
     sycl_layer_overhead_us: float = 58.0
     # SYCL builds with GGML_SYCL_F16=ON ("sycl-f16") share every SYCL factor but this one:
     # their prompt processing runs in FP16 and is about twice as fast as the default build.
     sycl_f16_compute: float = 0.19
-    cpu_bandwidth: float = 0.79
-    cpu_compute: float = 0.35
-    cpu_layer_overhead_us: float = 119.0
+    cpu_bandwidth: float = 0.75
+    cpu_compute: float = 0.31
+    cpu_layer_overhead_us: float = 118.0
     # Long contexts, fitted to llama-bench runs at several depths (llama.cpp benches/):
     # decode reads the KV cache *_kv_read times slower than weights, and prompt attention
     # runs at *_attention times the prompt-processing FLOP rate. Backends without depth
     # measurements keep 1.0.
-    gpu_kv_read: float = 0.96
-    gpu_attention: float = 0.83
-    metal_kv_read: float = 2.32
-    metal_attention: float = 0.53
+    gpu_kv_read: float = 0.94
+    gpu_attention: float = 0.96
+    metal_kv_read: float = 2.27
+    metal_attention: float = 0.62
     rocm_kv_read: float = 1.0
     rocm_attention: float = 1.0
     vulkan_kv_read: float = 1.0
@@ -106,12 +106,12 @@ class Efficiency:
     # (routing, gathering the experts; 0 without measurements) and the share of the
     # prompt-processing FLOP rate their weights reach (1.0 without measurements).
     gpu_moe_layer_overhead_us: float = 0.0
-    metal_moe_layer_overhead_us: float = 107.0
+    metal_moe_layer_overhead_us: float = 102.0
     rocm_moe_layer_overhead_us: float = 0.0
     vulkan_moe_layer_overhead_us: float = 0.0
     sycl_moe_layer_overhead_us: float = 0.0
     cpu_moe_layer_overhead_us: float = 0.0
-    gpu_moe_compute: float = 0.58
+    gpu_moe_compute: float = 0.52
     metal_moe_compute: float = 1.0
     rocm_moe_compute: float = 1.0
     vulkan_moe_compute: float = 1.0
@@ -120,12 +120,12 @@ class Efficiency:
     # Share of the prompt-processing compute rate that each request beyond the first
     # reaches in a decode batch. Fitted for CUDA to llama-batched-bench results (DGX
     # Spark); the other backends use the CUDA value until they have measurements.
-    gpu_batch_compute: float = 0.39
-    metal_batch_compute: float = 0.39
-    rocm_batch_compute: float = 0.39
-    vulkan_batch_compute: float = 0.39
-    sycl_batch_compute: float = 0.39
-    cpu_batch_compute: float = 0.39
+    gpu_batch_compute: float = 0.42
+    metal_batch_compute: float = 0.42
+    rocm_batch_compute: float = 0.42
+    vulkan_batch_compute: float = 0.42
+    sycl_batch_compute: float = 0.42
+    cpu_batch_compute: float = 0.42
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
@@ -267,31 +267,64 @@ def context_sum(first: int, last: int, cap: int = 0) -> float:
     return (first + cap) * (cap - first + 1) / 2 + cap * (last - cap)
 
 
+def expert_params(model: Model) -> float:
+    """Billions of parameters in all routed experts; 0 for dense models."""
+    if not model.n_experts:
+        return 0.0
+    if model.expert_params_b:
+        return model.expert_params_b
+    share = model.experts_per_token / model.n_experts
+    return (model.params_b - model.active_b) / (1 - share)
+
+
+def _shared_bpw(model: Model, quant: str) -> float:
+    return QUANT_SHARED_BPW.get(quant, QUANT_BPW[quant]) if model.n_experts else QUANT_BPW[quant]
+
+
 def weight_bytes(model: Model, quant: str) -> tuple[float, float]:
     """(bytes of the shared weights, bytes of all routed experts); dense models have no
     experts. Some quantizations apply to the experts only (QUANT_SHARED_BPW)."""
     bpw = QUANT_BPW[quant]
     if not model.n_experts:
         return model.params_b * 1e9 * bpw / 8, 0.0
-    share = model.experts_per_token / model.n_experts
-    expert = (model.params_b - model.active_b) / (1 - share)  # B params in all experts
+    expert = expert_params(model)
     shared = model.params_b - expert
-    return shared * 1e9 * QUANT_SHARED_BPW.get(quant, bpw) / 8, expert * 1e9 * bpw / 8
+    return shared * 1e9 * _shared_bpw(model, quant) / 8, expert * 1e9 * bpw / 8
+
+
+def lookup_params(model: Model) -> float:
+    """Billions of token-embedding parameters a token only looks up, so never reads in full
+    (none when the output layer reuses the matrix)."""
+    return 0.0 if model.tied_embeddings else model.embedding_params_b
 
 
 def weight_read_ratio(model: Model, n: int, quant: str = "Q4_K_M") -> float:
     """Share of the weight bytes read in a decode step for `n` requests.
 
-    Dense models read everything once. A mixture-of-experts model reads its shared
-    weights and the experts any request is routed to; with uniform independent
-    routing to k of E experts, a step touches 1 - (1 - k/E)^n of them.
+    Dense models read everything but the token embedding, which is a lookup. A
+    mixture-of-experts model reads its shared weights and the experts any request is
+    routed to; with uniform independent routing to k of E experts, a step touches
+    1 - (1 - k/E)^n of them.
     """
-    if not model.n_experts:
+    if not model.n_experts and model.active_params_b:  # only an active size is known
         return model.active_b / model.params_b
     shared, expert = weight_bytes(model, quant)
-    share = model.experts_per_token / model.n_experts
+    lookup = lookup_params(model) * 1e9 * _shared_bpw(model, quant) / 8
+    share = model.experts_per_token / model.n_experts if model.n_experts else 0.0
     touched = share if n <= 1 else 1 - (1 - share) ** n
-    return (shared + expert * touched) / (shared + expert)
+    return (shared - lookup + expert * touched) / (shared + expert)
+
+
+def matmul_params(model: Model, prompt: bool) -> float:
+    """Billions of weights each token multiplies: the shared weights and its experts, but not
+    the token embedding (a lookup) and, for prompt tokens, not the output layer either:
+    llama.cpp computes logits only for the last token of a prompt."""
+    if not model.n_experts and model.active_params_b:  # only an active size is known
+        return model.active_b
+    expert = expert_params(model)
+    share = model.experts_per_token / model.n_experts if model.n_experts else 0.0
+    output = model.embedding_params_b if prompt else 0.0
+    return model.params_b - expert + expert * share - lookup_params(model) - output
 
 
 def kv_bytes_per_token(model: Model, kv_bits: int = 16) -> float:
@@ -354,7 +387,8 @@ def estimate(
             placements.append(
                 Placement(gpu.name, n, n * layer_w / GB, n * layer_kv / GB,
                           gpu.bandwidth_gbps * bw_eff, tflops, True, n * layer_s,
-                          _flop_time(model, n, tflops) / eff.batch_compute(gpu.backend))
+                          _flop_time(model, n, tflops, prompt=False)
+                          / eff.batch_compute(gpu.backend))
             )
             remaining -= n
             gpu_used_gb += n * (layer_w + layer_kv) / GB
@@ -372,7 +406,8 @@ def estimate(
             Placement(f"cpu:{system.cpu.name}", remaining, remaining * layer_w / GB,
                       remaining * layer_kv / GB,
                       system.ram.bandwidth_gbps * bw_eff, tflops, False, remaining * layer_s,
-                      _flop_time(model, remaining, tflops) / eff.batch_compute("cpu"))
+                      _flop_time(model, remaining, tflops, prompt=False)
+                      / eff.batch_compute("cpu"))
         )
         ram_free = system.ram.size_gb - eff.ram_reserve_gb
         if system.unified:
@@ -422,9 +457,9 @@ def estimate(
     return est
 
 
-def _flop_time(model: Model, layers: int, tflops: float) -> float:
-    """Seconds of compute per token for `layers` layers: 2 FLOPs per active parameter."""
-    return 2 * model.active_b * 1e9 * (layers / model.n_layers) / (tflops * 1e12)
+def _flop_time(model: Model, layers: int, tflops: float, prompt: bool = True) -> float:
+    """Seconds of compute per token for `layers` layers: 2 FLOPs per multiplied weight."""
+    return 2 * matmul_params(model, prompt) * 1e9 * (layers / model.n_layers) / (tflops * 1e12)
 
 
 def parallel_levels(n: int) -> list[int]:

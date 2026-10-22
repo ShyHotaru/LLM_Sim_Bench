@@ -84,14 +84,19 @@ class ParallelTests(unittest.TestCase):
             prev_each, prev_total = each, n * each
 
     def test_moe_reads_more_experts_with_more_requests(self):
-        from llm_sim_bench.estimator import weight_read_ratio
+        from llm_sim_bench.estimator import matmul_params, weight_read_ratio
 
         moe = MODEL_PRESETS["qwen3-30b-a3b"]
         ratios = [weight_read_ratio(moe, n) for n in (1, 2, 8, 64, 10_000)]
-        self.assertAlmostEqual(ratios[0], moe.active_b / moe.params_b)
+        # One request reads the shared weights but the token embedding, and its own experts.
+        self.assertAlmostEqual(ratios[0], matmul_params(moe, prompt=False) / moe.params_b)
         self.assertEqual(ratios, sorted(ratios))
-        self.assertAlmostEqual(ratios[-1], 1.0, places=6)
-        self.assertEqual(weight_read_ratio(LLAMA8, 32), 1.0)
+        # Enough requests touch every expert: all weights but the token embedding.
+        self.assertAlmostEqual(ratios[-1], 1 - 0.311 / moe.params_b, places=6)
+        # Dense models read everything but the token embedding, a lookup.
+        self.assertAlmostEqual(weight_read_ratio(LLAMA8, 32), 1 - 0.525 / 8.03)
+        tied = MODEL_PRESETS["llama-3.2-3b"]
+        self.assertEqual(weight_read_ratio(tied, 1), 1.0)
 
     def test_mxfp4_keeps_shared_weights_in_q8_0(self):
         # ggml-org/gpt-oss-20b-GGUF: 12.10 GB of tensors, experts MXFP4 and the rest Q8_0.
@@ -133,6 +138,21 @@ class ParallelTests(unittest.TestCase):
                                  (2, 20, 7)]:
             want = sum(min(c, cap) if cap else c for c in range(first, last + 1))
             self.assertEqual(context_sum(first, last, cap), want, (first, last, cap))
+
+    def test_prompts_skip_the_output_layer(self):
+        from llm_sim_bench.estimator import matmul_params
+
+        # Untied: the token embedding is a lookup; prompts also skip the output layer.
+        self.assertAlmostEqual(matmul_params(LLAMA8, prompt=False), 8.03 - 0.525)
+        self.assertAlmostEqual(matmul_params(LLAMA8, prompt=True), 8.03 - 2 * 0.525)
+        # Tied: one matrix, used as the output layer in decode only.
+        tied = MODEL_PRESETS["llama-3.2-3b"]
+        self.assertAlmostEqual(matmul_params(tied, prompt=False), 3.21)
+        self.assertAlmostEqual(matmul_params(tied, prompt=True), 3.21 - 0.394)
+        # MoE: shared weights and the routed share of the experts.
+        oss = MODEL_PRESETS["gpt-oss-20b"]
+        self.assertAlmostEqual(matmul_params(oss, prompt=False),
+                               21.0 - 19.11 + 19.11 * 4 / 32 - 0.579)
 
     def test_parallel_levels(self):
         from llm_sim_bench.estimator import parallel_levels

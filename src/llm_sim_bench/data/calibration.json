@@ -2,113 +2,113 @@
  "calibration": {
   "cpu/pp": {
    "n": 29,
-   "median": 0.0619,
-   "max": 0.4213
+   "median": 0.0525,
+   "max": 0.421
   },
   "cpu/tg": {
    "n": 174,
-   "median": 0.0306,
-   "max": 0.5759
+   "median": 0.0101,
+   "max": 0.6466
   },
   "cuda/pp": {
    "n": 55,
-   "median": 0.0595,
-   "max": 0.1164
+   "median": 0.06,
+   "max": 0.1167
   },
   "cuda/tg": {
    "n": 55,
-   "median": 0.0633,
-   "max": 0.4785
+   "median": 0.0604,
+   "max": 0.4846
   },
   "metal/pp": {
    "n": 18,
-   "median": 0.0083,
-   "max": 0.0888
+   "median": 0.0092,
+   "max": 0.088
   },
   "metal/tg": {
    "n": 18,
-   "median": 0.0405,
-   "max": 0.1712
+   "median": 0.0342,
+   "max": 0.1785
   },
   "rocm/pp": {
    "n": 31,
-   "median": 0.0323,
-   "max": 0.813
+   "median": 0.0332,
+   "max": 0.8209
   },
   "rocm/tg": {
    "n": 31,
-   "median": 0.0501,
-   "max": 0.3857
+   "median": 0.0509,
+   "max": 0.3848
   },
   "sycl/pp": {
    "n": 9,
-   "median": 0.045,
-   "max": 0.1457
+   "median": 0.0415,
+   "max": 0.1485
   },
   "sycl/tg": {
    "n": 9,
-   "median": 0.0156,
-   "max": 0.0578
+   "median": 0.0204,
+   "max": 0.0629
   },
   "sycl-f16/pp": {
    "n": 12,
-   "median": 0.2499,
-   "max": 1.1844
+   "median": 0.2482,
+   "max": 1.1921
   },
   "sycl-f16/tg": {
    "n": 12,
-   "median": 0.0197,
-   "max": 0.1458
+   "median": 0.0208,
+   "max": 0.1532
   },
   "vulkan/pp": {
    "n": 62,
-   "median": 0.0537,
-   "max": 1.0931
+   "median": 0.0535,
+   "max": 1.0963
   },
   "vulkan/tg": {
    "n": 62,
-   "median": 0.0765,
-   "max": 0.5008
+   "median": 0.076,
+   "max": 0.5106
   },
   "cuda/batch": {
    "n": 15,
-   "median": 0.0614,
-   "max": 0.1375
+   "median": 0.0607,
+   "max": 0.1245
   },
   "cuda/depth_tg": {
    "n": 27,
-   "median": 0.0285,
-   "max": 0.1085
+   "median": 0.0274,
+   "max": 0.113
   },
   "cuda/depth_pp": {
    "n": 15,
-   "median": 0.0362,
-   "max": 0.2379
+   "median": 0.0364,
+   "max": 0.2412
   },
   "cuda/moe_tg": {
    "n": 3,
-   "median": 0.0279,
-   "max": 0.038
+   "median": 0.0499,
+   "max": 0.0517
   },
   "cuda/moe_pp": {
    "n": 3,
-   "median": 0.2036,
-   "max": 0.2436
+   "median": 0.2076,
+   "max": 0.3125
   },
   "metal/depth_tg": {
    "n": 16,
-   "median": 0.0095,
-   "max": 0.0315
+   "median": 0.0098,
+   "max": 0.028
   },
   "metal/depth_pp": {
    "n": 4,
-   "median": 0.0045,
-   "max": 0.0053
+   "median": 0.0042,
+   "max": 0.0047
   },
   "metal/moe_tg": {
    "n": 3,
-   "median": 0.0488,
-   "max": 0.0518
+   "median": 0.009,
+   "max": 0.0282
   }
  },
  "batch_devices": [

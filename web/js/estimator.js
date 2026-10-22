@@ -73,28 +73,51 @@ function forMoe(eff, backend) {
   return [eff[`${p}_moe_layer_overhead_us`] / 1e6, eff[`${p}_moe_compute`]];
 }
 
-// Seconds of compute per token for `layers` layers: 2 FLOPs per active parameter.
-function flopTime(model, layers, tflops) {
-  return (2 * activeB(model) * 1e9 * (layers / model.n_layers)) / (tflops * 1e12);
+// Seconds of compute per token for `layers` layers: 2 FLOPs per multiplied weight.
+function flopTime(model, layers, tflops, prompt = true) {
+  return (2 * matmulParams(model, prompt) * 1e9 * (layers / model.n_layers)) / (tflops * 1e12);
 }
+
+// Billions of parameters in all routed experts; 0 for dense models.
+function expertParams(model) {
+  if (!model.n_experts) return 0;
+  if (model.expert_params_b) return model.expert_params_b;
+  const share = model.experts_per_token / model.n_experts;
+  return (model.params_b - activeB(model)) / (1 - share);
+}
+
+const sharedBpwOf = (model, quant, quantBpw, sharedBpw) =>
+  (model.n_experts ? sharedBpw[quant] ?? quantBpw[quant] : quantBpw[quant]);
 
 // [bytes of the shared weights, bytes of all routed experts] (see estimator.py).
 export function weightBytes(model, quant, quantBpw, sharedBpw = {}) {
   const bpw = quantBpw[quant];
   if (!model.n_experts) return [(model.params_b * 1e9 * bpw) / 8, 0];
-  const share = model.experts_per_token / model.n_experts;
-  const expert = (model.params_b - activeB(model)) / (1 - share);
+  const expert = expertParams(model);
   const shared = model.params_b - expert;
-  return [(shared * 1e9 * (sharedBpw[quant] ?? bpw)) / 8, (expert * 1e9 * bpw) / 8];
+  return [(shared * 1e9 * sharedBpwOf(model, quant, quantBpw, sharedBpw)) / 8, (expert * 1e9 * bpw) / 8];
 }
+
+// Token-embedding parameters a token only looks up (none when the output layer reuses them).
+const lookupParams = (model) => (model.tied_embeddings ? 0 : model.embedding_params_b);
 
 // Share of the weight bytes read in a decode step for n requests (see estimator.py).
 export function weightReadRatio(model, n, quant, quantBpw, sharedBpw = {}) {
-  if (!model.n_experts) return activeB(model) / model.params_b;
+  if (!model.n_experts && model.active_params_b) return activeB(model) / model.params_b;
   const [shared, expert] = weightBytes(model, quant, quantBpw, sharedBpw);
-  const share = model.experts_per_token / model.n_experts;
+  const lookup = (lookupParams(model) * 1e9 * sharedBpwOf(model, quant, quantBpw, sharedBpw)) / 8;
+  const share = model.n_experts ? model.experts_per_token / model.n_experts : 0;
   const touched = n <= 1 ? share : 1 - (1 - share) ** n;
-  return (shared + expert * touched) / (shared + expert);
+  return (shared - lookup + expert * touched) / (shared + expert);
+}
+
+// Billions of weights each token multiplies; prompt tokens skip the output layer (see estimator.py).
+function matmulParams(model, prompt) {
+  if (!model.n_experts && model.active_params_b) return activeB(model);
+  const expert = expertParams(model);
+  const share = model.n_experts ? model.experts_per_token / model.n_experts : 0;
+  const output = prompt ? model.embedding_params_b : 0;
+  return model.params_b - expert + expert * share - lookupParams(model) - output;
 }
 
 // Concurrency levels shown for up to n requests: powers of two and n itself.
@@ -175,7 +198,7 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
         weights_gb: (n * layerW) / GB, kv_gb: (n * layerKv) / GB,
         bandwidth_gbps: gpu.bandwidth_gbps * bwEff, tflops,
         is_gpu: true, overhead_s: n * layerS,
-        batch_s: flopTime(model, n, tflops) / batchCompute(eff, gpu.backend || "cuda"),
+        batch_s: flopTime(model, n, tflops, false) / batchCompute(eff, gpu.backend || "cuda"),
       });
       remaining -= n;
       gpuUsedGb += (n * (layerW + layerKv)) / GB;
@@ -198,7 +221,7 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
       weights_gb: (remaining * layerW) / GB, kv_gb: (remaining * layerKv) / GB,
       bandwidth_gbps: system.ram.bandwidth_gbps * bwEff,
       tflops, is_gpu: false, overhead_s: remaining * layerS,
-      batch_s: flopTime(model, remaining, tflops) / batchCompute(eff, "cpu"),
+      batch_s: flopTime(model, remaining, tflops, false) / batchCompute(eff, "cpu"),
     });
     ramNeededGb = cpuGb;
     if (cpuGb > ramFreeGb) {

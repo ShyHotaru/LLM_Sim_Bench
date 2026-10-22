@@ -168,11 +168,13 @@ the whole prompt on every request.
   (Gemma 2, gpt-oss) keep only their window plus one batch, as llama.cpp does.
 - **Placement**: whole layers go to GPUs first (minus a VRAM reserve), the rest to system RAM.
 - **Decode** is memory-bandwidth bound: per token, each device reads its share of the active
-  weights and the filled KV cache (attention reads the cache more slowly than the weights).
+  weights (not the token embedding, which is a lookup) and the filled KV cache (attention reads
+  the cache more slowly than the weights).
   Device times add up (layers run sequentially).
 - **Overhead**: each layer adds a fixed per-token cost (kernel launches, synchronization).
-- **Prefill** is compute bound: about 2 FLOPs per active parameter per prompt token, plus
-  attention over every token already in the context, so prompts get slower as it fills.
+- **Prefill** is compute bound: about 2 FLOPs per multiplied weight per prompt token (without
+  the output layer, which llama.cpp runs only for the last prompt token), plus attention over
+  every token already in the context, so prompts get slower as it fills.
 - **Mixture-of-experts** models read their shared weights and the routed experts; their layers
   cost extra time per token, and their prompt processing reaches less of the GPU's compute.
   gpt-oss MXFP4 files keep everything but the experts in Q8_0.
@@ -198,13 +200,13 @@ suite fails if the defaults drift from the data. Current median error:
 
 | Backend | Decode | Prefill |
 | --- | --- | --- |
-| CUDA (55 results) | 6.3 % | 5.9 % |
-| ROCm (31) | 5.0 % | 3.2 % |
-| Vulkan (62) | 7.6 % | 5.4 % |
-| SYCL, default FP32 build (9) | 1.6 % | 4.5 % |
-| SYCL, FP16 build (12) | 2.0 % | 25 % |
-| Metal (18: M5 family, M6, M1 Ultra) | 4.0 % | 0.8 % |
-| CPU (174 decode, 29 prefill) | 3.1 % | 6.2 % |
+| CUDA (55 results) | 6.0 % | 6.0 % |
+| ROCm (31) | 5.1 % | 3.3 % |
+| Vulkan (62) | 7.6 % | 5.3 % |
+| SYCL, default FP32 build (9) | 2.0 % | 4.2 % |
+| SYCL, FP16 build (12) | 2.1 % | 25 % |
+| Metal (18: M5 family, M6, M1 Ultra) | 3.4 % | 0.9 % |
+| CPU (174 decode, 29 prefill) | 1.0 % | 5.2 % |
 
 The MI300X results come from a virtual function on a cloud host and reach far less of the
 GPU's bandwidth than the model expects (a 70B model decodes about a third slower than
@@ -218,21 +220,22 @@ Long contexts and mixture-of-experts models are fitted to `llama-bench` runs at 
 up to 32768 tokens in llama.cpp's `benches/` folder, DGX Spark (CUDA) and an M2 Ultra
 (Metal), with Qwen2.5-Coder 7B, Qwen3-Coder 30B-A3B, gpt-oss 20B and 120B, and for CUDA also
 Llama 3 8B on two and four RTX 4090s at up to 131072 tokens (llama.cpp PR #19378). Given the
-speed at an empty context, the speed at depth is predicted with a median error of 2.9 % (11 %
-at most, 27 results) on CUDA and 0.9 % (3.1 %, 16) on Metal for decode, and 3.6 % (24 %, 15)
+speed at an empty context, the speed at depth is predicted with a median error of 2.7 % (11 %
+at most, 27 results) on CUDA and 1.0 % (2.8 %, 16) on Metal for decode, and 3.6 % (24 %, 15)
 and 0.4 % (0.5 %, 4) for prompt processing of dense models. The two CUDA devices slow down
-differently, so the CUDA factors are a compromise. Mixture-of-experts decode is within 4 %
-(CUDA) and 6 % (Metal); their prompt processing is calibrated on CUDA only, within 25 %.
+differently, so the CUDA factors are a compromise. Mixture-of-experts decode is within 5 %
+(CUDA) and 3 % (Metal); their prompt processing is calibrated on CUDA only, within 31 %.
 Other backends have no such measurements and keep the plain model (no extra cost for reading
 the KV cache, attention at the full compute rate, no MoE overhead); the app says so.
 
 Several GPUs split by layers are checked, not fitted: on two and four RTX 4090s the estimate
-is 13 % slow for decode (median; 17 % at most) and within 10 % for prompt processing of short
-prompts. Long prompts on several GPUs are faster than estimated because llama.cpp pipelines
+is 10 % slow for decode (median; 13 % at most); short prompts are within 14 % for Q4_0 but
+16–22 % fast for F16, whose prompts reach less of the GPU's compute (the model does not
+distinguish quantizations there). Long prompts on several GPUs are faster than estimated because llama.cpp pipelines
 them across the GPUs, which the model does not.
 
 Concurrent decode is fitted to how the total speed grows from one sequence to 2–32 in
-`llama-batched-bench` results from llama.cpp's own `benches/` folder: 6.1 % median error (14 %
+`llama-batched-bench` results from llama.cpp's own `benches/` folder: 6.1 % median error (12 %
 at most) over 15 CUDA results, all of them Qwen2.5-Coder 7B on a DGX Spark. Every other
 backend uses the CUDA factor, so concurrency estimates are rough everywhere else.
 
@@ -249,7 +252,7 @@ a backend without benches/ results).
   only CUDA and Metal; MoE prompt processing differs by model (within 27 % on CUDA).
 - Concurrent requests are calibrated on one dense model on one device (DGX Spark). For
   mixture-of-experts models the measured speed-up is much larger than estimated (at 32
-  sequences, the estimate is 17–57 % low), so their concurrent totals are pessimistic.
+  sequences, the estimate is 11–54 % low), so their concurrent totals are pessimistic.
 - Concurrent prompt processing is modeled as one shared queue; llama-server's chunked
   scheduling of prompts between decode steps is not modeled.
 - Devices without their own measurements use backend averages for prompt processing, which can
@@ -266,9 +269,7 @@ Calibration data:
 - Long-context results (`llama-bench -d`) for ROCm, Vulkan, SYCL and CPU, and for more
   devices (only DGX Spark and M2 Ultra so far).
 - More larger dense models and multi-GPU results (so far a 70B model only on an MI300X
-  virtual function, and Llama 3 8B on two and four RTX 4090s). The model counts the input
-  embedding as read for every token, which makes decode of large-vocabulary models (Llama 3,
-  Gemma 2, Qwen) a few percent pessimistic.
+  virtual function, and Llama 3 8B on two and four RTX 4090s).
 - Mixture-of-experts results beyond DGX Spark and M2 Ultra, and MoE prompt processing on
   Metal (the M2 Ultra's GPU core count is unknown).
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
@@ -278,8 +279,9 @@ Calibration data:
   the M2 Ultra in llama.cpp's `benches/` (its 108 batched results are recorded but unused;
   its `llama-bench` results calibrate only what does not depend on the core count).
 - Prompt processing for unmeasured data-center GPUs (H200, B200, MI325X, MI355X).
-- A human pass over transcribed scoreboard tables (they were read with an automated
-  summarizer and spot-checked).
+- A check of the OpenBenchmarking.org CPU results against their pages (every record taken
+  from GitHub pages has been compared with the page text by script; the OpenBenchmarking
+  pages could not be fetched).
 
 Features:
 
