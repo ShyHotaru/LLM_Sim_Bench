@@ -28,7 +28,7 @@ import statistics
 from dataclasses import dataclass, replace
 
 from .estimator import (DEVICE_CALIBRATION, BACKENDS, Efficiency, add_in_order, backend_prefix,
-                        estimate)
+                        compute_field, estimate)
 from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
@@ -38,12 +38,14 @@ _BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal", "ROCm": "rocm", "Vulkan": "vul
                 "SYCL": "sycl", "CPU": "cpu"}
 # Flags that exclude a record from calibration, or only one of its two results.
 _EXCLUDE = {"suspect", "old_build", "multi-socket", "mobile-class-cpu", "cpu-model-inferred",
-            "batched"}
+            "batched", "virtual-gpu"}
 _NO_PP = {"openblas-build"}  # OpenBLAS runs prompt batches: not llama.cpp's default CPU path
 _NO_TG = {"tg_thread_limited"}
 # Fine-tunes share their base model's architecture and therefore its speed.
 MODEL_ALIASES = {"llama-3.1-tulu-3-8b": "llama-3.1-8b",
                  "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b",
+                 "deepseek-r1-distill-llama-70b": "llama-3.1-70b",
+                 "deepseek-r1-0528-qwen3-8b": "qwen3-8b",
                  "qwen2.5-coder-7b": "qwen2.5-7b", "qwen3-coder-30b-a3b-instruct": "qwen3-30b-a3b"}
 # llama.cpp's benches/ does not say whether its M2 Ultra has 60 or 76 GPU cores. Both have
 # 800 GB/s, and the depth and MoE fits use it only through memory bandwidth and speed
@@ -52,7 +54,17 @@ _STAND_IN = {"M2 Ultra": "apple-m2-ultra-76c"}
 # Peak hardware with no overhead: the fit's x values.
 _UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
-                      for k, v in (("bandwidth", 1), ("compute", 1), ("layer_overhead_us", 0))})
+                      for k, v in (("bandwidth", 1), ("layer_overhead_us", 0))},
+                   **{compute_field(b): 1 for b in BACKENDS})
+
+
+def backend_of(rec: dict) -> str | None:
+    """Simulator backend of a record; SYCL records name their build (software.sycl_f16)."""
+    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    if backend == "sycl":
+        f16 = rec["software"].get("sycl_f16")
+        return None if f16 is None else "sycl-f16" if f16 else "sycl"
+    return backend
 
 
 @dataclass
@@ -107,14 +119,16 @@ def _ram_bandwidth(hw: dict) -> float | None:
 def system_for(rec: dict, stand_in: bool = False) -> System | None:
     """The record's system; with `stand_in`, also for devices in _STAND_IN."""
     hw = rec["hardware"]
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     if backend == "cpu":
         cpu = CPU_PRESETS.get(hw.get("cpu_preset"))
         # Capacity does not matter for speed; bandwidth may be unknown (prefill only).
         return System(cpu, RAM(1024, _ram_bandwidth(hw) or 1.0)) if cpu else None
     preset = hw["gpu_preset"] or (_STAND_IN.get(hw["gpu"]) if stand_in else None)
     if preset in GPU_PRESETS:  # the record's backend, e.g. Vulkan on an NVIDIA card
-        return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),))
+        # Several GPUs only with a layer split, which the estimator models.
+        n = hw["gpu_count"] if rec["run"].get("split_mode") == "layer" else 1
+        return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),) * n)
     if preset in UNIFIED_PRESETS:
         chip = replace(UNIFIED_PRESETS[preset], backend=backend)
         return unified_system(chip, max(chip.memory_options_gb))
@@ -124,7 +138,7 @@ def system_for(rec: dict, stand_in: bool = False) -> System | None:
 def usable(rec: dict) -> bool:
     """Known presets and backend, not flagged; GPU runs single-GPU and fully offloaded,
     CPU runs single-socket with nothing offloaded."""
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     model = _model(rec)
     if (not backend or not model or model.active_params_b  # MoE is fitted separately
             or rec["model"]["quant"] not in QUANT_BPW or _EXCLUDE & set(rec["flags"])
@@ -133,14 +147,38 @@ def usable(rec: dict) -> bool:
     ngl = rec["run"]["n_gpu_layers"]
     if backend == "cpu":
         return ngl == 0 and rec["hardware"].get("sockets", 1) == 1
-    # -1 is llama-bench's default ("auto": as many layers as fit); predict() then only
-    # uses the record when the estimate places every layer on the GPU.
-    return rec["hardware"]["gpu_count"] == 1 and (ngl == -1 or ngl >= model.n_layers)
+    # -1 is llama-bench's default ("auto": as many layers as fit) and null means not stated;
+    # predict() then only uses the record when the estimate places every layer on GPUs.
+    return (rec["hardware"]["gpu_count"] == 1 and "split_mode" not in rec["run"]
+            and (ngl in (-1, None) or ngl >= model.n_layers))
+
+
+def usable_multi_gpu(rec: dict) -> bool:
+    """Runs split by layers over several GPUs of one preset: compared with the estimate,
+    not fitted."""
+    return (rec["run"].get("split_mode") == "layer" and rec["hardware"]["gpu_count"] > 1
+            and bool(_model(rec)) and rec["model"]["quant"] in QUANT_BPW
+            and not _EXCLUDE & set(rec["flags"]) and system_for(rec) is not None)
+
+
+def multi_gpu_summary(records: list[dict], eff: Efficiency) -> dict[str, dict[str, float]]:
+    """Per backend: n, median and max absolute error of multi-GPU decode and prompt speeds."""
+    points = [predict(r, eff) for r in records if usable_multi_gpu(r)]
+    out = {}
+    for backend in sorted({p.backend for p in points}):
+        for metric in ("tg", "pp"):
+            errs = [abs(e) for p in points if p.backend == backend
+                    for e in [getattr(p, f"{metric}_err")] if e is not None]
+            if errs:
+                out[f"{backend}/multi_{metric}"] = {"n": len(errs),
+                                                    "median": statistics.median(errs),
+                                                    "max": max(errs)}
+    return out
 
 
 def predict(rec: dict, eff: Efficiency) -> Point:
     model = _model(rec)
-    backend = _BACKEND_KEY[rec["software"]["backend"]]
+    backend = backend_of(rec)
     run, res = rec["run"], rec["results"]
     n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
     est = estimate(system_for(rec), model, rec["model"]["quant"],
@@ -166,18 +204,20 @@ def fit(records: list[dict]) -> Efficiency:
     """Return an Efficiency with every measured backend's factors fitted to the records."""
     points = [predict(r, _UNIT) for r in records if usable(r)]
     fitted = {}
-    for backend in sorted({p.backend for p in points}):
-        pts = [p for p in points if p.backend == backend]
-        prefix = backend_prefix(backend)
-        dec = [p for p in pts if p.tg_meas and p.tg_pred]
+    # Decode per field prefix (both SYCL builds decode alike), prompt processing per backend.
+    for prefix in sorted({backend_prefix(p.backend) for p in points}):
+        dec = [p for p in points if backend_prefix(p.backend) == prefix and p.tg_meas
+               and p.tg_pred]
         if dec:
             inv_eff, overhead = _fit_decode([(1 / p.tg_pred, p.layers, 1 / p.tg_meas)
                                              for p in dec])
             fitted[f"{prefix}_bandwidth"] = round(1 / inv_eff, 3)
             fitted[f"{prefix}_layer_overhead_us"] = round(overhead * 1e6, 1)
-        pre = [p.pp_meas / p.pp_pred for p in pts if p.pp_meas and p.pp_pred]
+    for backend in sorted({p.backend for p in points}):
+        pre = [p.pp_meas / p.pp_pred for p in points if p.backend == backend and p.pp_meas
+               and p.pp_pred]
         if pre:
-            fitted[f"{prefix}_compute"] = round(statistics.median(pre), 3)
+            fitted[compute_field(backend)] = round(statistics.median(pre), 3)
     by_device: dict[str, list[float]] = {}
     for p in points:
         if p.device and p.pp_meas and p.pp_pred:
@@ -220,11 +260,12 @@ class DepthPoint:
 
 
 def depth_series(records: list[dict]) -> list[tuple[dict, list[dict]]]:
-    """(depth-0 record, deeper records) of each benches/ llama-bench run whose model and
-    device are known and that fits on the GPU."""
+    """(depth-0 record, deeper records) of each llama-bench run at several depths whose
+    model and device are known and that fits on the GPUs (several only split by layers)."""
     recs = [r for r in records if r["run"].get("tool") == "llama-bench"
             and not _EXCLUDE & set(r["flags"]) and _model(r)
-            and r["model"]["quant"] in QUANT_BPW and r["hardware"]["gpu_count"] == 1
+            and r["model"]["quant"] in QUANT_BPW
+            and (r["hardware"]["gpu_count"] == 1 or r["run"].get("split_mode") == "layer")
             and system_for(r, stand_in=True) is not None]
     key = lambda r: (r["source"]["url"], r["model"]["name"], r["model"]["quant"])  # noqa: E731
     out = []
@@ -259,7 +300,7 @@ def depth_points(records: list[dict], eff: Efficiency) -> list[DepthPoint]:
     and MoE depth-0 speeds predicted outright (prompt processing only with a preset)."""
     points = []
     for zero, deeper in depth_series(records):
-        backend = _BACKEND_KEY[zero["software"]["backend"]]
+        backend = backend_of(zero)
         moe = bool(_model(zero).active_params_b)
         res0 = zero["results"]
         if moe and res0["tg_tps"]:
@@ -286,7 +327,7 @@ def _grid_fit(records: list[dict], eff: Efficiency, field: str, values, backend:
               metric: str, dense_only: bool = False) -> float:
     """The value of `field` minimizing the squared log error of the backend's points."""
     records = [r for r in records if r["run"].get("tool") == "llama-bench"
-               and _BACKEND_KEY.get(r["software"]["backend"]) == backend]
+               and backend_of(r) == backend]
     best = None
     for v in values:
         pts = [p for p in depth_points(records, replace(eff, **{field: v}))
@@ -362,7 +403,7 @@ class BatchPoint:
 def usable_batched(rec: dict) -> bool:
     """llama-batched-bench runs on a known single GPU or chip, fully offloaded, each
     sequence with its own prompt."""
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     model = _model(rec)
     run = rec["run"]
     if ("batched" not in rec["flags"] or _EXCLUDE - {"batched"} & set(rec["flags"])
@@ -396,7 +437,7 @@ def batch_points(records: list[dict], eff: Efficiency) -> list[BatchPoint]:
         n, one = r["run"]["n_parallel"], single.get(key(r))
         if n == 1 or one is None:
             continue
-        backend = _BACKEND_KEY[r["software"]["backend"]]
+        backend = backend_of(r)
         p = BatchPoint(r["id"], backend, f"{r['hardware']['gpu_preset']}|{backend}", n,
                        bool(_model(r).active_params_b),
                        r["results"]["tg_tps"] / one["results"]["tg_tps"])
@@ -411,7 +452,7 @@ def _fit_batch(records: list[dict], backend: str, eff: Efficiency) -> float:
     """batch_compute minimizing the squared log error of the speed-ups (dense models)."""
     field = f"{backend_prefix(backend)}_batch_compute"
     records = [r for r in records if usable_batched(r) and not _model(r).active_params_b
-               and _BACKEND_KEY[r["software"]["backend"]] == backend]
+               and backend_of(r) == backend]
     best = None
     for c in (k / 100 for k in range(5, 301)):
         pts = [p for p in batch_points(records, replace(eff, **{field: c})) if p.pred]
@@ -492,6 +533,9 @@ def format_report(records: list[dict], eff: Efficiency) -> str:
     lines.append("Largest decode errors:")
     lines += [f"  {p.id:<44} pred {p.tg_pred:7.1f}  meas {p.tg_meas:7.1f}  {p.tg_err:+.0%}"
               for p in worst]
+    lines.append("Several GPUs split by layers (not fitted):")
+    for key, s in multi_gpu_summary(records, eff).items():
+        lines.append(f"  {key:<20}{s['n']:>5}{s['median']:>11.1%}{s['max']:>10.1%}")
     lines.append("Long contexts and mixture-of-experts models (llama-bench in benches/):")
     for key, s in depth_summary(depth_points(records, eff)).items():
         lines.append(f"  {key:<20}{s['n']:>5}{s['median']:>11.1%}{s['max']:>10.1%}")

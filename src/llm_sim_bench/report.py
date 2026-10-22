@@ -24,7 +24,7 @@ from .profiles import CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRES
 SCHEMA = "llmsimbench.report/1"
 CALIBRATION_DATA = Path(__file__).resolve().parent / "data" / "calibration.json"
 BACKEND_NAMES = {"cuda": "CUDA", "metal": "Metal", "rocm": "ROCm", "vulkan": "Vulkan",
-                 "sycl": "SYCL", "cpu": "CPU"}
+                 "sycl": "SYCL", "sycl-f16": "SYCL FP16", "cpu": "CPU"}
 # Contexts from which an uncalibrated slowdown with depth is worth a warning.
 LONG_CONTEXT = 8192
 
@@ -190,10 +190,10 @@ def gpu_checks(system: System, kv_bits: int, data: dict) -> dict | None:
         return None
     out = []
     for m in rows:
-        est = estimate(_with_backend(system, m["backend"].lower()), MODEL_PRESETS[m["model"]],
+        est = estimate(_with_backend(system, m["sim_backend"]), MODEL_PRESETS[m["model"]],
                        m["quant"], m["n_prompt"] + m["n_gen"], kv_bits)
         out.append({
-            "backend": m["backend"], "model": m["model"], "quant": m["quant"],
+            "backend": BACKEND_NAMES[m["sim_backend"]], "model": m["model"], "quant": m["quant"],
             "flash_attn": m["flash_attn"], "old_build": m["old_build"],
             "n_prompt": m["n_prompt"], "n_gen": m["n_gen"],
             "tg_measured": m["tg_tps"], "tg_simulated": m["n_gen"] / gen_time(est, 0, m["n_gen"] + 1),
@@ -310,7 +310,7 @@ def parallel_checks(system: System, est: Estimate, kv_bits: int, data: dict) -> 
         if m["source"] not in sources:
             sources.append(m["source"])
         n, pp, tg = m["n_parallel"], m["n_prompt"], m["n_gen"]
-        sim = estimate(_with_backend(system, m["backend"].lower()), MODEL_PRESETS[m["sim_model"]],
+        sim = estimate(_with_backend(system, m["sim_backend"]), MODEL_PRESETS[m["sim_model"]],
                        m["quant"], pp + tg, kv_bits, parallel=n)
         t = add_in_order(sim.step_time([pp + i] * n) for i in range(tg))
         out.append({

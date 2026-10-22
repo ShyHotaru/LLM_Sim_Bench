@@ -339,15 +339,19 @@ _CPU_YEARS = {
 CPU_PRESETS = {k: replace(c, year=_CPU_YEARS[k]) for k, c in CPU_PRESETS.items()}
 
 # Per-GPU-core FP16 TFLOPS by generation: 128 ALUs x 2 FLOPs x GPU clock. M5 adds a
-# Neural Accelerator to every GPU core; Apple quotes over 4x M4's peak GPU AI compute.
-_APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404, "M5": 4 * 0.404}
+# Neural Accelerator to every GPU core; Apple quotes over 4x M4's peak GPU AI compute. For
+# the 12-core M6 Apple quotes "nearly 30 percent" more peak GPU AI compute than the 10-core
+# M5, taken here as 30 %.
+_APPLE_CORE_GFLOPS = {"M1": 0.327, "M2": 0.358, "M3": 0.353, "M4": 0.404, "M5": 4 * 0.404,
+                      "M6": 1.3 * 10 / 12 * 4 * 0.404}
 
 
 def _apple(name: str, gpu_cores: int, bw: float, cpu_cores: int, cpu_tflops: float,
            memory: tuple[int, ...]) -> UnifiedChip:
     tflops = round(gpu_cores * _APPLE_CORE_GFLOPS[name.split()[0]], 1)
     slug = f"apple-{name.lower().replace(' ', '-')}-{gpu_cores}c"
-    year = {"M1": 2020, "M2": 2022, "M3": 2023, "M4": 2024, "M5": 2025}[name.split()[0]]
+    year = {"M1": 2020, "M2": 2022, "M3": 2023, "M4": 2024, "M5": 2025,
+            "M6": 2026}[name.split()[0]]
     return UnifiedChip(slug, gpu_cores, bw, tflops, cpu_cores, cpu_tflops, memory, label=name,
                        year=year)
 
@@ -392,6 +396,11 @@ APPLE_PRESETS: dict[str, UnifiedChip] = {
         _apple("M5 Max", 40, 614, 18, 1.9, (48, 64, 128)),
         _apple("M5 Ultra", 64, 1228.8, 30, 3.2, (96, 256)),
         _apple("M5 Ultra", 80, 1228.8, 36, 3.8, (96, 256, 512)),
+        # M6: Apple newsroom (2026-08-25) and Mac mini tech specs: 12-core CPU and GPU,
+        # 153 GB/s with 16 GB and 170 GB/s with 24 or 32 GB. CPU FP32 scaled from M5 by cores.
+        _apple("M6", 12, 170, 12, 1.3, (24, 32)),
+        replace(_apple("M6", 12, 153, 12, 1.3, (16,)), name="apple-m6-12c-16gb",
+                label="M6 (16 GB)"),
     ]
 }
 
@@ -453,7 +462,7 @@ MODEL_PRESETS: dict[str, Model] = {
         Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3", n_heads=32),
         Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3", n_heads=40),
         Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3", n_heads=64),
-        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3, tokenizer="qwen3",
+        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 32768, active_params_b=3.3, tokenizer="qwen3",
               n_experts=128, experts_per_token=8, n_heads=32),
         Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss",
               n_experts=32, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=12),

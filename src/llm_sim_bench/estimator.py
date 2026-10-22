@@ -68,18 +68,21 @@ class Efficiency:
     gpu_bandwidth: float = 0.84
     gpu_compute: float = 0.49
     gpu_layer_overhead_us: float = 36.0
-    metal_bandwidth: float = 0.99
+    metal_bandwidth: float = 0.97
     metal_compute: float = 0.66
-    metal_layer_overhead_us: float = 72.0
+    metal_layer_overhead_us: float = 77.0
     rocm_bandwidth: float = 0.97
-    rocm_compute: float = 0.31
+    rocm_compute: float = 0.33
     rocm_layer_overhead_us: float = 114.0
     vulkan_bandwidth: float = 0.80
     vulkan_compute: float = 0.40
     vulkan_layer_overhead_us: float = 22.0
     sycl_bandwidth: float = 0.85
-    sycl_compute: float = 0.10
+    sycl_compute: float = 0.07
     sycl_layer_overhead_us: float = 58.0
+    # SYCL builds with GGML_SYCL_F16=ON ("sycl-f16") share every SYCL factor but this one:
+    # their prompt processing runs in FP16 and is about twice as fast as the default build.
+    sycl_f16_compute: float = 0.19
     cpu_bandwidth: float = 0.79
     cpu_compute: float = 0.35
     cpu_layer_overhead_us: float = 119.0
@@ -87,9 +90,9 @@ class Efficiency:
     # decode reads the KV cache *_kv_read times slower than weights, and prompt attention
     # runs at *_attention times the prompt-processing FLOP rate. Backends without depth
     # measurements keep 1.0.
-    gpu_kv_read: float = 1.21
-    gpu_attention: float = 1.61
-    metal_kv_read: float = 2.35
+    gpu_kv_read: float = 0.96
+    gpu_attention: float = 0.83
+    metal_kv_read: float = 2.32
     metal_attention: float = 0.53
     rocm_kv_read: float = 1.0
     rocm_attention: float = 1.0
@@ -103,12 +106,12 @@ class Efficiency:
     # (routing, gathering the experts; 0 without measurements) and the share of the
     # prompt-processing FLOP rate their weights reach (1.0 without measurements).
     gpu_moe_layer_overhead_us: float = 0.0
-    metal_moe_layer_overhead_us: float = 113.0
+    metal_moe_layer_overhead_us: float = 107.0
     rocm_moe_layer_overhead_us: float = 0.0
     vulkan_moe_layer_overhead_us: float = 0.0
     sycl_moe_layer_overhead_us: float = 0.0
     cpu_moe_layer_overhead_us: float = 0.0
-    gpu_moe_compute: float = 0.56
+    gpu_moe_compute: float = 0.58
     metal_moe_compute: float = 1.0
     rocm_moe_compute: float = 1.0
     vulkan_moe_compute: float = 1.0
@@ -117,12 +120,12 @@ class Efficiency:
     # Share of the prompt-processing compute rate that each request beyond the first
     # reaches in a decode batch. Fitted for CUDA to llama-batched-bench results (DGX
     # Spark); the other backends use the CUDA value until they have measurements.
-    gpu_batch_compute: float = 0.49
-    metal_batch_compute: float = 0.49
-    rocm_batch_compute: float = 0.49
-    vulkan_batch_compute: float = 0.49
-    sycl_batch_compute: float = 0.49
-    cpu_batch_compute: float = 0.49
+    gpu_batch_compute: float = 0.39
+    metal_batch_compute: float = 0.39
+    rocm_batch_compute: float = 0.39
+    vulkan_batch_compute: float = 0.39
+    sycl_batch_compute: float = 0.39
+    cpu_batch_compute: float = 0.39
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
@@ -136,7 +139,7 @@ class Efficiency:
     def for_backend(self, backend: str) -> tuple[float, float, float]:
         """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
         p = backend_prefix(backend)
-        return (getattr(self, f"{p}_bandwidth"), getattr(self, f"{p}_compute"),
+        return (getattr(self, f"{p}_bandwidth"), getattr(self, compute_field(backend)),
                 getattr(self, f"{p}_layer_overhead_us") / 1e6)
 
     def batch_compute(self, backend: str) -> float:
@@ -154,14 +157,21 @@ class Efficiency:
                 getattr(self, f"{p}_moe_compute"))
 
 
-BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu")
+# "sycl" is llama.cpp's default SYCL build (FP32); "sycl-f16" is built with GGML_SYCL_F16=ON.
+BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "sycl-f16", "cpu")
 
 
 def backend_prefix(backend: str) -> str:
-    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu")."""
+    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu"; both SYCL
+    builds share the "sycl" fields)."""
     if backend not in BACKENDS:
         raise ValueError(f"Unknown backend {backend!r}. Known: {', '.join(BACKENDS)}")
-    return "gpu" if backend == "cuda" else backend
+    return {"cuda": "gpu", "sycl-f16": "sycl"}.get(backend, backend)
+
+
+def compute_field(backend: str) -> str:
+    """Efficiency field of a backend's prompt-processing compute share."""
+    return "sycl_f16_compute" if backend == "sycl-f16" else f"{backend_prefix(backend)}_compute"
 
 
 @dataclass
