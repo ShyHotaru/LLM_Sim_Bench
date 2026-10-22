@@ -1,7 +1,9 @@
 """Minimal OpenAI-compatible HTTP server backed by MockEngine (stdlib only).
 
 Point any OpenAI client or chat UI at http://host:port/v1 to feel the
-simulated speed before buying hardware.
+simulated speed before buying hardware. Replies stream a text preset: for a
+chat preset, the reply to the k-th user message is the k-th scripted answer
+(wrapping around), so a conversation in a chat UI follows the script.
 """
 
 from __future__ import annotations
@@ -11,10 +13,18 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .mock import MockEngine, StreamStats, count_tokens
+from . import texts
+from .mock import MockEngine, StreamStats
 
 
-def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int):
+def reply_for(script: texts.Script, messages: list) -> list[str]:
+    """Assistant pieces for a request: the scripted answer to its latest user message."""
+    users = sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "user")
+    return script.turns[(max(users, 1) - 1) % len(script.turns)][1]
+
+
+def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int,
+                 script: texts.Script):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path.rstrip("/") == "/v1/models":
@@ -32,11 +42,16 @@ def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int):
             except json.JSONDecodeError:
                 return self._json(400, {"error": {"message": "invalid JSON"}})
 
-            prompt = "".join(_text(m.get("content")) for m in body.get("messages", []))
+            messages = body.get("messages", [])
+            prompt = "".join(_text(m.get("content")) for m in messages if isinstance(m, dict))
+            prompt_tokens = max(1, texts.count_tokens(prompt, texts.prompt_ratio(
+                prompt, script.family, script.ratio_id)))
             max_tokens = int(body.get("max_tokens") or body.get("max_completion_tokens")
                              or default_max_tokens)
+            reply = reply_for(script, messages)
+            finish = "stop" if len(reply) <= max_tokens else "length"
             stats = StreamStats()
-            tokens = engine.stream(count_tokens(prompt), max_tokens, stats)
+            tokens = engine.stream(prompt_tokens, reply[:max_tokens], stats)
             cid = f"chatcmpl-{uuid.uuid4().hex[:12]}"
             created = int(time.time())
 
@@ -47,11 +62,13 @@ def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int):
                 self.end_headers()
                 try:
                     for i, tok in enumerate(tokens):
-                        delta = {"content": tok}
+                        # Below one character per token some pieces are empty; like a
+                        # real server holding back a partial character, send nothing.
                         if i == 0:
-                            delta["role"] = "assistant"
-                        self._sse(cid, created, delta, None)
-                    self._sse(cid, created, {}, "length")
+                            self._sse(cid, created, {"role": "assistant", "content": tok}, None)
+                        elif tok:
+                            self._sse(cid, created, {"content": tok}, None)
+                    self._sse(cid, created, {}, finish)
                     self.wfile.write(b"data: [DONE]\n\n")
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
@@ -64,7 +81,7 @@ def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int):
             self._json(200, {
                 "id": cid, "object": "chat.completion", "created": created,
                 "model": model_name,
-                "choices": [{"index": 0, "finish_reason": "length",
+                "choices": [{"index": 0, "finish_reason": finish,
                              "message": {"role": "assistant", "content": text}}],
                 "usage": {"prompt_tokens": stats.prompt_tokens,
                           "completion_tokens": stats.completion_tokens,
@@ -103,9 +120,10 @@ def _summary(s: StreamStats) -> str:
 
 
 def serve(engine: MockEngine, model_name: str, host: str, port: int,
-          default_max_tokens: int = 256) -> None:
+          default_max_tokens: int = 256, script: texts.Script | None = None) -> None:
+    script = script or texts.script("")
     httpd = ThreadingHTTPServer((host, port), make_handler(engine, model_name,
-                                                           default_max_tokens))
+                                                           default_max_tokens, script))
     print(f"Mock OpenAI API at http://{host}:{port}/v1  (model: {model_name})")
     try:
         httpd.serve_forever()

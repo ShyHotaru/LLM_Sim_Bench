@@ -1,0 +1,25 @@
+When you choose a graphics card for running an LLM locally, check these three things in order.
+
+## 1. Does the model fit in memory?
+
+Start with VRAM capacity. The size of a model's weights is roughly "parameters × quantization bits ÷ 8". For example, a 14-billion-parameter (14B) model quantized to Q4_K_M (about 4.9 bits) needs around 9 GB for the weights alone. On top of that you need the KV cache, which grows with the length of the conversation, plus about 1 GB of headroom for the runtime.
+
+If VRAM runs out, some layers move to system RAM. The model still runs, but those layers are read from much slower memory, so the overall speed drops sharply.
+
+## 2. Generation speed is set by memory bandwidth
+
+Every generated token requires reading all of the model's weights once. That puts the ceiling for generation speed close to "memory bandwidth ÷ weight size". Running a 9 GB model on a card with 1,000 GB/s of bandwidth gives a theoretical limit of about 110 tokens per second, and real numbers come in a little lower.
+
+As the conversation grows, the KV cache has to be read as well, so even the same model slows down gradually as the context fills up.
+
+## 3. Prompt processing speed is set by compute
+
+When you paste a long document or a conversation gets long, the time until the first word appears starts to matter. This stage processes the whole prompt at once, so it depends much more on compute than on memory.
+
+## Summary
+
+- Pick the model and quantization first, then make sure you have enough VRAM for its size plus the KV cache.
+- At the same capacity, a card with more bandwidth generates answers faster.
+- If you often work with long documents, compare compute performance as well.
+
+Tell me which model you want to use and your budget, and I can suggest a specific setup.
