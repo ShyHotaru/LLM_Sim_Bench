@@ -3,6 +3,8 @@
 // keeps the two in sync. Keep the formulas and their order identical.
 
 const GB = 1e9;
+// Tokens llama.cpp keeps in a sliding-window layer's cache beyond the window (see estimator.py).
+const SWA_UBATCH = 512;
 
 export function ramBandwidthGbps(kind, channels = 2) {
   const m = /^(?:l?pddr|ddr)\d-(\d+)$/.exec(kind.trim().toLowerCase());
@@ -10,8 +12,29 @@ export function ramBandwidthGbps(kind, channels = 2) {
   return (Number(m[1]) * 8 * channels) / 1000;
 }
 
+// KV cache bytes per token if every layer kept the whole context.
 export function kvBytesPerToken(model, kvBits = 16) {
   return (2 * model.n_layers * model.n_kv_heads * model.head_dim * kvBits) / 8;
+}
+
+// FLOPs per layer for one token attending to one cached token (QK^T and AV).
+function attentionFlops(model) {
+  return 4 * (model.n_heads || model.n_kv_heads) * model.head_dim;
+}
+
+// Sum of min(c, cap) for c = first..last (no cap if cap is 0); 0 if last < first.
+export function contextSum(first, last, cap = 0) {
+  if (last < first) return 0;
+  if (!cap || last <= cap) return ((first + last) * (last - first + 1)) / 2;
+  if (first >= cap) return cap * (last - first + 1);
+  return ((first + cap) * (cap - first + 1)) / 2 + cap * (last - cap);
+}
+
+// Add floats left to right, like estimator.py's add_in_order.
+function addInOrder(values) {
+  let total = 0;
+  for (const v of values) total += v;
+  return total;
 }
 
 export function activeB(model) {
@@ -33,19 +56,40 @@ function forBackend(eff, backend) {
 
 const batchCompute = (eff, backend) => eff[`${backendPrefix(backend)}_batch_compute`];
 
+// [KV read cost, attention rate] for long contexts.
+function forDepth(eff, backend) {
+  const p = backendPrefix(backend);
+  return [eff[`${p}_kv_read`], eff[`${p}_attention`]];
+}
+
+// [extra per-layer overhead in seconds, prompt compute share] of MoE models.
+function forMoe(eff, backend) {
+  const p = backendPrefix(backend);
+  return [eff[`${p}_moe_layer_overhead_us`] / 1e6, eff[`${p}_moe_compute`]];
+}
+
 // Seconds of compute per token for `layers` layers: 2 FLOPs per active parameter.
 function flopTime(model, layers, tflops) {
   return (2 * activeB(model) * 1e9 * (layers / model.n_layers)) / (tflops * 1e12);
 }
 
-// Share of the weights read in a decode step for n requests (see estimator.py).
-export function weightReadRatio(model, n) {
-  const ratio = activeB(model) / model.params_b;
-  if (!model.n_experts || n <= 1) return ratio;
+// [bytes of the shared weights, bytes of all routed experts] (see estimator.py).
+export function weightBytes(model, quant, quantBpw, sharedBpw = {}) {
+  const bpw = quantBpw[quant];
+  if (!model.n_experts) return [(model.params_b * 1e9 * bpw) / 8, 0];
   const share = model.experts_per_token / model.n_experts;
   const expert = (model.params_b - activeB(model)) / (1 - share);
   const shared = model.params_b - expert;
-  return (shared + expert * (1 - (1 - share) ** n)) / model.params_b;
+  return [(shared * 1e9 * (sharedBpw[quant] ?? bpw)) / 8, (expert * 1e9 * bpw) / 8];
+}
+
+// Share of the weight bytes read in a decode step for n requests (see estimator.py).
+export function weightReadRatio(model, n, quant, quantBpw, sharedBpw = {}) {
+  if (!model.n_experts) return activeB(model) / model.params_b;
+  const [shared, expert] = weightBytes(model, quant, quantBpw, sharedBpw);
+  const share = model.experts_per_token / model.n_experts;
+  const touched = n <= 1 ? share : 1 - (1 - share) ** n;
+  return (shared + expert * touched) / (shared + expert);
 }
 
 // Concurrency levels shown for up to n requests: powers of two and n itself.
@@ -88,7 +132,9 @@ export function buildSystem(spec, presets) {
 }
 
 // `parallel` request slots each get `context` tokens of KV cache (llama-server -np N -c N*context).
-export function estimate(system, model, quant, context, kvBits, eff, quantBpw, parallel = 1) {
+// `sharedBpw` is presets.quant_shared_bpw (quantizations that apply to MoE experts only).
+export function estimate(system, model, quant, context, kvBits, eff, quantBpw, parallel = 1,
+                         sharedBpw = {}) {
   if (!(quant in quantBpw)) throw new Error(`Unknown quant ${quant}`);
   if (parallel < 1) throw new Error("parallel must be at least 1");
   const notes = [];
@@ -96,9 +142,12 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
     notes.push(`context ${context} exceeds model max ${model.max_context}`);
   }
 
-  const weights = (model.params_b * 1e9 * quantBpw[quant]) / 8;
+  const weights = addInOrder(weightBytes(model, quant, quantBpw, sharedBpw));
   const kvTok = kvBytesPerToken(model, kvBits);
-  const kvTotal = kvTok * context * parallel;
+  // A sliding-window layer's cache keeps only about its window.
+  const swaShare = model.swa_layers / model.n_layers;
+  const window = model.sliding_window ? model.sliding_window + SWA_UBATCH : 0;
+  const kvTotal = kvTok * (context * (1 - swaShare) + Math.min(context, window) * swaShare) * parallel;
   const layerW = weights / model.n_layers;
   const layerKv = kvTotal / model.n_layers;
 
@@ -111,7 +160,9 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
     const usable = Math.max(0, vram - eff.vram_reserve_gb) * GB;
     const n = Math.min(remaining, Math.floor(usable / (layerW + layerKv)));
     if (n > 0) {
-      const [bwEff, backendCEff, layerS] = forBackend(eff, gpu.backend || "cuda");
+      const [bwEff, backendCEff, backendLayerS] = forBackend(eff, gpu.backend || "cuda");
+      const layerS = model.n_experts ? backendLayerS + forMoe(eff, gpu.backend || "cuda")[0]
+        : backendLayerS;
       const cEff = eff.device_compute?.[`${gpu.name}|${gpu.backend || "cuda"}`] ?? backendCEff;
       const tflops = gpu.fp16_tflops * cEff;
       placements.push({
@@ -132,7 +183,8 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
   if (system.unified) ramFreeGb -= gpuUsedGb;
   if (remaining) {
     const cpuGb = (remaining * (layerW + layerKv)) / GB;
-    const [backendBw, backendC, layerS] = forBackend(eff, "cpu");
+    const [backendBw, backendC, backendLayerS] = forBackend(eff, "cpu");
+    const layerS = model.n_experts ? backendLayerS + forMoe(eff, "cpu")[0] : backendLayerS;
     const bwEff = eff.device_bandwidth?.[`${system.cpu.name}|cpu`] ?? backendBw;
     const cEff = eff.device_compute?.[`${system.cpu.name}|cpu`] ?? backendC;
     const tflops = system.cpu.fp32_tflops * cEff;
@@ -152,36 +204,56 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
     if (system.gpus.length) notes.push(`${remaining}/${model.n_layers} layers offloaded to CPU`);
   }
 
-  const activeRatio = activeB(model) / model.params_b;
+  const activeRatio = weightReadRatio(model, 1, quant, quantBpw, sharedBpw);
+  const gpuBackend = Object.fromEntries(system.gpus.map((g) => [g.name, g.backend || "cuda"]));
   let baseTime = 0;
   let prefillTime = 0;
   let overhead = 0;
   let weightRead = 0;
   let batchTime = 0;
   const kvTerms = [];
+  const attention = [];
   for (const p of placements) {
     const frac = p.layers / model.n_layers;
     const bw = p.bandwidth_gbps * GB;
+    const backend = p.is_gpu ? gpuBackend[p.device] : "cpu";
+    const [kvRead, attn] = forDepth(eff, backend);
+    const moeCompute = model.n_experts ? forMoe(eff, backend)[1] : 1;
     baseTime += (p.weights_gb * GB * activeRatio) / bw + p.overhead_s;
-    kvTerms.push([kvTok * frac, bw]);
-    prefillTime += flopTime(model, p.layers, p.tflops);
+    kvTerms.push([kvTok * frac * (1 - swaShare), kvTok * frac * swaShare, bw / kvRead]);
+    const flops = attentionFlops(model) * p.layers;
+    attention.push([flops * (1 - swaShare), flops * swaShare, p.tflops * 1e12 * attn]);
+    prefillTime += flopTime(model, p.layers, p.tflops * moeCompute);
     overhead += p.overhead_s;
     weightRead += (p.weights_gb * GB) / bw;
     batchTime += p.batch_s;
   }
 
+  // Seconds to read the KV cache of one request holding `filled` tokens.
+  const kvTime = (filled) => {
+    const seen = Math.min(filled, window);
+    return addInOrder(kvTerms.map(([full, swa, bw]) => (full * filled + swa * seen) / bw));
+  };
   // Decode speed of a single request when `filled` tokens are in its KV cache.
   const decodeTpsAt = (filled) => {
-    let t = baseTime;
-    for (const [b, bw] of kvTerms) t += (b * filled) / bw;
+    const t = baseTime + kvTime(filled);
     return t > 0 ? 1 / t : Infinity;
   };
   // Seconds for one decode step that gives each active request (KV fills) one token.
   const stepTime = (fills) => {
     const n = fills.length;
-    let t = overhead + weightRead * weightReadRatio(model, n) + (n - 1) * batchTime;
-    for (const f of fills) for (const [b, bw] of kvTerms) t += (b * f) / bw;
+    let t = overhead + weightRead * weightReadRatio(model, n, quant, quantBpw, sharedBpw)
+      + (n - 1) * batchTime;
+    for (const f of fills) t += kvTime(f);
     return t;
+  };
+  const prefillTps = 1 / prefillTime;
+  // Seconds to process a prompt of `tokens` tokens after `depth` cached tokens: token i
+  // attends to depth + i + 1 tokens, a sliding-window layer to at most the tokens it keeps.
+  const prefillTimeAt = (tokens, depth = 0) => {
+    const full = contextSum(depth + 1, depth + tokens);
+    const swa = contextSum(depth + 1, depth + tokens, window);
+    return tokens / prefillTps + addInOrder(attention.map(([f, w, rate]) => (f * full + w * swa) / rate));
   };
   // Decode speed of each of n concurrent requests; the aggregate is n times this.
   const parallelTps = (n, filled) => 1 / stepTime(Array(n).fill(filled));
@@ -190,11 +262,11 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw, p
     model, quant, context,
     weights_gb: weights / GB, kv_gb: kvTotal / GB,
     placements, fits, notes,
-    prefill_tps: 1 / prefillTime,
+    prefill_tps: prefillTps,
     decode_tps_empty: decodeTpsAt(0),
     decode_tps_full: decodeTpsAt(context),
     parallel,
-    decodeTpsAt, stepTime, parallelTps,
+    decodeTpsAt, stepTime, parallelTps, prefillTime: prefillTimeAt,
     // Extra fields for the UI (not in the Python Estimate).
     gpu_used_gb: gpuUsedGb, ram_needed_gb: ramNeededGb, ram_free_gb: ramFreeGb,
   };

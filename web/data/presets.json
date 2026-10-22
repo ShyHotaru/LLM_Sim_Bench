@@ -19,102 +19,126 @@
   "cpu_bandwidth": 0.79,
   "cpu_compute": 0.35,
   "cpu_layer_overhead_us": 119.0,
-  "gpu_batch_compute": 0.41,
-  "metal_batch_compute": 0.41,
-  "rocm_batch_compute": 0.41,
-  "vulkan_batch_compute": 0.41,
-  "sycl_batch_compute": 0.41,
-  "cpu_batch_compute": 0.41,
+  "gpu_kv_read": 1.21,
+  "gpu_attention": 1.61,
+  "metal_kv_read": 2.35,
+  "metal_attention": 0.53,
+  "rocm_kv_read": 1.0,
+  "rocm_attention": 1.0,
+  "vulkan_kv_read": 1.0,
+  "vulkan_attention": 1.0,
+  "sycl_kv_read": 1.0,
+  "sycl_attention": 1.0,
+  "cpu_kv_read": 1.0,
+  "cpu_attention": 1.0,
+  "gpu_moe_layer_overhead_us": 0.0,
+  "metal_moe_layer_overhead_us": 113.0,
+  "rocm_moe_layer_overhead_us": 0.0,
+  "vulkan_moe_layer_overhead_us": 0.0,
+  "sycl_moe_layer_overhead_us": 0.0,
+  "cpu_moe_layer_overhead_us": 0.0,
+  "gpu_moe_compute": 0.56,
+  "metal_moe_compute": 1.0,
+  "rocm_moe_compute": 1.0,
+  "vulkan_moe_compute": 1.0,
+  "sycl_moe_compute": 1.0,
+  "cpu_moe_compute": 1.0,
+  "gpu_batch_compute": 0.49,
+  "metal_batch_compute": 0.49,
+  "rocm_batch_compute": 0.49,
+  "vulkan_batch_compute": 0.49,
+  "sycl_batch_compute": 0.49,
+  "cpu_batch_compute": 0.49,
   "vram_reserve_gb": 1.0,
   "ram_reserve_gb": 4.0,
   "unified_gpu_fraction": 0.75,
   "device_compute": {
-   "amd-ryzen-ai-max-plus-395|rocm": 0.145,
-   "apple-m5-max-40c|metal": 0.659,
-   "apple-m5-pro-16c|metal": 0.682,
-   "apple-m5-pro-20c|metal": 0.663,
-   "apple-m5-ultra-80c|metal": 0.515,
-   "arc-b570-10gb|sycl": 0.073,
-   "arc-b570-10gb|vulkan": 0.08,
-   "arc-b580-12gb|sycl": 0.226,
-   "arc-b580-12gb|vulkan": 0.06,
-   "arc-pro-b60-24gb|sycl": 0.109,
+   "amd-ryzen-ai-max-plus-395|rocm": 0.146,
+   "apple-m5-max-40c|metal": 0.671,
+   "apple-m5-pro-16c|metal": 0.695,
+   "apple-m5-pro-20c|metal": 0.676,
+   "apple-m5-ultra-80c|metal": 0.525,
+   "arc-b570-10gb|sycl": 0.074,
+   "arc-b570-10gb|vulkan": 0.081,
+   "arc-b580-12gb|sycl": 0.228,
+   "arc-b580-12gb|vulkan": 0.061,
+   "arc-pro-b60-24gb|sycl": 0.11,
    "arc-pro-b60-24gb|vulkan": 0.055,
-   "arc-pro-b70-32gb|sycl": 0.092,
-   "arc-pro-b70-32gb|vulkan": 0.24,
-   "h100-sxm-80gb|cuda": 0.144,
-   "mi100-32gb|rocm": 0.2,
-   "mi210-64gb|rocm": 0.188,
-   "mi300x-192gb|rocm": 0.121,
-   "nvidia-dgx-spark|cuda": 0.363,
-   "nvidia-dgx-spark|vulkan": 0.33,
-   "nvidia-jetson-agx-orin-64gb|cuda": 0.339,
-   "radeon-ai-pro-r9700-32gb|rocm": 0.325,
-   "radeon-ai-pro-r9700-32gb|vulkan": 0.406,
-   "radeon-pro-w7900-48gb|rocm": 0.366,
-   "rtx-a4000-16gb|cuda": 0.483,
-   "rtx-a4000-16gb|vulkan": 0.416,
-   "rtx-a5000-24gb|cuda": 0.521,
-   "rtx-a5000-24gb|vulkan": 0.468,
-   "rtx-a6000-48gb|cuda": 0.46,
-   "rtx2060super-8gb|cuda": 0.35,
-   "rtx2070super-8gb|cuda": 0.407,
-   "rtx2070super-8gb|vulkan": 0.223,
-   "rtx2080ti-11gb|cuda": 0.376,
-   "rtx2080ti-11gb|vulkan": 0.24,
-   "rtx3060-12gb|cuda": 0.598,
-   "rtx3060ti-8gb|vulkan": 0.521,
-   "rtx3070-8gb|vulkan": 0.35,
-   "rtx3080-10gb|cuda": 0.599,
-   "rtx3090-24gb|cuda": 0.51,
-   "rtx3090-24gb|vulkan": 0.468,
-   "rtx3090ti-24gb|cuda": 0.568,
-   "rtx4000ada-20gb|cuda": 0.49,
-   "rtx4060ti-8gb|cuda": 0.55,
-   "rtx4070-12gb|vulkan": 0.432,
-   "rtx4070super-12gb|vulkan": 0.465,
-   "rtx4070tisuper-16gb|cuda": 0.555,
-   "rtx4070tisuper-16gb|vulkan": 0.493,
-   "rtx4080-16gb|cuda": 0.596,
-   "rtx4080super-16gb|cuda": 0.566,
-   "rtx4080super-16gb|vulkan": 0.487,
-   "rtx4090-24gb|cuda": 0.546,
-   "rtx4090-24gb|vulkan": 0.414,
-   "rtx5060ti-16gb|cuda": 0.563,
-   "rtx5060ti-16gb|vulkan": 0.524,
-   "rtx5070-12gb|cuda": 0.599,
-   "rtx5070ti-16gb|cuda": 0.589,
-   "rtx5070ti-16gb|vulkan": 0.528,
-   "rtx5080-16gb|cuda": 0.533,
-   "rtx5080-16gb|vulkan": 0.464,
-   "rtx5090-32gb|cuda": 0.467,
-   "rtx5090-32gb|vulkan": 0.357,
-   "rtx6000ada-48gb|cuda": 0.366,
-   "rtxpro4000-24gb|cuda": 0.488,
-   "rtxpro4500-32gb|cuda": 0.484,
-   "rx6800xt-16gb|rocm": 0.47,
-   "rx6800xt-16gb|vulkan": 0.562,
-   "rx6900xt-16gb|rocm": 0.561,
-   "rx6900xt-16gb|vulkan": 0.536,
-   "rx7600xt-16gb|rocm": 0.344,
-   "rx7600xt-16gb|vulkan": 0.279,
-   "rx7800xt-16gb|rocm": 0.403,
-   "rx7800xt-16gb|vulkan": 0.381,
-   "rx7900gre-16gb|rocm": 0.224,
-   "rx7900gre-16gb|vulkan": 0.336,
-   "rx7900xt-20gb|rocm": 0.416,
-   "rx7900xt-20gb|vulkan": 0.369,
-   "rx7900xtx-24gb|rocm": 0.407,
-   "rx7900xtx-24gb|vulkan": 0.417,
-   "rx9060xt-16gb|rocm": 0.19,
-   "rx9060xt-16gb|vulkan": 0.397,
-   "rx9070-16gb|rocm": 0.225,
-   "rx9070-16gb|vulkan": 0.28,
-   "rx9070xt-16gb|rocm": 0.344,
-   "rx9070xt-16gb|vulkan": 0.349,
-   "ryzen9-7950x|cpu": 0.687,
-   "ryzen9-9950x3d|cpu": 0.34,
-   "t4-16gb|cuda": 0.262
+   "arc-pro-b70-32gb|sycl": 0.093,
+   "arc-pro-b70-32gb|vulkan": 0.242,
+   "h100-sxm-80gb|cuda": 0.145,
+   "mi100-32gb|rocm": 0.202,
+   "mi210-64gb|rocm": 0.19,
+   "mi300x-192gb|rocm": 0.122,
+   "nvidia-dgx-spark|cuda": 0.365,
+   "nvidia-dgx-spark|vulkan": 0.333,
+   "nvidia-jetson-agx-orin-64gb|cuda": 0.341,
+   "radeon-ai-pro-r9700-32gb|rocm": 0.328,
+   "radeon-ai-pro-r9700-32gb|vulkan": 0.41,
+   "radeon-pro-w7900-48gb|rocm": 0.37,
+   "rtx-a4000-16gb|cuda": 0.486,
+   "rtx-a4000-16gb|vulkan": 0.42,
+   "rtx-a5000-24gb|cuda": 0.524,
+   "rtx-a5000-24gb|vulkan": 0.473,
+   "rtx-a6000-48gb|cuda": 0.463,
+   "rtx2060super-8gb|cuda": 0.353,
+   "rtx2070super-8gb|cuda": 0.41,
+   "rtx2070super-8gb|vulkan": 0.225,
+   "rtx2080ti-11gb|cuda": 0.378,
+   "rtx2080ti-11gb|vulkan": 0.242,
+   "rtx3060-12gb|cuda": 0.602,
+   "rtx3060ti-8gb|vulkan": 0.526,
+   "rtx3070-8gb|vulkan": 0.354,
+   "rtx3080-10gb|cuda": 0.603,
+   "rtx3090-24gb|cuda": 0.513,
+   "rtx3090-24gb|vulkan": 0.473,
+   "rtx3090ti-24gb|cuda": 0.572,
+   "rtx4000ada-20gb|cuda": 0.493,
+   "rtx4060ti-8gb|cuda": 0.553,
+   "rtx4070-12gb|vulkan": 0.436,
+   "rtx4070super-12gb|vulkan": 0.47,
+   "rtx4070tisuper-16gb|cuda": 0.559,
+   "rtx4070tisuper-16gb|vulkan": 0.498,
+   "rtx4080-16gb|cuda": 0.6,
+   "rtx4080super-16gb|cuda": 0.57,
+   "rtx4080super-16gb|vulkan": 0.492,
+   "rtx4090-24gb|cuda": 0.55,
+   "rtx4090-24gb|vulkan": 0.418,
+   "rtx5060ti-16gb|cuda": 0.567,
+   "rtx5060ti-16gb|vulkan": 0.529,
+   "rtx5070-12gb|cuda": 0.602,
+   "rtx5070ti-16gb|cuda": 0.593,
+   "rtx5070ti-16gb|vulkan": 0.534,
+   "rtx5080-16gb|cuda": 0.536,
+   "rtx5080-16gb|vulkan": 0.469,
+   "rtx5090-32gb|cuda": 0.47,
+   "rtx5090-32gb|vulkan": 0.36,
+   "rtx6000ada-48gb|cuda": 0.369,
+   "rtxpro4000-24gb|cuda": 0.491,
+   "rtxpro4500-32gb|cuda": 0.487,
+   "rx6800xt-16gb|rocm": 0.475,
+   "rx6800xt-16gb|vulkan": 0.568,
+   "rx6900xt-16gb|rocm": 0.567,
+   "rx6900xt-16gb|vulkan": 0.541,
+   "rx7600xt-16gb|rocm": 0.347,
+   "rx7600xt-16gb|vulkan": 0.282,
+   "rx7800xt-16gb|rocm": 0.407,
+   "rx7800xt-16gb|vulkan": 0.385,
+   "rx7900gre-16gb|rocm": 0.226,
+   "rx7900gre-16gb|vulkan": 0.339,
+   "rx7900xt-20gb|rocm": 0.42,
+   "rx7900xt-20gb|vulkan": 0.373,
+   "rx7900xtx-24gb|rocm": 0.411,
+   "rx7900xtx-24gb|vulkan": 0.422,
+   "rx9060xt-16gb|rocm": 0.192,
+   "rx9060xt-16gb|vulkan": 0.401,
+   "rx9070-16gb|rocm": 0.227,
+   "rx9070-16gb|vulkan": 0.283,
+   "rx9070xt-16gb|rocm": 0.348,
+   "rx9070xt-16gb|vulkan": 0.352,
+   "ryzen9-7950x|cpu": 0.693,
+   "ryzen9-9950x3d|cpu": 0.346,
+   "t4-16gb|cuda": 0.264
   },
   "device_bandwidth": {
    "core-ultra9-285k|cpu": 0.817,
@@ -150,6 +174,9 @@
   "Q8_0": 8.5,
   "F16": 16.0,
   "BF16": 16.0
+ },
+ "quant_shared_bpw": {
+  "MXFP4": 8.5
  },
  "cpus": [
   {
@@ -2107,7 +2134,10 @@
    "active_params_b": null,
    "tokenizer": "llama2",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 32,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "llama-2-13b",
@@ -2119,7 +2149,10 @@
    "active_params_b": null,
    "tokenizer": "llama2",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 40,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "llama-2-70b",
@@ -2131,7 +2164,10 @@
    "active_params_b": null,
    "tokenizer": "llama2",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 64,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "llama-3.2-3b",
@@ -2143,7 +2179,10 @@
    "active_params_b": null,
    "tokenizer": "llama3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 24,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "llama-3.1-8b",
@@ -2155,7 +2194,10 @@
    "active_params_b": null,
    "tokenizer": "llama3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 32,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "llama-3.1-70b",
@@ -2167,7 +2209,10 @@
    "active_params_b": null,
    "tokenizer": "llama3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 64,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "mistral-7b",
@@ -2179,7 +2224,10 @@
    "active_params_b": null,
    "tokenizer": "mistral",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 32,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "gemma-2-9b",
@@ -2191,7 +2239,10 @@
    "active_params_b": null,
    "tokenizer": "gemma2",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 16,
+   "sliding_window": 4096,
+   "swa_layers": 21
   },
   {
    "name": "qwen2.5-7b",
@@ -2203,7 +2254,10 @@
    "active_params_b": null,
    "tokenizer": "qwen2.5",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 28,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen2.5-14b",
@@ -2215,7 +2269,10 @@
    "active_params_b": null,
    "tokenizer": "qwen2.5",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 40,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen2.5-32b",
@@ -2227,7 +2284,10 @@
    "active_params_b": null,
    "tokenizer": "qwen2.5",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 40,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen3-8b",
@@ -2239,7 +2299,10 @@
    "active_params_b": null,
    "tokenizer": "qwen3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 32,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen3-14b",
@@ -2251,7 +2314,10 @@
    "active_params_b": null,
    "tokenizer": "qwen3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 40,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen3-32b",
@@ -2263,7 +2329,10 @@
    "active_params_b": null,
    "tokenizer": "qwen3",
    "n_experts": 0,
-   "experts_per_token": 0
+   "experts_per_token": 0,
+   "n_heads": 64,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "qwen3-30b-a3b",
@@ -2275,7 +2344,10 @@
    "active_params_b": 3.3,
    "tokenizer": "qwen3",
    "n_experts": 128,
-   "experts_per_token": 8
+   "experts_per_token": 8,
+   "n_heads": 32,
+   "sliding_window": 0,
+   "swa_layers": 0
   },
   {
    "name": "gpt-oss-20b",
@@ -2287,7 +2359,10 @@
    "active_params_b": 3.6,
    "tokenizer": "gpt-oss",
    "n_experts": 32,
-   "experts_per_token": 4
+   "experts_per_token": 4,
+   "n_heads": 64,
+   "sliding_window": 128,
+   "swa_layers": 12
   },
   {
    "name": "gpt-oss-120b",
@@ -2299,7 +2374,10 @@
    "active_params_b": 5.1,
    "tokenizer": "gpt-oss",
    "n_experts": 128,
-   "experts_per_token": 4
+   "experts_per_token": 4,
+   "n_heads": 64,
+   "sliding_window": 128,
+   "swa_layers": 18
   }
  ],
  "tokenizers": {
@@ -2447,8 +2525,8 @@
  "calibration": {
   "cpu/pp": {
    "n": 29,
-   "median": 0.064,
-   "max": 0.4208
+   "median": 0.0619,
+   "max": 0.4213
   },
   "cpu/tg": {
    "n": 174,
@@ -2457,28 +2535,28 @@
   },
   "cuda/pp": {
    "n": 55,
-   "median": 0.0606,
-   "max": 0.1156
+   "median": 0.0599,
+   "max": 0.1168
   },
   "cuda/tg": {
    "n": 55,
-   "median": 0.0636,
-   "max": 0.4782
+   "median": 0.0652,
+   "max": 0.4767
   },
   "metal/pp": {
    "n": 12,
-   "median": 0.006,
-   "max": 0.0513
+   "median": 0.0064,
+   "max": 0.0508
   },
   "metal/tg": {
    "n": 12,
-   "median": 0.0142,
-   "max": 0.0983
+   "median": 0.0167,
+   "max": 0.095
   },
   "rocm/pp": {
    "n": 33,
-   "median": 0.0259,
-   "max": 0.8185
+   "median": 0.0258,
+   "max": 0.813
   },
   "rocm/tg": {
    "n": 33,
@@ -2487,8 +2565,8 @@
   },
   "sycl/pp": {
    "n": 21,
-   "median": 0.2901,
-   "max": 1.1868
+   "median": 0.2913,
+   "max": 1.1844
   },
   "sycl/tg": {
    "n": 21,
@@ -2497,8 +2575,8 @@
   },
   "vulkan/pp": {
    "n": 62,
-   "median": 0.0531,
-   "max": 1.0879
+   "median": 0.0537,
+   "max": 1.0931
   },
   "vulkan/tg": {
    "n": 62,
@@ -2507,8 +2585,43 @@
   },
   "cuda/batch": {
    "n": 15,
-   "median": 0.0613,
-   "max": 0.1264
+   "median": 0.0455,
+   "max": 0.0785
+  },
+  "cuda/depth_tg": {
+   "n": 16,
+   "median": 0.0059,
+   "max": 0.0132
+  },
+  "cuda/depth_pp": {
+   "n": 4,
+   "median": 0.0034,
+   "max": 0.0096
+  },
+  "cuda/moe_tg": {
+   "n": 3,
+   "median": 0.0278,
+   "max": 0.0381
+  },
+  "cuda/moe_pp": {
+   "n": 3,
+   "median": 0.224,
+   "max": 0.2432
+  },
+  "metal/depth_tg": {
+   "n": 16,
+   "median": 0.0097,
+   "max": 0.0292
+  },
+  "metal/depth_pp": {
+   "n": 4,
+   "median": 0.0045,
+   "max": 0.0053
+  },
+  "metal/moe_tg": {
+   "n": 3,
+   "median": 0.0487,
+   "max": 0.054
   }
  },
  "batch_devices": [
@@ -2705,6 +2818,38 @@
    "tg_tps": 179.1,
    "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
    "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-llama-bench-d0",
+   "gpu": "NVIDIA GB10",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "flash_attn": true,
+   "model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 2048,
+   "n_gen": 32,
+   "pp_tps": 4505.82,
+   "tg_tps": 83.43,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-llama-bench-d0",
+   "gpu": "NVIDIA GB10",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "flash_attn": true,
+   "model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 2048,
+   "n_gen": 32,
+   "pp_tps": 2443.91,
+   "tg_tps": 58.72,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf",
    "old_build": false
   },
   {

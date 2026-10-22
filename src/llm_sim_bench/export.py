@@ -16,8 +16,8 @@ from pathlib import Path
 
 from . import __version__, calibrate, measurements, report, texts
 from .estimator import Efficiency, estimate
-from .profiles import (CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM, UNIFIED_PRESETS,
-                       System, lookup, unified_system)
+from .profiles import (CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, QUANT_SHARED_BPW, RAM,
+                       UNIFIED_PRESETS, System, lookup, unified_system)
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 TOKENIZER_RATIOS = Path(__file__).resolve().parents[2] / "data" / "tokenizer_ratios.json"
@@ -71,6 +71,9 @@ GOLDEN_CASES = [
     ({"kind": "pc", "cpu": "ryzen9-7950x", "ram_gb": 64, "ram_bandwidth_gbps": 96,
       "gpus": []}, "gpt-oss-20b", "MXFP4", 4096, 16, 16),
 ]
+# (prompt tokens, cached tokens) of the prompt times the golden file records: inside and
+# past a sliding window of 128 (+ 512) tokens, and a long context.
+PREFILL_CASES = [(1, 0), (512, 0), (100, 600), (2048, 4096), (1000, 30000)]
 # KV fills of the requests in the decode steps the golden file records.
 STEP_FILLS = [[0], [1000], [0, 0], [100, 2000, 4000], [500] * 8, [0] * 16]
 
@@ -91,6 +94,7 @@ def golden() -> list[dict]:
                 "decode_tps_empty": est.decode_tps_empty,
                 "decode_tps_full": est.decode_tps_full,
                 "decode_tps_at": [[f, est.decode_tps_at(f)] for f in (0, 1000, context // 2)],
+                "prefill_time": [[n, d, est.prefill_time(n, d)] for n, d in PREFILL_CASES],
                 "step_time": [[fills, est.step_time(fills)] for fills in STEP_FILLS],
                 "parallel_tps": [[n, f, est.parallel_tps(n, f)] for n in (1, 3, 32)
                                  for f in (0, context)],
@@ -220,6 +224,7 @@ def presets(records: list[dict]) -> dict:
         "version": __version__,
         "efficiency": asdict(Efficiency()),
         "quant_bpw": QUANT_BPW,
+        "quant_shared_bpw": QUANT_SHARED_BPW,
         "cpus": [asdict(c) for c in CPU_PRESETS.values()],
         "gpus": [asdict(g) for g in GPU_PRESETS.values()],
         "unified": [asdict(a) for a in UNIFIED_PRESETS.values()],
@@ -237,6 +242,7 @@ def calibration_data(records: list[dict]) -> dict:
     stats = calibrate.summary(calibrate.evaluate(records, Efficiency()))
     batch = calibrate.batch_points(records, Efficiency())
     stats.update(calibrate.batch_summary(batch))
+    stats.update(calibrate.depth_summary(calibrate.depth_points(records, Efficiency())))
     return {
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),
                             "max": round(v["max"], 4)} for k, v in stats.items()},
@@ -252,7 +258,7 @@ def calibration_data(records: list[dict]) -> dict:
         } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]
             and "batched" not in r["flags"]
             and r["model"]["name"] in MODEL_PRESETS and r["model"]["quant"] in QUANT_BPW
-            and r["run"]["n_prompt"] and r["run"]["n_gen"]],
+            and r["run"]["n_prompt"] and r["run"]["n_gen"] and not r["run"]["depth"]],
         "cpu_measurements": cpu_measurements(records),
         "batched_measurements": batched_measurements(records),
     }

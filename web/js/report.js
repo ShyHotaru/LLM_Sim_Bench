@@ -8,6 +8,8 @@ import { benchGenTps, groupCpuRuns } from "./measured.js";
 
 export const SCHEMA = "llmsimbench.report/1";
 export const BACKEND_NAMES = { cuda: "CUDA", metal: "Metal", rocm: "ROCm", vulkan: "Vulkan", sycl: "SYCL", cpu: "CPU" };
+// Contexts from which an uncalibrated slowdown with depth is worth a warning.
+export const LONG_CONTEXT = 8192;
 
 const TEXTS = {
   context_exceeds_max: "Context {context} exceeds the model's maximum of {max}.",
@@ -18,7 +20,9 @@ const TEXTS = {
   backend_uncalibrated: "No measured {backend} results yet, so its speeds are uncalibrated guesses.",
   decode_uncalibrated: "{backend} generation speed is not calibrated yet.",
   prefill_uncalibrated: "{backend} prompt processing speed is not calibrated yet.",
-  moe_routing: "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic.",
+  moe_uncalibrated: "Mixture-of-experts overhead is not calibrated for {backend}, so generation and prompt processing may be optimistic.",
+  moe_prefill_uncalibrated: "Mixture-of-experts prompt processing is not calibrated for {backend}, so it may be optimistic.",
+  depth_uncalibrated: "The slowdown as the context fills is not calibrated for {backend} yet, so long contexts may be slower than shown.",
   parallel_uncalibrated: "No concurrent-request measurements for {backend} yet: the speed-up from batching uses the CUDA factor.",
   parallel_device_uncalibrated: "Concurrent-request speeds are fitted to other hardware only, not to {device}.",
   moe_parallel: "Concurrent requests of a mixture-of-experts model are not calibrated: the estimate assumes every request picks experts at random, while measured speed-ups are higher.",
@@ -105,7 +109,12 @@ export function warnings(P, system, est) {
     else if (!tg) out.push(item("decode_uncalibrated", { backend: BACKEND_NAMES[b] }));
     else if (!pp) out.push(item("prefill_uncalibrated", { backend: BACKEND_NAMES[b] }));
   }
-  if (est.model.active_params_b) out.push(item("moe_routing"));
+  for (const b of backends) {
+    const backend = BACKEND_NAMES[b];
+    if (est.model.active_params_b && !(`${b}/moe_tg` in cal)) out.push(item("moe_uncalibrated", { backend }));
+    else if (est.model.active_params_b && !(`${b}/moe_pp` in cal)) out.push(item("moe_prefill_uncalibrated", { backend }));
+    if (est.context >= LONG_CONTEXT && !(`${b}/depth_tg` in cal)) out.push(item("depth_uncalibrated", { backend }));
+  }
   if (est.parallel > 1) {
     const batched = new Set(P.batch_devices);
     for (const b of backends) {
@@ -143,12 +152,12 @@ export function gpuChecks(P, system, kvBits) {
     kind: "gpu",
     rows: rows.map((m) => {
       const est = estimate(withBackend(system, m.backend.toLowerCase()), model(P, m.model), m.quant,
-                           m.n_prompt + m.n_gen, kvBits, P.efficiency, P.quant_bpw);
+                           m.n_prompt + m.n_gen, kvBits, P.efficiency, P.quant_bpw, 1, P.quant_shared_bpw);
       return {
         backend: m.backend, model: m.model, quant: m.quant, flash_attn: m.flash_attn,
         old_build: m.old_build, n_prompt: m.n_prompt, n_gen: m.n_gen,
         tg_measured: m.tg_tps, tg_simulated: m.n_gen / genTime(est, 0, m.n_gen + 1),
-        pp_measured: m.pp_tps, pp_simulated: est.prefill_tps, sources: [1],
+        pp_measured: m.pp_tps, pp_simulated: m.n_prompt / est.prefillTime(m.n_prompt), sources: [1],
       };
     }),
     sources: [rows[0].source],
@@ -165,12 +174,12 @@ export function cpuChecks(P, system) {
     rows: groups.map((g) => {
       const sim = { cpu: system.cpu, ram: { size_gb: 1024, bandwidth_gbps: g.ram_bandwidth_gbps || 1 }, gpus: [], unified: false };
       const est = estimate(sim, model(P, g.sim_model), g.quant, Math.max(g.n_prompt || 0, g.n_gen || 0, 1),
-                           16, P.efficiency, P.quant_bpw);
+                           16, P.efficiency, P.quant_bpw, 1, P.quant_shared_bpw);
       return {
         backend: "CPU", model: g.model, quant: g.quant, dimms: g.dimms, mem_mts: g.mem_mts,
         threads: g.threads, n_prompt: g.n_prompt, n_gen: g.n_gen, runs: g.n,
         tg_measured: g.tg_tps, tg_simulated: g.tg_tps != null ? benchGenTps(est, g.n_gen) : null,
-        pp_measured: g.pp_tps, pp_simulated: g.pp_tps != null ? est.prefill_tps : null,
+        pp_measured: g.pp_tps, pp_simulated: g.pp_tps != null ? g.n_prompt / est.prefillTime(g.n_prompt) : null,
         sources: g.sources,
       };
     }),
@@ -183,11 +192,11 @@ export function cpuChecks(P, system) {
 // request at once: the prompts share prompt processing, then the replies each decode step.
 export function timingInfo(est, timing) {
   const { prompt_tokens: prompt, depth, max_tokens: maxTokens } = timing;
-  const ttft = prompt / est.prefill_tps;
+  const ttft = est.prefillTime(prompt, depth);
   const out = { ...timing, ttft_s: ttft, reply_s: ttft + genTime(est, depth + prompt, maxTokens) };
   if (est.parallel > 1) {
     const n = est.parallel;
-    const ttftAll = (n * prompt) / est.prefill_tps;
+    const ttftAll = n * ttft;
     let gen = 0;
     for (let i = 1; i < maxTokens; i++) gen += est.stepTime(Array(n).fill(depth + prompt + i));
     Object.assign(out, { ttft_all_s: ttftAll, reply_all_s: ttftAll + gen });
@@ -220,13 +229,13 @@ export function parallelChecks(P, system, est, kvBits) {
     if (!sources.includes(m.source)) sources.push(m.source);
     const { n_parallel: n, n_prompt: pp, n_gen: tg } = m;
     const sim = estimate(withBackend(system, m.backend.toLowerCase()), model(P, m.sim_model), m.quant,
-                         pp + tg, kvBits, P.efficiency, P.quant_bpw, n);
+                         pp + tg, kvBits, P.efficiency, P.quant_bpw, n, P.quant_shared_bpw);
     let t = 0;
     for (let i = 0; i < tg; i++) t += sim.stepTime(Array(n).fill(pp + i));
     return {
       backend: m.backend, model: m.model, quant: m.quant, n_prompt: pp, n_gen: tg, requests: n,
       tg_measured: m.tg_tps, tg_simulated: (n * tg) / t, pp_measured: m.pp_tps,
-      pp_simulated: sim.prefill_tps, sources: [sources.indexOf(m.source) + 1],
+      pp_simulated: pp / sim.prefillTime(pp), sources: [sources.indexOf(m.source) + 1],
     };
   });
   return { kind: "parallel", rows: out, sources };
@@ -268,7 +277,7 @@ export function buildReport(P, configs, surface = "web", shareUrl = null) {
   const results = configs.map((c) => {
     const system = buildSystem(c.system, P);
     const est = estimate(system, model(P, c.model), c.quant, c.context, c.kv_bits, P.efficiency,
-                         P.quant_bpw, c.parallel ?? 1);
+                         P.quant_bpw, c.parallel ?? 1, P.quant_shared_bpw);
     return result(P, system, est, c.kv_bits, c.timing ?? null, c.label ?? null);
   });
   return {

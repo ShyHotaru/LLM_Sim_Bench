@@ -266,7 +266,8 @@ function systemSpec(cfg) {
 function compute(cfg) {
   const system = buildSystem(systemSpec(cfg), P);
   const m = P.models.find((x) => x.name === cfg.model);
-  const est = estimate(system, m, cfg.quant, cfg.context, cfg.kvBits, P.efficiency, P.quant_bpw, cfg.parallel);
+  const est = estimate(system, m, cfg.quant, cfg.context, cfg.kvBits, P.efficiency, P.quant_bpw, cfg.parallel,
+                       P.quant_shared_bpw);
   return { system, est };
 }
 
@@ -455,7 +456,9 @@ const WARNING_KEYS = {
   backend_uncalibrated: "warn.uncalibrated",
   decode_uncalibrated: "warn.decodeUncalibrated",
   prefill_uncalibrated: "warn.prefillUncalibrated",
-  moe_routing: "warn.moe",
+  moe_uncalibrated: "warn.moeUncalibrated",
+  moe_prefill_uncalibrated: "warn.moePrefill",
+  depth_uncalibrated: "warn.depthUncalibrated",
   parallel_uncalibrated: "warn.parallelUncalibrated",
   parallel_device_uncalibrated: "warn.parallelDevice",
   moe_parallel: "warn.moeParallel",
@@ -788,7 +791,8 @@ async function startPlayback() {
       const n = cfg.parallel;
       const schedule = new Schedule({
         turns, promptTokens: state.prompt, maxTokens: state.maxTokens, cachedTokens: state.depth,
-        prefillTps: est.prefill_tps / n, decodeTps: (fill) => est.parallelTps(n, fill), seed: 7 + i });
+        prefillTime: (tokens, depth) => n * est.prefillTime(tokens, depth),
+        decodeTps: (fill) => est.parallelTps(n, fill), seed: 7 + i });
       streams.push({ el, est, shown: 0, block: null, chat: entry.kind === "chat", schedule });
       // The real text length is known now; a conversation can need more than one reply.
       el.querySelector(".problem").textContent = contextProblem(cfg, schedule.events.at(-1)?.fill ?? 0);
@@ -864,7 +868,7 @@ function tick() {
       }
       pending.textContent = t("mock.prefilling", {
         n: fmtInt(turn.prefillTokens), left: fmtTime(Math.max(0, turn.firstAt - elapsed)) });
-      stats.textContent = turnLabel + t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps / s.est.parallel) });
+      stats.textContent = turnLabel + t("mock.prefillStat", { v: fmtTps(turn.prefillTokens / turn.ttft) });
       running = true;
     } else {
       const now = Math.min(elapsed, turn.end);

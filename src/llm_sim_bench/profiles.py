@@ -55,6 +55,9 @@ class Model:
     tokenizer: str = ""  # tokenizer family in data/tokenizer_ratios.json, "" if unknown
     n_experts: int = 0  # MoE: routed experts per layer (config.json on Hugging Face)
     experts_per_token: int = 0  # MoE: experts each token is routed to
+    n_heads: int = 0  # query attention heads (config.json num_attention_heads); 0: n_kv_heads
+    sliding_window: int = 0  # tokens a sliding-window attention layer sees, 0 if none
+    swa_layers: int = 0  # layers with sliding-window attention
 
     @property
     def active_b(self) -> float:
@@ -101,6 +104,11 @@ QUANT_BPW: dict[str, float] = {
     "F16": 16.0,
     "BF16": 16.0,
 }
+# Bits per weight of a mixture-of-experts model's shared weights (attention, embeddings,
+# output layer) where a quantization applies to the experts only: gpt-oss MXFP4 files keep
+# everything but the experts in Q8_0 (tensor headers of ggml-org/gpt-oss-20b-GGUF and
+# ggml-org/gpt-oss-120b-GGUF).
+QUANT_SHARED_BPW: dict[str, float] = {"MXFP4": QUANT_BPW["Q8_0"]}
 
 _GPU_BACKEND = {"NVIDIA": "cuda", "AMD": "rocm", "Intel": "sycl"}
 
@@ -423,29 +431,34 @@ def unified_system(chip: UnifiedChip, memory_gb: float) -> System:
     )
 
 
+# Architecture from each model's config.json on Hugging Face (Meta and Gemma configs read
+# from ungated copies: NousResearch, unsloth). llama.cpp uses sliding-window attention for
+# Gemma 2 and gpt-oss (every other layer) but not for Mistral 7B, whose config also names a
+# window.
 MODEL_PRESETS: dict[str, Model] = {
     m.name: m
     for m in [
-        Model("llama-2-7b", 6.74, 32, 32, 128, 4096, tokenizer="llama2"),
-        Model("llama-2-13b", 13.0, 40, 40, 128, 4096, tokenizer="llama2"),
-        Model("llama-2-70b", 69.0, 80, 8, 128, 4096, tokenizer="llama2"),
-        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072, tokenizer="llama3"),
-        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072, tokenizer="llama3"),
-        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072, tokenizer="llama3"),
-        Model("mistral-7b", 7.24, 32, 8, 128, 32768, tokenizer="mistral"),
-        Model("gemma-2-9b", 9.24, 42, 8, 256, 8192, tokenizer="gemma2"),
-        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072, tokenizer="qwen2.5"),
-        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072, tokenizer="qwen2.5"),
-        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072, tokenizer="qwen2.5"),
-        Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3"),
-        Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3"),
-        Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3"),
+        Model("llama-2-7b", 6.74, 32, 32, 128, 4096, tokenizer="llama2", n_heads=32),
+        Model("llama-2-13b", 13.0, 40, 40, 128, 4096, tokenizer="llama2", n_heads=40),
+        Model("llama-2-70b", 69.0, 80, 8, 128, 4096, tokenizer="llama2", n_heads=64),
+        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072, tokenizer="llama3", n_heads=24),
+        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072, tokenizer="llama3", n_heads=32),
+        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072, tokenizer="llama3", n_heads=64),
+        Model("mistral-7b", 7.24, 32, 8, 128, 32768, tokenizer="mistral", n_heads=32),
+        Model("gemma-2-9b", 9.24, 42, 8, 256, 8192, tokenizer="gemma2", n_heads=16,
+              sliding_window=4096, swa_layers=21),
+        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072, tokenizer="qwen2.5", n_heads=28),
+        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40),
+        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40),
+        Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3", n_heads=32),
+        Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3", n_heads=40),
+        Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3", n_heads=64),
         Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3, tokenizer="qwen3",
-              n_experts=128, experts_per_token=8),
+              n_experts=128, experts_per_token=8, n_heads=32),
         Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss",
-              n_experts=32, experts_per_token=4),
+              n_experts=32, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=12),
         Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1, tokenizer="gpt-oss",
-              n_experts=128, experts_per_token=4),
+              n_experts=128, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=18),
     ]
 }
 
