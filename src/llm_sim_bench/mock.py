@@ -28,8 +28,9 @@ class MockEngine:
     """Paces token output by a prefill rate and a context-dependent decode rate.
 
     `decode_tps` is a callable of the current KV fill so decode slows as the
-    context grows, matching the estimator. Pieces come from texts.chunk_text, one
-    per token.
+    context grows, matching the estimator. `prefill_time(tokens, cached)`, if given,
+    replaces the fixed `prefill_tps` so prompts slow down as the context grows too.
+    Pieces come from texts.chunk_text, one per token.
 
     Streams running at the same time (threads of the mock server) share the engine
     like llama-server's `slots` with continuous batching: at most `slots` run, the
@@ -46,8 +47,10 @@ class MockEngine:
         seed: int | None = None,
         step_time: Callable[[Sequence[int]], float] | None = None,
         slots: int = 1,
+        prefill_time: Callable[[int, int], float] | None = None,
     ):
         self.prefill_tps = prefill_tps
+        self.prefill_time = prefill_time or (lambda tokens, _cached: tokens / prefill_tps)
         self.decode_tps = decode_tps
         self.jitter = jitter
         self.rng = random.Random(seed)
@@ -74,7 +77,7 @@ class MockEngine:
             with self._lock:
                 now = time.perf_counter()
                 begin = max(now, self._prefill_free)
-                deadline = begin + prompt_tokens / self.prefill_tps
+                deadline = begin + self.prefill_time(prompt_tokens, cached_tokens)
                 self._prefill_free = deadline
                 self._prefills = [p for p in self._prefills if p[2] > now] + [
                     (key, begin, deadline)]

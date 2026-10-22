@@ -20,7 +20,7 @@ for (const [i, { input, expected }] of golden.entries()) {
     const model = presets.models.find((m) => m.name === input.model);
     const est = estimate(buildSystem(input.system, presets), model, input.quant,
                          input.context, input.kv_bits, presets.efficiency, presets.quant_bpw,
-                         input.parallel);
+                         input.parallel, presets.quant_shared_bpw);
     close(est.weights_gb, expected.weights_gb, "weights_gb");
     close(est.kv_gb, expected.kv_gb, "kv_gb");
     assert.equal(est.fits, expected.fits);
@@ -39,6 +39,7 @@ for (const [i, { input, expected }] of golden.entries()) {
     close(est.decode_tps_empty, expected.decode_tps_empty, "decode_tps_empty");
     close(est.decode_tps_full, expected.decode_tps_full, "decode_tps_full");
     for (const [fill, tps] of expected.decode_tps_at) close(est.decodeTpsAt(fill), tps, `at ${fill}`);
+    for (const [n, depth, t] of expected.prefill_time) close(est.prefillTime(n, depth), t, `prefill ${n} after ${depth}`);
     for (const [fills, t] of expected.step_time) close(est.stepTime(fills), t, `step ${fills}`);
     for (const [n, fill, tps] of expected.parallel_tps) close(est.parallelTps(n, fill), tps, `${n} at ${fill}`);
   });

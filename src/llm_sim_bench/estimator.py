@@ -1,10 +1,14 @@
 """First-order throughput model for local inference.
 
 Decode is treated as memory-bandwidth bound: every generated token reads
-all active weights plus the KV cache filled so far. Prefill is treated as
-compute bound: roughly 2 FLOPs per active parameter per prompt token.
-Each layer also costs a fixed per-token overhead (kernel launches and
-synchronization), which dominates on fast GPUs with small models.
+all active weights plus the KV cache filled so far (attention reads the cache
+more slowly than the weights, `*_kv_read`). Prefill is treated as compute
+bound: roughly 2 FLOPs per active parameter per prompt token, plus attention
+over the tokens already in the cache, which grows with the context
+(`*_attention`). Sliding-window attention layers only see their window. Each
+layer also costs a fixed per-token overhead (kernel launches and
+synchronization), which dominates on fast GPUs with small models; layers of a
+mixture-of-experts model cost more (`*_moe_layer_overhead_us`).
 Layers are offloaded to GPUs first (like llama.cpp's n_gpu_layers) and the
 rest stays in system RAM. Devices run layers sequentially, so per-token
 times add up. On unified-memory systems (Apple Silicon) the GPU budget is a
@@ -24,7 +28,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .profiles import QUANT_BPW, Model, System
+from .profiles import QUANT_BPW, QUANT_SHARED_BPW, Model, System
 
 
 def add_in_order(values) -> float:
@@ -41,6 +45,9 @@ def add_in_order(values) -> float:
 
 
 GB = 1e9
+# llama.cpp keeps n_swa + n_ubatch tokens in a sliding-window layer's cache (default -ub 512;
+# it also pads to 256), unless --swa-full: llama-kv-cache-iswa.cpp.
+SWA_UBATCH = 512
 DEVICE_CALIBRATION = Path(__file__).with_name("device_calibration.json")
 
 
@@ -76,15 +83,46 @@ class Efficiency:
     cpu_bandwidth: float = 0.79
     cpu_compute: float = 0.35
     cpu_layer_overhead_us: float = 119.0
+    # Long contexts, fitted to llama-bench runs at several depths (llama.cpp benches/):
+    # decode reads the KV cache *_kv_read times slower than weights, and prompt attention
+    # runs at *_attention times the prompt-processing FLOP rate. Backends without depth
+    # measurements keep 1.0.
+    gpu_kv_read: float = 1.21
+    gpu_attention: float = 1.61
+    metal_kv_read: float = 2.35
+    metal_attention: float = 0.53
+    rocm_kv_read: float = 1.0
+    rocm_attention: float = 1.0
+    vulkan_kv_read: float = 1.0
+    vulkan_attention: float = 1.0
+    sycl_kv_read: float = 1.0
+    sycl_attention: float = 1.0
+    cpu_kv_read: float = 1.0
+    cpu_attention: float = 1.0
+    # Mixture-of-experts models, fitted to the same runs: extra per-token cost of a layer
+    # (routing, gathering the experts; 0 without measurements) and the share of the
+    # prompt-processing FLOP rate their weights reach (1.0 without measurements).
+    gpu_moe_layer_overhead_us: float = 0.0
+    metal_moe_layer_overhead_us: float = 113.0
+    rocm_moe_layer_overhead_us: float = 0.0
+    vulkan_moe_layer_overhead_us: float = 0.0
+    sycl_moe_layer_overhead_us: float = 0.0
+    cpu_moe_layer_overhead_us: float = 0.0
+    gpu_moe_compute: float = 0.56
+    metal_moe_compute: float = 1.0
+    rocm_moe_compute: float = 1.0
+    vulkan_moe_compute: float = 1.0
+    sycl_moe_compute: float = 1.0
+    cpu_moe_compute: float = 1.0
     # Share of the prompt-processing compute rate that each request beyond the first
     # reaches in a decode batch. Fitted for CUDA to llama-batched-bench results (DGX
     # Spark); the other backends use the CUDA value until they have measurements.
-    gpu_batch_compute: float = 0.41
-    metal_batch_compute: float = 0.41
-    rocm_batch_compute: float = 0.41
-    vulkan_batch_compute: float = 0.41
-    sycl_batch_compute: float = 0.41
-    cpu_batch_compute: float = 0.41
+    gpu_batch_compute: float = 0.49
+    metal_batch_compute: float = 0.49
+    rocm_batch_compute: float = 0.49
+    vulkan_batch_compute: float = 0.49
+    sycl_batch_compute: float = 0.49
+    cpu_batch_compute: float = 0.49
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
@@ -103,6 +141,17 @@ class Efficiency:
 
     def batch_compute(self, backend: str) -> float:
         return getattr(self, f"{backend_prefix(backend)}_batch_compute")
+
+    def for_depth(self, backend: str) -> tuple[float, float]:
+        """(KV read cost, attention rate) for long contexts."""
+        p = backend_prefix(backend)
+        return getattr(self, f"{p}_kv_read"), getattr(self, f"{p}_attention")
+
+    def for_moe(self, backend: str) -> tuple[float, float]:
+        """(extra per-layer overhead in seconds, prompt compute share) of MoE models."""
+        p = backend_prefix(backend)
+        return (getattr(self, f"{p}_moe_layer_overhead_us") / 1e6,
+                getattr(self, f"{p}_moe_compute"))
 
 
 BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu")
@@ -142,17 +191,39 @@ class Estimate:
     decode_tps_full: float
     notes: list[str] = field(default_factory=list)
     parallel: int = 1  # request slots; each gets `context` tokens of KV cache
-    _kv_per_token: list[tuple[float, float]] = field(default_factory=list, repr=False)
+    # Per device: (KV bytes per token of full-attention layers, of sliding-window layers,
+    # effective bandwidth for reading the cache in bytes/s).
+    _kv_per_token: list[tuple[float, float, float]] = field(default_factory=list, repr=False)
+    # Per device: (attention FLOPs per prompt token and cached token, full layers;
+    # sliding-window layers; attention FLOP/s).
+    _attention: list[tuple[float, float, float]] = field(default_factory=list, repr=False)
     _base_time: float = 0.0
     _overhead: float = 0.0  # per-step fixed time of all devices
     _weight_read: float = 0.0  # time to read every weight once (all experts)
     _batch_time: float = 0.0  # compute time each extra request adds to a step
 
+    def _kv_time(self, filled: int) -> float:
+        """Seconds to read the KV cache of one request holding `filled` tokens."""
+        window = min(filled, swa_cells(self.model))
+        return add_in_order((full * filled + swa * window) / bw
+                            for full, swa, bw in self._kv_per_token)
+
     def decode_tps_at(self, filled_tokens: int) -> float:
         """Decode speed of a single request when `filled_tokens` are in its KV cache."""
-        t = self._base_time + add_in_order(
-            b * filled_tokens / bw for b, bw in self._kv_per_token)
+        t = self._base_time + self._kv_time(filled_tokens)
         return 1.0 / t if t > 0 else float("inf")
+
+    def prefill_time(self, tokens: int, depth: int = 0) -> float:
+        """Seconds to process a prompt of `tokens` tokens after `depth` cached tokens.
+
+        Token i attends to depth + i + 1 tokens, a sliding-window layer to at most the
+        tokens its cache keeps, so prompts get slower as the context fills. `prefill_tps`
+        leaves out attention: it is the speed of a short prompt in an empty context.
+        """
+        full = context_sum(depth + 1, depth + tokens)
+        swa = context_sum(depth + 1, depth + tokens, swa_cells(self.model))
+        return tokens / self.prefill_tps + add_in_order(
+            (f * full + w * swa) / rate for f, w, rate in self._attention)
 
     def step_time(self, fills: Sequence[int]) -> float:
         """Seconds for one decode step that gives each active request one token.
@@ -161,11 +232,10 @@ class Estimate:
         equals 1 / decode_tps_at(fill) up to rounding.
         """
         n = len(fills)
-        t = (self._overhead + self._weight_read * weight_read_ratio(self.model, n)
+        t = (self._overhead + self._weight_read * weight_read_ratio(self.model, n, self.quant)
              + (n - 1) * self._batch_time)
         for f in fills:
-            t += add_in_order(
-            b * f / bw for b, bw in self._kv_per_token)
+            t += self._kv_time(f)
         return t
 
     def parallel_tps(self, n: int, filled_tokens: int) -> float:
@@ -176,24 +246,57 @@ class Estimate:
         return 1.0 / self.step_time([filled_tokens] * n)
 
 
-def weight_read_ratio(model: Model, n: int) -> float:
-    """Share of the weights read in a decode step for `n` requests.
+def context_sum(first: int, last: int, cap: int = 0) -> float:
+    """Sum of min(c, cap) for c = first..last (no cap if cap is 0); 0 if last < first."""
+    if last < first:
+        return 0.0
+    if not cap or last <= cap:
+        return (first + last) * (last - first + 1) / 2
+    if first >= cap:
+        return cap * (last - first + 1)
+    return (first + cap) * (cap - first + 1) / 2 + cap * (last - cap)
+
+
+def weight_bytes(model: Model, quant: str) -> tuple[float, float]:
+    """(bytes of the shared weights, bytes of all routed experts); dense models have no
+    experts. Some quantizations apply to the experts only (QUANT_SHARED_BPW)."""
+    bpw = QUANT_BPW[quant]
+    if not model.n_experts:
+        return model.params_b * 1e9 * bpw / 8, 0.0
+    share = model.experts_per_token / model.n_experts
+    expert = (model.params_b - model.active_b) / (1 - share)  # B params in all experts
+    shared = model.params_b - expert
+    return shared * 1e9 * QUANT_SHARED_BPW.get(quant, bpw) / 8, expert * 1e9 * bpw / 8
+
+
+def weight_read_ratio(model: Model, n: int, quant: str = "Q4_K_M") -> float:
+    """Share of the weight bytes read in a decode step for `n` requests.
 
     Dense models read everything once. A mixture-of-experts model reads its shared
     weights and the experts any request is routed to; with uniform independent
     routing to k of E experts, a step touches 1 - (1 - k/E)^n of them.
     """
-    ratio = model.active_b / model.params_b
-    if not model.n_experts or n <= 1:
-        return ratio
+    if not model.n_experts:
+        return model.active_b / model.params_b
+    shared, expert = weight_bytes(model, quant)
     share = model.experts_per_token / model.n_experts
-    expert = (model.params_b - model.active_b) / (1 - share)  # B params in all experts
-    shared = model.params_b - expert
-    return (shared + expert * (1 - (1 - share) ** n)) / model.params_b
+    touched = share if n <= 1 else 1 - (1 - share) ** n
+    return (shared + expert * touched) / (shared + expert)
 
 
 def kv_bytes_per_token(model: Model, kv_bits: int = 16) -> float:
+    """KV cache bytes per token if every layer kept the whole context."""
     return 2 * model.n_layers * model.n_kv_heads * model.head_dim * kv_bits / 8
+
+
+def swa_cells(model: Model) -> int:
+    """Tokens a sliding-window layer keeps in its cache, reads and attends to; 0 if none."""
+    return model.sliding_window + SWA_UBATCH if model.sliding_window else 0
+
+
+def attention_flops(model: Model) -> float:
+    """FLOPs per layer for one token attending to one cached token (QK^T and AV)."""
+    return 4 * (model.n_heads or model.n_kv_heads) * model.head_dim
 
 
 def estimate(
@@ -215,9 +318,12 @@ def estimate(
     if context > model.max_context:
         notes.append(f"context {context} exceeds model max {model.max_context}")
 
-    weights = model.params_b * 1e9 * QUANT_BPW[quant] / 8
+    weights = add_in_order(weight_bytes(model, quant))
     kv_tok = kv_bytes_per_token(model, kv_bits)
-    kv_total = kv_tok * context * parallel
+    # A sliding-window layer's cache keeps only about its window.
+    swa_share = model.swa_layers / model.n_layers
+    kv_total = kv_tok * (context * (1 - swa_share)
+                         + min(context, swa_cells(model)) * swa_share) * parallel
     layer_w = weights / model.n_layers
     layer_kv = kv_total / model.n_layers
 
@@ -231,6 +337,8 @@ def estimate(
         n = min(remaining, int(usable // (layer_w + layer_kv)))
         if n > 0:
             bw_eff, c_eff, layer_s = eff.for_backend(gpu.backend)
+            if model.n_experts:
+                layer_s += eff.for_moe(gpu.backend)[0]
             c_eff = eff.device_compute.get(f"{gpu.name}|{gpu.backend}", c_eff)
             tflops = gpu.fp16_tflops * c_eff
             placements.append(
@@ -245,6 +353,8 @@ def estimate(
     if remaining:
         cpu_gb = remaining * (layer_w + layer_kv) / GB
         bw_eff, c_eff, layer_s = eff.for_backend("cpu")
+        if model.n_experts:
+            layer_s += eff.for_moe("cpu")[0]
         bw_eff = eff.device_bandwidth.get(f"{system.cpu.name}|cpu", bw_eff)
         c_eff = eff.device_compute.get(f"{system.cpu.name}|cpu", c_eff)
         tflops = system.cpu.fp32_tflops * c_eff
@@ -264,17 +374,25 @@ def estimate(
         if system.gpus:
             notes.append(f"{remaining}/{model.n_layers} layers offloaded to CPU")
 
-    active_ratio = model.active_b / model.params_b
+    active_ratio = weight_read_ratio(model, 1, quant)
+    gpu_backend = {g.name: g.backend for g in system.gpus}
     base_time = 0.0
-    kv_terms: list[tuple[float, float]] = []
+    kv_terms: list[tuple[float, float, float]] = []
+    attention: list[tuple[float, float, float]] = []
     prefill_time = 0.0
     overhead = weight_read = batch_time = 0.0
     for p in placements:
         frac = p.layers / model.n_layers
         bw = p.bandwidth_gbps * GB
+        backend = gpu_backend[p.device] if p.is_gpu else "cpu"
+        kv_read, attn = eff.for_depth(backend)
+        moe_compute = eff.for_moe(backend)[1] if model.n_experts else 1.0
         base_time += p.weights_gb * GB * active_ratio / bw + p.overhead_s
-        kv_terms.append((kv_tok * frac, bw))
-        prefill_time += _flop_time(model, p.layers, p.tflops)
+        kv_terms.append((kv_tok * frac * (1 - swa_share), kv_tok * frac * swa_share,
+                         bw / kv_read))
+        flops = attention_flops(model) * p.layers
+        attention.append((flops * (1 - swa_share), flops * swa_share, p.tflops * 1e12 * attn))
+        prefill_time += _flop_time(model, p.layers, p.tflops * moe_compute)
         overhead += p.overhead_s
         weight_read += p.weights_gb * GB / bw
         batch_time += p.batch_s
@@ -285,7 +403,8 @@ def estimate(
         placements=placements, fits=fits,
         prefill_tps=1.0 / prefill_time,
         decode_tps_empty=0.0, decode_tps_full=0.0, notes=notes, parallel=parallel,
-        _kv_per_token=kv_terms, _base_time=base_time, _overhead=overhead,
+        _kv_per_token=kv_terms, _attention=attention, _base_time=base_time,
+        _overhead=overhead,
         _weight_read=weight_read, _batch_time=batch_time,
     )
     est.decode_tps_empty = est.decode_tps_at(0)

@@ -25,6 +25,8 @@ SCHEMA = "llmsimbench.report/1"
 CALIBRATION_DATA = Path(__file__).resolve().parent / "data" / "calibration.json"
 BACKEND_NAMES = {"cuda": "CUDA", "metal": "Metal", "rocm": "ROCm", "vulkan": "Vulkan",
                  "sycl": "SYCL", "cpu": "CPU"}
+# Contexts from which an uncalibrated slowdown with depth is worth a warning.
+LONG_CONTEXT = 8192
 
 # English texts for note and warning codes; the web app shows localized versions.
 TEXTS = {
@@ -42,8 +44,12 @@ TEXTS = {
                             "guesses.",
     "decode_uncalibrated": "{backend} generation speed is not calibrated yet.",
     "prefill_uncalibrated": "{backend} prompt processing speed is not calibrated yet.",
-    "moe_routing": "Mixture-of-experts routing overhead is not modeled, so generation may be "
-                   "optimistic.",
+    "moe_uncalibrated": "Mixture-of-experts overhead is not calibrated for {backend}, so "
+                        "generation and prompt processing may be optimistic.",
+    "moe_prefill_uncalibrated": "Mixture-of-experts prompt processing is not calibrated for "
+                                "{backend}, so it may be optimistic.",
+    "depth_uncalibrated": "The slowdown as the context fills is not calibrated for {backend} "
+                          "yet, so long contexts may be slower than shown.",
     "parallel_uncalibrated": "No concurrent-request measurements for {backend} yet: the "
                              "speed-up from batching uses the CUDA factor.",
     "parallel_device_uncalibrated": "Concurrent-request speeds are fitted to other hardware "
@@ -142,8 +148,13 @@ def warnings(system: System, est: Estimate, data: dict,
             out.append(_item("decode_uncalibrated", backend=BACKEND_NAMES[b]))
         elif not pp:
             out.append(_item("prefill_uncalibrated", backend=BACKEND_NAMES[b]))
-    if est.model.active_params_b:
-        out.append(_item("moe_routing"))
+    for b in backends:
+        if est.model.active_params_b and f"{b}/moe_tg" not in cal:
+            out.append(_item("moe_uncalibrated", backend=BACKEND_NAMES[b]))
+        elif est.model.active_params_b and f"{b}/moe_pp" not in cal:
+            out.append(_item("moe_prefill_uncalibrated", backend=BACKEND_NAMES[b]))
+        if est.context >= LONG_CONTEXT and f"{b}/depth_tg" not in cal:
+            out.append(_item("depth_uncalibrated", backend=BACKEND_NAMES[b]))
     if est.parallel > 1:
         batched = set(data["batch_devices"])
         for b in backends:
@@ -186,7 +197,8 @@ def gpu_checks(system: System, kv_bits: int, data: dict) -> dict | None:
             "flash_attn": m["flash_attn"], "old_build": m["old_build"],
             "n_prompt": m["n_prompt"], "n_gen": m["n_gen"],
             "tg_measured": m["tg_tps"], "tg_simulated": m["n_gen"] / gen_time(est, 0, m["n_gen"] + 1),
-            "pp_measured": m["pp_tps"], "pp_simulated": est.prefill_tps,
+            "pp_measured": m["pp_tps"],
+            "pp_simulated": m["n_prompt"] / est.prefill_time(m["n_prompt"]),
             "sources": [1],
         })
     return {"kind": "gpu", "rows": out, "sources": [rows[0]["source"]]}
@@ -246,7 +258,9 @@ def cpu_checks(system: System, data: dict) -> dict | None:
             "n_prompt": g["n_prompt"], "n_gen": g["n_gen"], "runs": g["n"],
             "tg_measured": tg,
             "tg_simulated": bench_gen_tps(est, g["n_gen"]) if tg is not None else None,
-            "pp_measured": pp, "pp_simulated": est.prefill_tps if pp is not None else None,
+            "pp_measured": pp,
+            "pp_simulated": g["n_prompt"] / est.prefill_time(g["n_prompt"]) if pp is not None
+            else None,
             "sources": g["sources"],
         })
     return {"kind": "cpu", "rows": out, "sources": sources}
@@ -258,11 +272,11 @@ def timing_info(est: Estimate, timing: dict) -> dict:
     gets such a request at once: the prompts share prompt processing, then the replies
     share each decode step."""
     prompt, depth, max_tokens = timing["prompt_tokens"], timing["depth"], timing["max_tokens"]
-    ttft = prompt / est.prefill_tps
+    ttft = est.prefill_time(prompt, depth)
     out = {**timing, "ttft_s": ttft, "reply_s": ttft + gen_time(est, depth + prompt, max_tokens)}
     if est.parallel > 1:
         n = est.parallel
-        ttft_all = n * prompt / est.prefill_tps
+        ttft_all = n * ttft
         gen = add_in_order(est.step_time([depth + prompt + i] * n) for i in range(1, max_tokens))
         out.update(ttft_all_s=ttft_all, reply_all_s=ttft_all + gen)
     return out
@@ -302,7 +316,7 @@ def parallel_checks(system: System, est: Estimate, kv_bits: int, data: dict) -> 
         out.append({
             "backend": m["backend"], "model": m["model"], "quant": m["quant"], "n_prompt": pp,
             "n_gen": tg, "requests": n, "tg_measured": m["tg_tps"], "tg_simulated": n * tg / t,
-            "pp_measured": m["pp_tps"], "pp_simulated": sim.prefill_tps,
+            "pp_measured": m["pp_tps"], "pp_simulated": pp / sim.prefill_time(pp),
             "sources": [sources.index(m["source"]) + 1],
         })
     return {"kind": "parallel", "rows": out, "sources": sources}

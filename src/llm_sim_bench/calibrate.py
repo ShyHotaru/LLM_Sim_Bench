@@ -10,6 +10,14 @@ Batched records (llama-batched-bench, several sequences at once) fit the
 per-backend `*_batch_compute` factor instead: how the aggregate decode speed
 grows from one sequence to B, so that errors in the single-request speed do not
 enter the fit. Mixture-of-experts batched records are only evaluated.
+
+llama-bench runs from llama.cpp's benches/ folder (`run.tool` set, several context
+depths per model) fit the long-context factors from how each run slows down
+relative to its own depth-0 result: `*_kv_read` from decode (every model) and
+`*_attention` from prompt processing (dense models). Their depth-0 results of
+mixture-of-experts models fit `*_moe_layer_overhead_us` (decode) and
+`*_moe_compute` (prompt processing). They stay out of the fits above, whose
+records use other test sizes.
 """
 
 from __future__ import annotations
@@ -19,7 +27,8 @@ import math
 import statistics
 from dataclasses import dataclass, replace
 
-from .estimator import DEVICE_CALIBRATION, BACKENDS, Efficiency, backend_prefix, estimate
+from .estimator import (DEVICE_CALIBRATION, BACKENDS, Efficiency, add_in_order, backend_prefix,
+                        estimate)
 from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
@@ -36,6 +45,10 @@ _NO_TG = {"tg_thread_limited"}
 MODEL_ALIASES = {"llama-3.1-tulu-3-8b": "llama-3.1-8b",
                  "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b",
                  "qwen2.5-coder-7b": "qwen2.5-7b", "qwen3-coder-30b-a3b-instruct": "qwen3-30b-a3b"}
+# llama.cpp's benches/ does not say whether its M2 Ultra has 60 or 76 GPU cores. Both have
+# 800 GB/s, and the depth and MoE fits use it only through memory bandwidth and speed
+# ratios, which do not depend on the core count, so those fits use the 76-core preset.
+_STAND_IN = {"M2 Ultra": "apple-m2-ultra-76c"}
 # Peak hardware with no overhead: the fit's x values.
 _UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
@@ -91,14 +104,15 @@ def _ram_bandwidth(hw: dict) -> float | None:
         return None
 
 
-def system_for(rec: dict) -> System | None:
+def system_for(rec: dict, stand_in: bool = False) -> System | None:
+    """The record's system; with `stand_in`, also for devices in _STAND_IN."""
     hw = rec["hardware"]
     backend = _BACKEND_KEY.get(rec["software"]["backend"])
     if backend == "cpu":
         cpu = CPU_PRESETS.get(hw.get("cpu_preset"))
         # Capacity does not matter for speed; bandwidth may be unknown (prefill only).
         return System(cpu, RAM(1024, _ram_bandwidth(hw) or 1.0)) if cpu else None
-    preset = hw["gpu_preset"]
+    preset = hw["gpu_preset"] or (_STAND_IN.get(hw["gpu"]) if stand_in else None)
     if preset in GPU_PRESETS:  # the record's backend, e.g. Vulkan on an NVIDIA card
         return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),))
     if preset in UNIFIED_PRESETS:
@@ -112,9 +126,9 @@ def usable(rec: dict) -> bool:
     CPU runs single-socket with nothing offloaded."""
     backend = _BACKEND_KEY.get(rec["software"]["backend"])
     model = _model(rec)
-    if (not backend or not model or model.active_params_b  # MoE routing is not modeled
+    if (not backend or not model or model.active_params_b  # MoE is fitted separately
             or rec["model"]["quant"] not in QUANT_BPW or _EXCLUDE & set(rec["flags"])
-            or system_for(rec) is None):
+            or "tool" in rec["run"] or system_for(rec) is None):
         return False
     ngl = rec["run"]["n_gpu_layers"]
     if backend == "cpu":
@@ -131,6 +145,7 @@ def predict(rec: dict, eff: Efficiency) -> Point:
     n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
     est = estimate(system_for(rec), model, rec["model"]["quant"],
                    context=run["depth"] + max(n_prompt, n_gen, 1), eff=eff)
+    depth = run["depth"]
     on_device = backend == "cpu" or all(p.is_gpu for p in est.placements)
     tg = None
     if on_device and n_gen and (backend != "cpu" or _ram_bandwidth(rec["hardware"])):
@@ -142,7 +157,8 @@ def predict(rec: dict, eff: Efficiency) -> Point:
     return Point(rec["id"], backend, model.n_layers,
                  None if _NO_PP & flags else res["pp_tps"],
                  None if _NO_TG & flags else res["tg_tps"],
-                 est.prefill_tps if on_device and n_prompt else None, tg, device,
+                 n_prompt / est.prefill_time(n_prompt, depth) if on_device and n_prompt
+                 else None, tg, device,
                  1 / tg if tg else None)
 
 
@@ -177,11 +193,153 @@ def fit(records: list[dict]) -> Efficiency:
             if busy > 0:
                 by_cpu.setdefault(p.device, []).append(p.tg_x / busy)
     bandwidth = {d: round(statistics.median(v), 3) for d, v in sorted(by_cpu.items())}
-    for backend in sorted({p.backend for p in batch_points(records, Efficiency())
+    base = replace(Efficiency(), device_compute=devices, device_bandwidth=bandwidth, **fitted)
+    base = replace(base, **fit_depth(records, base))
+    batch = {}
+    for backend in sorted({p.backend for p in batch_points(records, base)
                            if not p.moe and p.pred}):
-        fitted[f"{backend_prefix(backend)}_batch_compute"] = _fit_batch(records, backend,
-                                                                        Efficiency())
-    return replace(Efficiency(), device_compute=devices, device_bandwidth=bandwidth, **fitted)
+        batch[f"{backend_prefix(backend)}_batch_compute"] = _fit_batch(records, backend, base)
+    return replace(base, **batch)
+
+
+@dataclass
+class DepthPoint:
+    """A benches/ llama-bench result: the speed at a depth (or of a MoE model at depth 0)."""
+
+    id: str
+    backend: str
+    metric: str  # "tg", "pp" (slowdown with depth), "moe_tg", "moe_pp" (depth 0)
+    moe: bool
+    depth: int
+    meas: float
+    pred: float | None = None
+
+    @property
+    def err(self) -> float | None:
+        return _rel(self.pred, self.meas)
+
+
+def depth_series(records: list[dict]) -> list[tuple[dict, list[dict]]]:
+    """(depth-0 record, deeper records) of each benches/ llama-bench run whose model and
+    device are known and that fits on the GPU."""
+    recs = [r for r in records if r["run"].get("tool") == "llama-bench"
+            and not _EXCLUDE & set(r["flags"]) and _model(r)
+            and r["model"]["quant"] in QUANT_BPW and r["hardware"]["gpu_count"] == 1
+            and system_for(r, stand_in=True) is not None]
+    key = lambda r: (r["source"]["url"], r["model"]["name"], r["model"]["quant"])  # noqa: E731
+    out = []
+    for r in recs:
+        if r["run"]["depth"] == 0:
+            deeper = sorted((d for d in recs if key(d) == key(r) and d["run"]["depth"]),
+                            key=lambda d: d["run"]["depth"])
+            est = estimate(system_for(r, stand_in=True), _model(r), r["model"]["quant"],
+                           context=deeper[-1]["run"]["depth"] + 4096 if deeper else 4096)
+            if all(p.is_gpu for p in est.placements):
+                out.append((r, deeper))
+    return out
+
+
+def _bench_tg(rec: dict, eff: Efficiency) -> float:
+    run = rec["run"]
+    est = estimate(system_for(rec, stand_in=True), _model(rec), rec["model"]["quant"],
+                   context=run["depth"] + run["n_gen"], eff=eff)
+    return run["n_gen"] / add_in_order(1 / est.decode_tps_at(run["depth"] + i)
+                                       for i in range(run["n_gen"]))
+
+
+def _bench_pp_time(rec: dict, eff: Efficiency) -> float:
+    run = rec["run"]
+    est = estimate(system_for(rec, stand_in=True), _model(rec), rec["model"]["quant"],
+                   context=run["depth"] + run["n_prompt"], eff=eff)
+    return est.prefill_time(run["n_prompt"], run["depth"])
+
+
+def depth_points(records: list[dict], eff: Efficiency) -> list[DepthPoint]:
+    """Speeds at depth predicted from the measured depth-0 speed and the modeled slowdown,
+    and MoE depth-0 speeds predicted outright (prompt processing only with a preset)."""
+    points = []
+    for zero, deeper in depth_series(records):
+        backend = _BACKEND_KEY[zero["software"]["backend"]]
+        moe = bool(_model(zero).active_params_b)
+        res0 = zero["results"]
+        if moe and res0["tg_tps"]:
+            points.append(DepthPoint(zero["id"], backend, "moe_tg", True, 0, res0["tg_tps"],
+                                     _bench_tg(zero, eff)))
+        if moe and res0["pp_tps"] and zero["hardware"]["gpu_preset"]:
+            points.append(DepthPoint(zero["id"], backend, "moe_pp", True, 0, res0["pp_tps"],
+                                     zero["run"]["n_prompt"] / _bench_pp_time(zero, eff)))
+        tg0, pp0 = _bench_tg(zero, eff), _bench_pp_time(zero, eff)
+        for r in deeper:
+            res, depth = r["results"], r["run"]["depth"]
+            if res["tg_tps"] and res0["tg_tps"]:
+                slower = 1 / _bench_tg(r, eff) - 1 / tg0
+                points.append(DepthPoint(r["id"], backend, "tg", moe, depth, res["tg_tps"],
+                                         1 / (1 / res0["tg_tps"] + slower)))
+            if res["pp_tps"] and res0["pp_tps"]:
+                ratio = _bench_pp_time(r, eff) / pp0
+                points.append(DepthPoint(r["id"], backend, "pp", moe, depth, res["pp_tps"],
+                                         res0["pp_tps"] / ratio))
+    return points
+
+
+def _grid_fit(records: list[dict], eff: Efficiency, field: str, values, backend: str,
+              metric: str, dense_only: bool = False) -> float:
+    """The value of `field` minimizing the squared log error of the backend's points."""
+    records = [r for r in records if r["run"].get("tool") == "llama-bench"
+               and _BACKEND_KEY.get(r["software"]["backend"]) == backend]
+    best = None
+    for v in values:
+        pts = [p for p in depth_points(records, replace(eff, **{field: v}))
+               if p.backend == backend and p.metric == metric and p.pred
+               and not (dense_only and p.moe)]
+        loss = sum(math.log(p.pred / p.meas) ** 2 for p in pts)
+        if best is None or loss < best[0]:
+            best = (loss, v)
+    return best[1]
+
+
+def fit_depth(records: list[dict], eff: Efficiency) -> dict[str, float]:
+    """Long-context factors, then MoE factors (given those), for every backend with
+    benches/ measurements."""
+    fitted: dict[str, float] = {}
+    for step in ("depth", "moe"):
+        points = depth_points(records, eff)
+        for backend in sorted({p.backend for p in points}):
+            prefix = backend_prefix(backend)
+            has = {(p.metric, p.moe) for p in points if p.backend == backend}
+            if step == "depth" and ({("tg", False), ("tg", True)} & has):
+                fitted[f"{prefix}_kv_read"] = _grid_fit(
+                    records, eff, f"{prefix}_kv_read", [k / 100 for k in range(50, 501)],
+                    backend, "tg")
+            if step == "depth" and ("pp", False) in has:
+                fitted[f"{prefix}_attention"] = _grid_fit(
+                    records, eff, f"{prefix}_attention", [k / 100 for k in range(5, 301)],
+                    backend, "pp", dense_only=True)
+            if step == "moe" and ("moe_tg", True) in has:
+                fitted[f"{prefix}_moe_layer_overhead_us"] = float(_grid_fit(
+                    records, eff, f"{prefix}_moe_layer_overhead_us", range(0, 501), backend,
+                    "moe_tg"))
+            if step == "moe" and ("moe_pp", True) in has:
+                fitted[f"{prefix}_moe_compute"] = _grid_fit(
+                    records, eff, f"{prefix}_moe_compute", [k / 100 for k in range(5, 201)],
+                    backend, "moe_pp")
+        eff = replace(eff, **fitted)
+    return fitted
+
+
+def depth_summary(points: list[DepthPoint]) -> dict[str, dict[str, float]]:
+    """Per backend and metric: n, median and max absolute error. Prompt slowdown with
+    depth counts dense models only, as in the fit."""
+    out = {}
+    names = {"tg": "depth_tg", "pp": "depth_pp", "moe_tg": "moe_tg", "moe_pp": "moe_pp"}
+    for backend in sorted({p.backend for p in points}):
+        for metric, name in names.items():
+            errs = [abs(p.err) for p in points if p.backend == backend and p.metric == metric
+                    and p.err is not None and not (metric == "pp" and p.moe)]
+            if errs:
+                out[f"{backend}/{name}"] = {"n": len(errs), "median": statistics.median(errs),
+                                            "max": max(errs)}
+    return out
 
 
 @dataclass
@@ -334,6 +492,9 @@ def format_report(records: list[dict], eff: Efficiency) -> str:
     lines.append("Largest decode errors:")
     lines += [f"  {p.id:<44} pred {p.tg_pred:7.1f}  meas {p.tg_meas:7.1f}  {p.tg_err:+.0%}"
               for p in worst]
+    lines.append("Long contexts and mixture-of-experts models (llama-bench in benches/):")
+    for key, s in depth_summary(depth_points(records, eff)).items():
+        lines.append(f"  {key:<20}{s['n']:>5}{s['median']:>11.1%}{s['max']:>10.1%}")
     batch = batch_points(records, eff)
     lines.append("Concurrent decode, speed-up of B sequences over one (llama-batched-bench):")
     for moe in (False, True):

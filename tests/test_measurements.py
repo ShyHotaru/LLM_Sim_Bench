@@ -54,6 +54,10 @@ class CalibrationTests(unittest.TestCase):
         for k, v in vars(default).items():
             if k.endswith(("_bandwidth", "_compute")) and not k.startswith("device"):
                 self.assertAlmostEqual(getattr(fitted, k), v, delta=0.02, msg=k)
+            elif k.endswith(("_kv_read", "_attention")):
+                self.assertAlmostEqual(getattr(fitted, k), v, delta=0.05, msg=k)
+            elif k.endswith("_moe_layer_overhead_us"):
+                self.assertAlmostEqual(getattr(fitted, k), v, delta=5, msg=k)
         for k in ("device_compute", "device_bandwidth"):
             self.assertEqual(getattr(fitted, k), getattr(default, k),
                              "run `llmsimbench calibrate --write` to store the device calibration")
@@ -66,6 +70,17 @@ class CalibrationTests(unittest.TestCase):
         self.assertLess(stats["cuda/batch"]["max"], 0.2)
         # Batched results stay out of the single-request fit.
         self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "batched" in r["flags"]))
+
+    def test_long_contexts_and_moe_match_measurements(self):
+        stats = calibrate.depth_summary(calibrate.depth_points(RECORDS, Efficiency()))
+        for backend in ("cuda", "metal"):
+            self.assertGreaterEqual(stats[f"{backend}/depth_tg"]["n"], 10)
+            self.assertLess(stats[f"{backend}/depth_tg"]["max"], 0.05, backend)
+            self.assertLess(stats[f"{backend}/depth_pp"]["max"], 0.05, backend)
+            self.assertLess(stats[f"{backend}/moe_tg"]["max"], 0.1, backend)
+        self.assertLess(stats["cuda/moe_pp"]["max"], 0.3)
+        # The benches/ runs use other test sizes and stay out of the main fit.
+        self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "tool" in r["run"]))
 
     def test_batched_records_need_their_run_fields(self):
         rec = next(r for r in RECORDS if "batched" in r["flags"])

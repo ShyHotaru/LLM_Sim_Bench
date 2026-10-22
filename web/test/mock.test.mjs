@@ -90,6 +90,22 @@ test("schedule caps each turn and prefills only new user tokens", () => {
   assert.equal(s.events.at(-1).fill, 10 + 2 + 3 + 1 + 3);
 });
 
+test("prompt time can depend on the tokens already in the cache", () => {
+  const calls = [];
+  const prefillTime = (tokens, cached) => {
+    calls.push([tokens, cached]);
+    return tokens / 100 + cached / 10000;
+  };
+  const s = new Schedule({
+    turns: [{ user: ["hi", "!"], assistant: Array(2).fill("a") },
+            { user: ["more"], assistant: Array(2).fill("b") }],
+    promptTokens: 10, cachedTokens: 1000, maxTokens: 2, prefillTime, decodeTps: () => 10, jitter: 0,
+  });
+  assert.deepEqual(calls, [[12, 1000], [1, 1014]]);
+  close(s.turns[0].ttft, 0.12 + 0.1, "turn 1 ttft");
+  close(s.turns[1].ttft, 0.01 + 0.1014, "turn 2 ttft");
+});
+
 test("text presets follow the public-domain policy and have credits", () => {
   const ids = new Set();
   for (const x of manifest.texts) {

@@ -93,6 +93,47 @@ class ParallelTests(unittest.TestCase):
         self.assertAlmostEqual(ratios[-1], 1.0, places=6)
         self.assertEqual(weight_read_ratio(LLAMA8, 32), 1.0)
 
+    def test_mxfp4_keeps_shared_weights_in_q8_0(self):
+        # ggml-org/gpt-oss-20b-GGUF: 12.10 GB of tensors, experts MXFP4 and the rest Q8_0.
+        est = estimate(System(CPU, RAM64), MODEL_PRESETS["gpt-oss-20b"], "MXFP4", 4096)
+        self.assertAlmostEqual(est.weights_gb, 12.1, delta=0.5)
+        dense = estimate(System(CPU, RAM64), LLAMA8, "MXFP4", 4096)
+        self.assertAlmostEqual(dense.weights_gb, 8.03 * 4.25 / 8, places=2)
+
+    def test_sliding_window_layers_keep_only_their_window(self):
+        oss = MODEL_PRESETS["gpt-oss-20b"]
+        short = estimate(System(CPU, RAM64), oss, "MXFP4", 512)
+        long = estimate(System(CPU, RAM64), oss, "MXFP4", 65536)
+        per_token = kv_bytes_per_token(oss) / 1e9
+        self.assertAlmostEqual(short.kv_gb, per_token * 512)
+        # Half the layers keep 128 + 512 tokens, the other half the whole context.
+        self.assertAlmostEqual(long.kv_gb, per_token * (65536 + 640) / 2)
+
+    def test_prompts_slow_down_as_the_context_fills(self):
+        est = estimate(System(CPU, RAM64, (GPU_PRESETS["rtx4090-24gb"],)), LLAMA8, "Q4_K_M",
+                       65536)
+        empty, deep = est.prefill_time(1000), est.prefill_time(1000, 32000)
+        self.assertGreater(empty, 1000 / est.prefill_tps)
+        self.assertGreater(deep, 1.5 * empty)
+        # Attention grows linearly with the cached tokens.
+        self.assertAlmostEqual(est.prefill_time(1000, 64000) - deep, deep - empty,
+                               delta=1e-3 * deep)
+        # Sliding-window layers stop growing past their window; full layers do not.
+        oss = estimate(System(CPU, RAM64, (GPU_PRESETS["rtx4090-24gb"],)),
+                       MODEL_PRESETS["gpt-oss-20b"], "MXFP4", 65536)
+        grow = [oss.prefill_time(100, d + 1000) - oss.prefill_time(100, d)
+                for d in (2000, 30000)]
+        self.assertAlmostEqual(grow[0], grow[1], delta=1e-6 * grow[0])
+        self.assertGreater(grow[0], 0)
+
+    def test_context_sum(self):
+        from llm_sim_bench.estimator import context_sum
+
+        for first, last, cap in [(1, 10, 0), (1, 10, 4), (5, 9, 4), (3, 3, 4), (1, 0, 0),
+                                 (2, 20, 7)]:
+            want = sum(min(c, cap) if cap else c for c in range(first, last + 1))
+            self.assertEqual(context_sum(first, last, cap), want, (first, last, cap))
+
     def test_parallel_levels(self):
         from llm_sim_bench.estimator import parallel_levels
 
@@ -159,6 +200,17 @@ class MockTests(unittest.TestCase):
         # The second request waits for the first to finish (about 0.1 s).
         self.assertAlmostEqual(stats[1].queued_s, 0.08, delta=0.03)
         self.assertGreaterEqual(stats[1].ttft_s, stats[1].queued_s)
+
+    def test_prompt_time_depends_on_cached_tokens(self):
+        calls = []
+
+        def prefill(tokens, cached):
+            calls.append((tokens, cached))
+            return 0.0
+
+        engine = MockEngine(1000, lambda _: 1e5, jitter=0, prefill_time=prefill)
+        list(engine.stream(10, ["x"], cached_tokens=500))
+        self.assertEqual(calls, [(10, 500)])
 
     def test_a_new_prompt_pauses_other_streams(self):
         # The first stream decodes 31 tokens at 5 ms (0.15 s); a 0.1 s prompt arrives

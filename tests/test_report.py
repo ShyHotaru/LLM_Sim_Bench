@@ -28,7 +28,7 @@ class ReportTests(unittest.TestCase):
                             {"prompt_tokens": 1000, "max_tokens": 300, "depth": 0})
         self.assertEqual(res["check"]["kind"], "gpu")
         self.assertTrue(res["check"]["rows"])
-        self.assertAlmostEqual(res["timing"]["ttft_s"], 1000 / est.prefill_tps)
+        self.assertAlmostEqual(res["timing"]["ttft_s"], est.prefill_time(1000))
         self.assertGreater(res["timing"]["reply_s"], res["timing"]["ttft_s"])
         self.assertEqual(res["notes"], [])
 
@@ -38,7 +38,10 @@ class ReportTests(unittest.TestCase):
         est = estimate(system, MODEL_PRESETS["qwen3-30b-a3b"], "Q4_K_M", 16384)
         res = report.result(system, est, 16, DATA)
         codes = [w["code"] for w in res["warnings"]]
-        self.assertIn("moe_routing", codes)
+        # MoE and long-context factors are measured for CUDA, not for the offloaded layers.
+        moe = [w for w in res["warnings"] if w["code"] == "moe_uncalibrated"]
+        self.assertEqual([w["params"]["backend"] for w in moe], ["CPU"])
+        self.assertIn("depth_uncalibrated", codes)
         self.assertIn("layers_on_cpu", [n["code"] for n in res["notes"]])
         self.assertIsNone(res["timing"])
 

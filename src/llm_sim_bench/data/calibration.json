@@ -2,8 +2,8 @@
  "calibration": {
   "cpu/pp": {
    "n": 29,
-   "median": 0.064,
-   "max": 0.4208
+   "median": 0.0619,
+   "max": 0.4213
   },
   "cpu/tg": {
    "n": 174,
@@ -12,28 +12,28 @@
   },
   "cuda/pp": {
    "n": 55,
-   "median": 0.0606,
-   "max": 0.1156
+   "median": 0.0599,
+   "max": 0.1168
   },
   "cuda/tg": {
    "n": 55,
-   "median": 0.0636,
-   "max": 0.4782
+   "median": 0.0652,
+   "max": 0.4767
   },
   "metal/pp": {
    "n": 12,
-   "median": 0.006,
-   "max": 0.0513
+   "median": 0.0064,
+   "max": 0.0508
   },
   "metal/tg": {
    "n": 12,
-   "median": 0.0142,
-   "max": 0.0983
+   "median": 0.0167,
+   "max": 0.095
   },
   "rocm/pp": {
    "n": 33,
-   "median": 0.0259,
-   "max": 0.8185
+   "median": 0.0258,
+   "max": 0.813
   },
   "rocm/tg": {
    "n": 33,
@@ -42,8 +42,8 @@
   },
   "sycl/pp": {
    "n": 21,
-   "median": 0.2901,
-   "max": 1.1868
+   "median": 0.2913,
+   "max": 1.1844
   },
   "sycl/tg": {
    "n": 21,
@@ -52,8 +52,8 @@
   },
   "vulkan/pp": {
    "n": 62,
-   "median": 0.0531,
-   "max": 1.0879
+   "median": 0.0537,
+   "max": 1.0931
   },
   "vulkan/tg": {
    "n": 62,
@@ -62,8 +62,43 @@
   },
   "cuda/batch": {
    "n": 15,
-   "median": 0.0613,
-   "max": 0.1264
+   "median": 0.0455,
+   "max": 0.0785
+  },
+  "cuda/depth_tg": {
+   "n": 16,
+   "median": 0.0059,
+   "max": 0.0132
+  },
+  "cuda/depth_pp": {
+   "n": 4,
+   "median": 0.0034,
+   "max": 0.0096
+  },
+  "cuda/moe_tg": {
+   "n": 3,
+   "median": 0.0278,
+   "max": 0.0381
+  },
+  "cuda/moe_pp": {
+   "n": 3,
+   "median": 0.224,
+   "max": 0.2432
+  },
+  "metal/depth_tg": {
+   "n": 16,
+   "median": 0.0097,
+   "max": 0.0292
+  },
+  "metal/depth_pp": {
+   "n": 4,
+   "median": 0.0045,
+   "max": 0.0053
+  },
+  "metal/moe_tg": {
+   "n": 3,
+   "median": 0.0487,
+   "max": 0.054
   }
  },
  "batch_devices": [
@@ -260,6 +295,38 @@
    "tg_tps": 179.1,
    "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
    "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-llama-bench-d0",
+   "gpu": "NVIDIA GB10",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "flash_attn": true,
+   "model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 2048,
+   "n_gen": 32,
+   "pp_tps": 4505.82,
+   "tg_tps": 83.43,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-llama-bench-d0",
+   "gpu": "NVIDIA GB10",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "flash_attn": true,
+   "model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 2048,
+   "n_gen": 32,
+   "pp_tps": 2443.91,
+   "tg_tps": 58.72,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf",
    "old_build": false
   },
   {
