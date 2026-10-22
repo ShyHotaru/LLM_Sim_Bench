@@ -8,12 +8,13 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | File | Source | Records |
 | --- | --- | --- |
 | `measurements/llamacpp-scoreboards.jsonl` | llama.cpp community scoreboards: [CUDA (#15013)](https://github.com/ggml-org/llama.cpp/discussions/15013), [Apple Silicon (#4167)](https://github.com/ggml-org/llama.cpp/discussions/4167) | 191 |
-| `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`, `0c1e570`): M5 Pro, M5 Max, M5 Ultra, M6 | 15 |
-| `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021) | 46 |
+| `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`, `0c1e570`): M5 Pro, M5 Max, M5 Ultra, M6, and an M1 Ultra from a comment | 18 |
+| `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021); MI300X runs from its comments and [#14640](https://github.com/ggml-org/llama.cpp/discussions/14640) | 50 |
 | `measurements/llamacpp-vulkan.jsonl` | [llama.cpp Vulkan scoreboard (#10879)](https://github.com/ggml-org/llama.cpp/discussions/10879) | 237 |
 | `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313); its opening post asks that the data not be used for commercial purposes (see [Licensing](#licensing)) | 104 |
 | `measurements/llamacpp-batched.jsonl` | `llama-batched-bench` tables in llama.cpp's [`benches/`](https://github.com/ggml-org/llama.cpp/tree/c7fc5094179bf8a9c73c18593db714f8da41a402/benches) folder (DGX Spark, Nemotron on DGX Spark, Mac M2 Ultra), MIT license; written by `tools/import_llamacpp_benches.py` from a llama.cpp checkout | 252 |
 | `measurements/llamacpp-depth.jsonl` | `llama-bench` tables at depths 0–32768 in the same `benches/` files (pp2048 and tg32 at each depth), written by the same tool | 70 |
+| `measurements/llamacpp-multi-gpu.jsonl` | `-sm layer` column of the tables in [llama.cpp PR #19378](https://github.com/ggml-org/llama.cpp/pull/19378): Llama 3 8B on two and four RTX 4090s, pp512 and tg128 at depths up to 131072 | 10 |
 | `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1594 |
 
 `llmsimbench export-web` copies the calibration error stats and the rows of the web app's check
@@ -52,9 +53,10 @@ guess.
 | `software.sycl_f16` | SYCL records only: built with `GGML_SYCL_F16=ON` (`true`) or the default FP32 build (`false`), from the scoreboard's `Fp32/FP16` column; FP16 builds are calibrated as their own backend |
 | `model.name`, `model.quant`, `model.file` | Model preset name, quantization, GGUF file name |
 | `run.n_gpu_layers`, `run.n_prompt`, `run.n_gen`, `run.depth` | llama-bench `-ngl` (`-1`: the tool's default, as many layers as fit), `-p`, `-n`, `-d` |
-| `run.tool`, `run.n_parallel`, `run.pp_shared`, `run.n_batch`, `run.n_ubatch` | Records from llama.cpp's `benches/` only: the benchmark tool (`llama-batched-bench` or `llama-bench`), and for batched records (required with the `batched` flag, except the batch sizes) the number of sequences run at once (`B`), whether they share one prompt (`-pps`), `-b` and `-ub`. Batched `results.pp_tps` and `results.tg_tps` are throughput over all sequences (`S_PP`, `S_TG`). Records with `run.tool` stay out of the main fit and calibrate long contexts, mixture-of-experts models and concurrency instead |
+| `run.split_mode` | Several GPUs only: llama-bench `-sm` (`layer`, `row`, `tensor`). Only `layer` runs are simulated (checked, not fitted) |
+| `run.tool`, `run.n_parallel`, `run.pp_shared`, `run.n_batch`, `run.n_ubatch` | Records from llama.cpp's `benches/` and PR #19378 only: the benchmark tool (`llama-batched-bench` or `llama-bench`), and for batched records (required with the `batched` flag, except the batch sizes) the number of sequences run at once (`B`), whether they share one prompt (`-pps`), `-b` and `-ub`. Batched `results.pp_tps` and `results.tg_tps` are throughput over all sequences (`S_PP`, `S_TG`). Records with `run.tool` stay out of the main fit and calibrate long contexts, mixture-of-experts models and concurrency instead |
 | `results.pp_tps`, `results.pp_std`, `results.tg_tps`, `results.tg_std` | Prefill and decode tokens/s with standard deviation |
-| `flags` | Quality flags. Excluded from calibration: `suspect` (the source value looks wrong), `old_build` (a llama.cpp build much older than current ones), `multi-socket`, `mobile-class-cpu`, `cpu-model-inferred`, `batched` (many parallel sequences). Partly excluded: `openblas-build` (prompt processing ran through OpenBLAS, not the default CPU path; decode is kept), `tg_thread_limited` (decode run with too few threads) |
+| `flags` | Quality flags. Excluded from calibration: `suspect` (the source value looks wrong), `old_build` (a llama.cpp build much older than current ones), `multi-socket`, `mobile-class-cpu`, `cpu-model-inferred`, `batched` (many parallel sequences), `virtual-gpu` (a virtual function on a shared cloud host, such as the MI300X VF results, which reach far less of the GPU's bandwidth than the model expects). Partly excluded: `openblas-build` (prompt processing ran through OpenBLAS, not the default CPU path; decode is kept), `tg_thread_limited` (decode run with too few threads) |
 
 ## Notes and gaps
 
@@ -64,6 +66,9 @@ guess.
   rows use a mix of 2025 builds.
 - The M5 row with a 10-core GPU was not recorded: the source lists four values without making
   clear which quantization columns they belong to.
+- The MI300X rows are flagged `virtual-gpu`. The scoreboard's MI300X row without flash
+  attention combines the prompt speed of one run (default build `2bf3fbf`) with the decode
+  speed of another (rocWMMA build `ee3a9fc`); the records keep each run separate.
 - The M6 rows follow the original comment (12-core GPU, 32 GB, build `0c1e570`); the
   scoreboard table lists 8 GPU cores and commit `c1d0e7a` for them.
 - M5 GPU compute assumes Apple's "over 4x M4 peak GPU AI compute" for the Neural Accelerators;

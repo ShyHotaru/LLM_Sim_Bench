@@ -12,32 +12,32 @@
   },
   "cuda/pp": {
    "n": 55,
-   "median": 0.0599,
-   "max": 0.1168
+   "median": 0.0595,
+   "max": 0.1164
   },
   "cuda/tg": {
    "n": 55,
-   "median": 0.0652,
-   "max": 0.4767
+   "median": 0.0633,
+   "max": 0.4785
   },
   "metal/pp": {
-   "n": 15,
-   "median": 0.0066,
-   "max": 0.0508
+   "n": 18,
+   "median": 0.0083,
+   "max": 0.0888
   },
   "metal/tg": {
-   "n": 15,
-   "median": 0.0291,
-   "max": 0.0822
+   "n": 18,
+   "median": 0.0405,
+   "max": 0.1712
   },
   "rocm/pp": {
-   "n": 33,
-   "median": 0.0258,
+   "n": 31,
+   "median": 0.0323,
    "max": 0.813
   },
   "rocm/tg": {
-   "n": 33,
-   "median": 0.0433,
+   "n": 31,
+   "median": 0.0501,
    "max": 0.3857
   },
   "sycl/pp": {
@@ -72,33 +72,33 @@
   },
   "cuda/batch": {
    "n": 15,
-   "median": 0.0455,
-   "max": 0.0785
+   "median": 0.0614,
+   "max": 0.1375
   },
   "cuda/depth_tg": {
-   "n": 16,
-   "median": 0.0059,
-   "max": 0.0132
+   "n": 27,
+   "median": 0.0285,
+   "max": 0.1085
   },
   "cuda/depth_pp": {
-   "n": 4,
-   "median": 0.0034,
-   "max": 0.0096
+   "n": 15,
+   "median": 0.0362,
+   "max": 0.2379
   },
   "cuda/moe_tg": {
    "n": 3,
-   "median": 0.0278,
-   "max": 0.0381
+   "median": 0.0279,
+   "max": 0.038
   },
   "cuda/moe_pp": {
    "n": 3,
-   "median": 0.224,
-   "max": 0.2432
+   "median": 0.2036,
+   "max": 0.2436
   },
   "metal/depth_tg": {
    "n": 16,
-   "median": 0.0098,
-   "max": 0.0289
+   "median": 0.0095,
+   "max": 0.0315
   },
   "metal/depth_pp": {
    "n": 4,
@@ -371,6 +371,57 @@
    "old_build": false
   },
   {
+   "id": "llamacpp-4167-m1-ultra-64c-c1d0e7a-f16",
+   "gpu": "Apple M1 Ultra",
+   "preset": "apple-m1-ultra-64c",
+   "backend": "Metal",
+   "sim_backend": "metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1294.31,
+   "tg_tps": 47.82,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18191340",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m1-ultra-64c-c1d0e7a-q8_0",
+   "gpu": "Apple M1 Ultra",
+   "preset": "apple-m1-ultra-64c",
+   "backend": "Metal",
+   "sim_backend": "metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1167.67,
+   "tg_tps": 79.13,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18191340",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m1-ultra-64c-c1d0e7a-q4_0",
+   "gpu": "Apple M1 Ultra",
+   "preset": "apple-m1-ultra-64c",
+   "backend": "Metal",
+   "sim_backend": "metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 1179.89,
+   "tg_tps": 113.79,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18191340",
+   "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
    "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-llama-bench-d0",
    "gpu": "NVIDIA GB10",
    "preset": "nvidia-dgx-spark",
@@ -415,9 +466,9 @@
    "quant": "Q4_0",
    "n_prompt": 512,
    "n_gen": 128,
-   "pp_tps": 11476.4,
+   "pp_tps": 11021.13,
    "tg_tps": 232.92,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021",
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021#discussioncomment-14003622",
    "commit": "ee3a9fc",
    "old_build": false
   },
@@ -706,8 +757,42 @@
    "n_gen": 128,
    "pp_tps": 11945.97,
    "tg_tps": 218.53,
-   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021",
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021#discussioncomment-14003622",
    "commit": "ee3a9fc",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-15021-instinct-mi300x-q4_0-fa0-2bf3fbf",
+   "gpu": "Instinct MI300X",
+   "preset": "mi300x-192gb",
+   "backend": "ROCm",
+   "sim_backend": "rocm",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 11476.4,
+   "tg_tps": 218.87,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021",
+   "commit": "2bf3fbf",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-15021-instinct-mi300x-q4_0-fa1-2bf3fbf",
+   "gpu": "Instinct MI300X",
+   "preset": "mi300x-192gb",
+   "backend": "ROCm",
+   "sim_backend": "rocm",
+   "flash_attn": true,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 4037.07,
+   "tg_tps": 158.12,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/15021",
+   "commit": "2bf3fbf",
    "old_build": false
   },
   {

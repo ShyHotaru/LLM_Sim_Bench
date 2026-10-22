@@ -38,12 +38,14 @@ _BACKEND_KEY = {"CUDA": "cuda", "Metal": "metal", "ROCm": "rocm", "Vulkan": "vul
                 "SYCL": "sycl", "CPU": "cpu"}
 # Flags that exclude a record from calibration, or only one of its two results.
 _EXCLUDE = {"suspect", "old_build", "multi-socket", "mobile-class-cpu", "cpu-model-inferred",
-            "batched"}
+            "batched", "virtual-gpu"}
 _NO_PP = {"openblas-build"}  # OpenBLAS runs prompt batches: not llama.cpp's default CPU path
 _NO_TG = {"tg_thread_limited"}
 # Fine-tunes share their base model's architecture and therefore its speed.
 MODEL_ALIASES = {"llama-3.1-tulu-3-8b": "llama-3.1-8b",
                  "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b",
+                 "deepseek-r1-distill-llama-70b": "llama-3.1-70b",
+                 "deepseek-r1-0528-qwen3-8b": "qwen3-8b",
                  "qwen2.5-coder-7b": "qwen2.5-7b", "qwen3-coder-30b-a3b-instruct": "qwen3-30b-a3b"}
 # llama.cpp's benches/ does not say whether its M2 Ultra has 60 or 76 GPU cores. Both have
 # 800 GB/s, and the depth and MoE fits use it only through memory bandwidth and speed
@@ -124,7 +126,9 @@ def system_for(rec: dict, stand_in: bool = False) -> System | None:
         return System(cpu, RAM(1024, _ram_bandwidth(hw) or 1.0)) if cpu else None
     preset = hw["gpu_preset"] or (_STAND_IN.get(hw["gpu"]) if stand_in else None)
     if preset in GPU_PRESETS:  # the record's backend, e.g. Vulkan on an NVIDIA card
-        return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),))
+        # Several GPUs only with a layer split, which the estimator models.
+        n = hw["gpu_count"] if rec["run"].get("split_mode") == "layer" else 1
+        return System(*_HOST, (replace(GPU_PRESETS[preset], backend=backend),) * n)
     if preset in UNIFIED_PRESETS:
         chip = replace(UNIFIED_PRESETS[preset], backend=backend)
         return unified_system(chip, max(chip.memory_options_gb))
@@ -143,9 +147,33 @@ def usable(rec: dict) -> bool:
     ngl = rec["run"]["n_gpu_layers"]
     if backend == "cpu":
         return ngl == 0 and rec["hardware"].get("sockets", 1) == 1
-    # -1 is llama-bench's default ("auto": as many layers as fit); predict() then only
-    # uses the record when the estimate places every layer on the GPU.
-    return rec["hardware"]["gpu_count"] == 1 and (ngl == -1 or ngl >= model.n_layers)
+    # -1 is llama-bench's default ("auto": as many layers as fit) and null means not stated;
+    # predict() then only uses the record when the estimate places every layer on GPUs.
+    return (rec["hardware"]["gpu_count"] == 1 and "split_mode" not in rec["run"]
+            and (ngl in (-1, None) or ngl >= model.n_layers))
+
+
+def usable_multi_gpu(rec: dict) -> bool:
+    """Runs split by layers over several GPUs of one preset: compared with the estimate,
+    not fitted."""
+    return (rec["run"].get("split_mode") == "layer" and rec["hardware"]["gpu_count"] > 1
+            and bool(_model(rec)) and rec["model"]["quant"] in QUANT_BPW
+            and not _EXCLUDE & set(rec["flags"]) and system_for(rec) is not None)
+
+
+def multi_gpu_summary(records: list[dict], eff: Efficiency) -> dict[str, dict[str, float]]:
+    """Per backend: n, median and max absolute error of multi-GPU decode and prompt speeds."""
+    points = [predict(r, eff) for r in records if usable_multi_gpu(r)]
+    out = {}
+    for backend in sorted({p.backend for p in points}):
+        for metric in ("tg", "pp"):
+            errs = [abs(e) for p in points if p.backend == backend
+                    for e in [getattr(p, f"{metric}_err")] if e is not None]
+            if errs:
+                out[f"{backend}/multi_{metric}"] = {"n": len(errs),
+                                                    "median": statistics.median(errs),
+                                                    "max": max(errs)}
+    return out
 
 
 def predict(rec: dict, eff: Efficiency) -> Point:
@@ -232,11 +260,12 @@ class DepthPoint:
 
 
 def depth_series(records: list[dict]) -> list[tuple[dict, list[dict]]]:
-    """(depth-0 record, deeper records) of each benches/ llama-bench run whose model and
-    device are known and that fits on the GPU."""
+    """(depth-0 record, deeper records) of each llama-bench run at several depths whose
+    model and device are known and that fits on the GPUs (several only split by layers)."""
     recs = [r for r in records if r["run"].get("tool") == "llama-bench"
             and not _EXCLUDE & set(r["flags"]) and _model(r)
-            and r["model"]["quant"] in QUANT_BPW and r["hardware"]["gpu_count"] == 1
+            and r["model"]["quant"] in QUANT_BPW
+            and (r["hardware"]["gpu_count"] == 1 or r["run"].get("split_mode") == "layer")
             and system_for(r, stand_in=True) is not None]
     key = lambda r: (r["source"]["url"], r["model"]["name"], r["model"]["quant"])  # noqa: E731
     out = []
@@ -504,6 +533,9 @@ def format_report(records: list[dict], eff: Efficiency) -> str:
     lines.append("Largest decode errors:")
     lines += [f"  {p.id:<44} pred {p.tg_pred:7.1f}  meas {p.tg_meas:7.1f}  {p.tg_err:+.0%}"
               for p in worst]
+    lines.append("Several GPUs split by layers (not fitted):")
+    for key, s in multi_gpu_summary(records, eff).items():
+        lines.append(f"  {key:<20}{s['n']:>5}{s['median']:>11.1%}{s['max']:>10.1%}")
     lines.append("Long contexts and mixture-of-experts models (llama-bench in benches/):")
     for key, s in depth_summary(depth_points(records, eff)).items():
         lines.append(f"  {key:<20}{s['n']:>5}{s['median']:>11.1%}{s['max']:>10.1%}")

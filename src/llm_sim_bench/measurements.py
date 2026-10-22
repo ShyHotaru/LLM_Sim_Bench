@@ -89,6 +89,8 @@ def validate(rec: dict) -> list[str]:
             errors.append("batched records need run.pp_shared")
     elif "n_parallel" in run:
         errors.append("run.n_parallel needs the batched flag")
+    if run.get("split_mode", "layer") not in ("layer", "row", "tensor"):
+        errors.append("run.split_mode must be layer, row or tensor")
     return errors
 
 

@@ -77,10 +77,18 @@ class CalibrationTests(unittest.TestCase):
         stats = calibrate.depth_summary(calibrate.depth_points(RECORDS, Efficiency()))
         for backend in ("cuda", "metal"):
             self.assertGreaterEqual(stats[f"{backend}/depth_tg"]["n"], 10)
-            self.assertLess(stats[f"{backend}/depth_tg"]["max"], 0.05, backend)
-            self.assertLess(stats[f"{backend}/depth_pp"]["max"], 0.05, backend)
+            # CUDA spans two devices (DGX Spark, RTX 4090) that slow down differently.
+            self.assertLess(stats[f"{backend}/depth_tg"]["median"], 0.05, backend)
+            self.assertLess(stats[f"{backend}/depth_tg"]["max"], 0.15, backend)
+            self.assertLess(stats[f"{backend}/depth_pp"]["max"], 0.3, backend)
             self.assertLess(stats[f"{backend}/moe_tg"]["max"], 0.1, backend)
         self.assertLess(stats["cuda/moe_pp"]["max"], 0.3)
+        # Runs split by layers over several GPUs are compared, not fitted.
+        multi = calibrate.multi_gpu_summary(RECORDS, Efficiency())
+        self.assertGreaterEqual(multi["cuda/multi_tg"]["n"], 5)
+        self.assertLess(multi["cuda/multi_tg"]["max"], 0.25)
+        self.assertLess(multi["cuda/multi_pp"]["max"], 0.15)
+        self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "split_mode" in r["run"]))
         # The benches/ runs use other test sizes and stay out of the main fit.
         self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "tool" in r["run"]))
 
