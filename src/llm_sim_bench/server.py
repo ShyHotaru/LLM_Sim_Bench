@@ -1,7 +1,8 @@
 """Minimal OpenAI-compatible HTTP server backed by MockEngine (stdlib only).
 
 Point any OpenAI client or chat UI at http://host:port/v1 to feel the
-simulated speed before buying hardware. Replies stream a text preset: for a
+simulated speed before buying hardware. Requests run concurrently up to the
+engine's slots (`--parallel`) and share its speed; more wait for a free slot. Replies stream a text preset: for a
 chat preset, the reply to the k-th user message is the k-th scripted answer
 (wrapping around), so a conversation in a chat UI follows the script.
 """
@@ -73,6 +74,8 @@ def make_handler(engine: MockEngine, model_name: str, default_max_tokens: int,
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
                     pass
+                finally:
+                    tokens.close()  # free the slot when the client goes away
                 self.log_message("stream %s", _summary(stats))
                 return
 
@@ -115,7 +118,8 @@ def _text(content) -> str:
 
 
 def _summary(s: StreamStats) -> str:
-    return (f"prompt={s.prompt_tokens} gen={s.completion_tokens} "
+    queued = f"queued={s.queued_s:.2f}s " if s.queued_s >= 0.01 else ""
+    return (f"prompt={s.prompt_tokens} gen={s.completion_tokens} {queued}"
             f"ttft={s.ttft_s:.2f}s decode={s.decode_tps:.1f} tok/s")
 
 
@@ -124,7 +128,8 @@ def serve(engine: MockEngine, model_name: str, host: str, port: int,
     script = script or texts.script("")
     httpd = ThreadingHTTPServer((host, port), make_handler(engine, model_name,
                                                            default_max_tokens, script))
-    print(f"Mock OpenAI API at http://{host}:{port}/v1  (model: {model_name})")
+    slots = f", {engine.slots} slots" if engine.slots > 1 else ""
+    print(f"Mock OpenAI API at http://{host}:{port}/v1  (model: {model_name}{slots})")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
