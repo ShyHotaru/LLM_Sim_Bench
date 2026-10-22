@@ -26,6 +26,7 @@ llmsimbench estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx
 llmsimbench run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
 llmsimbench run --gpu rtx3060-12gb --model qwen2.5-14b --text ko-chat
 llmsimbench estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
+llmsimbench estimate --gpu rtx4090-24gb --model qwen3-32b --format markdown -o report.md
 llmsimbench serve --config examples/rtx3080_desktop.toml --port 8000
 llmsimbench calibrate
 ```
@@ -56,7 +57,8 @@ the right tab. Add a second configuration to compare both side by side. Playback
 the context already partly filled (cached, so it adds no prompt-processing time) to feel the
 slowdown at long contexts. Under each result, a check table compares the simulator with real
 llama.cpp results for the selected GPU, chip or, in a CPU-only setup, CPU. The whole setup is
-kept in the URL, so a link reproduces it. The interface is available in English, Korean and
+kept in the URL, so a link reproduces it, and "Export report" downloads every configuration's
+results as JSON or Markdown (see [Reports](#reports)). The interface is available in English, Korean and
 Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style URL parameter, or
 the picker in the header.
 
@@ -80,9 +82,9 @@ split at the rate of the sample text in the language it looks like. See
 [`data/README.md`](data/README.md) for sources and licensing.
 
 Python is the reference implementation. `llmsimbench export-web` writes `web/data/presets.json`
-and the golden test vectors in `web/test/golden.json` (estimator) and `web/test/chunks.json`
-(text splitting), and copies the texts and tokenizer ratios into `src/llm_sim_bench/data/` for
-the installed package; rerun it after changing presets, measurement data, texts or the
+and the golden test vectors in `web/test/golden.json` (estimator), `web/test/chunks.json`
+(text splitting) and `web/test/report.json` (reports), and copies the texts, tokenizer ratios
+and calibration data into `src/llm_sim_bench/data/` for the installed package; rerun it after changing presets, measurement data, texts or the
 estimator, then run `node --test web/test/*.test.mjs`.
 
 ## Configuring a virtual system
@@ -107,6 +109,24 @@ Custom hardware or models that are not presets can be defined field-by-field in 
 non-streaming). Point any OpenAI client or chat UI at `http://127.0.0.1:8000/v1` with any API
 key. Time-to-first-token follows the simulated prefill speed for the prompt length, and each
 token after that follows the simulated decode speed at the current context fill.
+
+## Reports
+
+`llmsimbench estimate --format json` or `--format markdown` prints a report instead of the
+text summary (`-o FILE` writes it to a file). The web app's "Export report" links download the
+same report for every configuration on the page, with a link back to the setup. A report holds:
+
+- the virtual system and model, memory placement per device, and whether it fits;
+- generation and prompt-processing speeds, and with `--prompt-tokens`, `--max-tokens` or
+  `--depth` (in the web app, the playback settings) the time to the first token and to the
+  whole reply;
+- notes and "estimate only" warnings, each with a `code` and `params` as well as English text;
+- the check against real llama.cpp benchmarks on the same GPU, chip or CPU.
+
+Reports are in English. The JSON has `"schema": "llmsimbench.report/1"`; numbers are not
+rounded. `src/llm_sim_bench/report.py` builds it and `web/js/report.js` is its port, kept in
+sync by `web/test/report.json`. `estimate` exits with 2 when the model does not fit, in every
+format.
 
 ## Output texts
 
@@ -194,7 +214,7 @@ Calibration data:
 
 Features:
 
-- Concurrent-request simulation and report export (JSON/Markdown).
+- Concurrent-request simulation (llama.cpp `--parallel` slots).
 
 ## Development
 
@@ -210,7 +230,7 @@ node --test web/test/*.test.mjs                     # JavaScript estimator vs. P
 | --- | --- |
 | Code (everything outside `data/`, `web/data/`, `src/llm_sim_bench/data/`, `web/fonts/` and `web/brand/`) | [MIT](LICENSE) |
 | Data in `data/`, `web/data/` and its packaged copy in `src/llm_sim_bench/data/`, and the sample texts written for this project | [CC BY 4.0](LICENSE-DATA) |
-| SYCL scoreboard records (`data/measurements/llamacpp-sycl.jsonl`) | Not licensed by this project; the source asks for no commercial use |
+| SYCL scoreboard records (`data/measurements/llamacpp-sycl.jsonl`, their copies in `web/data/presets.json`, `src/llm_sim_bench/data/calibration.json` and in reports for Intel GPUs) | Not licensed by this project; the source asks for no commercial use |
 | Book excerpts in `web/data/texts/` (and their copies in `src/llm_sim_bench/data/texts/`) | Public domain |
 | Fonts in `web/fonts/` (Noto Sans KR, Noto Sans JP, JetBrains Mono) | SIL Open Font License 1.1 |
 | The author's logo in `web/brand/` | Not licensed; all rights reserved |

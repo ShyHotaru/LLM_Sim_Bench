@@ -141,7 +141,12 @@ h3::before { content: "## "; content: "## " / ""; color: var(--muted); font-fami
 .compare-bar {
   grid-column: 1 / -1;
   padding: 0 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+  justify-content: space-between;
 }
+.report-links { color: var(--muted); font: 0.85rem var(--mono); margin-left: auto; }
 .compare-bar button {
   border: 0;
   background: none;

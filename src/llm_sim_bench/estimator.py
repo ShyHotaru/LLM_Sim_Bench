@@ -19,6 +19,20 @@ from pathlib import Path
 
 from .profiles import QUANT_BPW, Model, System
 
+
+def add_in_order(values) -> float:
+    """Add floats left to right, like the JavaScript port.
+
+    The built-in sum() uses compensated summation since Python 3.12, so its last
+    digit can differ between Python versions and from JavaScript; the generated
+    golden files must not depend on the Python version.
+    """
+    total = 0.0
+    for v in values:
+        total += v
+    return total
+
+
 GB = 1e9
 DEVICE_CALIBRATION = Path(__file__).with_name("device_calibration.json")
 
@@ -112,7 +126,8 @@ class Estimate:
 
     def decode_tps_at(self, filled_tokens: int) -> float:
         """Decode speed when `filled_tokens` are already in the KV cache."""
-        t = self._base_time + sum(b * filled_tokens / bw for b, bw in self._kv_per_token)
+        t = self._base_time + add_in_order(
+            b * filled_tokens / bw for b, bw in self._kv_per_token)
         return 1.0 / t if t > 0 else float("inf")
 
 

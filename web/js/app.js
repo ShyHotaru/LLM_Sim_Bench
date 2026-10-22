@@ -2,8 +2,10 @@ import { buildSystem, estimate, ramBandwidthGbps } from "./estimator.js";
 import {
   LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
 } from "./i18n.js";
-import { benchGenTps, groupCpuRuns } from "./measured.js";
 import { Schedule } from "./mock.js";
+import {
+  BACKEND_NAMES, buildReport, cpuChecks, genTime, gpuChecks, markdown, warnings,
+} from "./report.js";
 import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
 import { charsPerToken, chunkText, guessLang } from "./tokenize.js";
@@ -112,7 +114,6 @@ function modelLabel(m) {
   return `${m.name} (${size})`;
 }
 
-const BACKEND_NAMES = { cuda: "CUDA", metal: "Metal", rocm: "ROCm", vulkan: "Vulkan", sycl: "SYCL", cpu: "CPU" };
 // Backends llama.cpp offers per GPU vendor; the first is the default.
 const VENDOR_BACKENDS = { NVIDIA: ["cuda", "vulkan"], AMD: ["rocm", "vulkan"], Intel: ["sycl", "vulkan"], Apple: ["metal"] };
 
@@ -272,10 +273,13 @@ function renderConfigs() {
   const focused = document.activeElement?.dataset?.focusId;
   root.classList.toggle("single", state.configs.length === 1);
   root.replaceChildren(...state.configs.map((cfg, i) => renderConfig(cfg, i)));
-  if (state.configs.length < MAX_CONFIGS) {
-    root.append(h("div", { class: "compare-bar" },
-      h("button", { type: "button", "data-act": "add-config" }, t("config.compare"))));
-  }
+  root.append(h("div", { class: "compare-bar" },
+    state.configs.length < MAX_CONFIGS
+      ? h("button", { type: "button", "data-act": "add-config" }, t("config.compare")) : null,
+    h("span", { class: "report-links", title: t("report.hint") }, `${t("report.label")} `,
+      h("button", { type: "button", "data-act": "report", "data-v": "json" }, t("report.json")),
+      " · ",
+      h("button", { type: "button", "data-act": "report", "data-v": "markdown" }, t("report.markdown")))));
   if (focused) root.querySelector(`[data-focus-id="${focused}"]`)?.focus();
   renderStreams();
 }
@@ -378,7 +382,7 @@ function renderResult(cfg) {
     renderBars(system, est),
     notes.length ? h("ul", { class: "notes" }, notes.map((note) => h("li", {}, note))) : null,
     renderWarnings(system, est),
-    renderMeasured(cfg));
+    renderMeasured(cfg, system));
   return result;
 }
 
@@ -396,29 +400,19 @@ function localizedNotes(cfg, system, est) {
   return notes;
 }
 
+// Locale keys for the report's warning codes.
+const WARNING_KEYS = {
+  prefill_device_uncalibrated: "warn.prefillDevice",
+  cpu_device_uncalibrated: "warn.cpuDevice",
+  backend_uncalibrated: "warn.uncalibrated",
+  decode_uncalibrated: "warn.decodeUncalibrated",
+  prefill_uncalibrated: "warn.prefillUncalibrated",
+  moe_routing: "warn.moe",
+};
+
 // Point out where the numbers rest on uncalibrated assumptions rather than measurements.
 function renderWarnings(system, est) {
-  const backends = new Set(est.placements.map((p) => (p.is_gpu
-    ? system.gpus.find((g) => g.name === p.device).backend : "cpu")));
-  const items = [];
-  const deviceLess = system.gpus.filter((g) => P.calibration[`${g.backend}/pp`]
-    && !(`${g.name}|${g.backend}` in P.efficiency.device_compute));
-  const label = (g) => g.label || P.unified.find((a) => a.name === g.name)?.label || g.name;
-  for (const g of new Set(deviceLess.map(label))) {
-    items.push(t("warn.prefillDevice", { device: g }));
-  }
-  if (backends.has("cpu") && !system.unified && !(`${system.cpu.name}|cpu` in P.efficiency.device_bandwidth)) {
-    items.push(t("warn.cpuDevice", { cpu: system.cpu.label || system.cpu.name }));
-  }
-  for (const b of backends) {
-    const tg = P.calibration[`${b}/tg`];
-    const pp = P.calibration[`${b}/pp`];
-    const backend = BACKEND_NAMES[b];
-    if (!tg && !pp) items.push(t("warn.uncalibrated", { backend }));
-    else if (!tg) items.push(t("warn.decodeUncalibrated", { backend }));
-    else if (!pp) items.push(t("warn.prefillUncalibrated", { backend }));
-  }
-  if (est.model.active_params_b) items.push(t("warn.moe"));
+  const items = warnings(P, system, est).map((w) => t(WARNING_KEYS[w.code], w.params));
   if (!items.length) return null;
   return h("div", { class: "warnings", role: "note" },
     h("strong", {}, t("warn.title")), h("ul", {}, items.map((x) => h("li", {}, x))));
@@ -426,12 +420,6 @@ function renderWarnings(system, est) {
 
 function metric(k, v) {
   return h("div", { class: "metric" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v));
-}
-
-function genTime(est, prompt, maxTokens) {
-  let t = 0;
-  for (let i = 1; i < maxTokens; i++) t += 1 / est.decodeTpsAt(prompt + i);
-  return t;
 }
 
 function bar(label, capacity, segments, over = false) {
@@ -478,25 +466,21 @@ function renderBars(system, est) {
       cpu ? h("span", {}, h("i", { style: "background:var(--bar-cpu)" }), t("legend.cpu")) : null));
 }
 
-function renderMeasured(cfg) {
-  if (isPcLike(cfg) && !cfg.gpus.length) return renderCpuMeasured(cfg);
-  const preset = !isPcLike(cfg) ? activeChip(cfg).name : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
-  const rows = preset ? P.measurements.filter((m) => m.preset === preset) : [];
-  if (!rows.length) return null;
-  const body = rows.map((m) => {
-    // Simulate with the backend the measurement used.
-    const { est } = compute({ ...cfg, backend: m.backend.toLowerCase() }, m.model, m.quant, m.n_prompt + m.n_gen);
-    const tgEst = m.n_gen / genTime(est, 0, m.n_gen + 1);
-    const fa = m.flash_attn ? " · FA" : "";
+function renderMeasured(cfg, system) {
+  if (isPcLike(cfg) && !cfg.gpus.length) return renderCpuMeasured(cfg, system);
+  const check = gpuChecks(P, system, cfg.kvBits);
+  if (!check) return null;
+  const body = check.rows.map((r) => {
+    const fa = r.flash_attn ? " · FA" : "";
     return h("tr", {},
-      h("td", {}, `${m.backend} · ${m.quant}${fa}`, m.old_build ? h("span", { class: "old-build" }, ` ${t("measured.oldBuild")}`) : null),
-      h("td", {}, fmtTps(m.tg_tps)), h("td", {}, fmtTps(tgEst)),
-      h("td", {}, fmtTps(m.pp_tps)), h("td", {}, fmtTps(est.prefill_tps)));
+      h("td", {}, `${r.backend} · ${r.quant}${fa}`, r.old_build ? h("span", { class: "old-build" }, ` ${t("measured.oldBuild")}`) : null),
+      h("td", {}, fmtTps(r.tg_measured)), h("td", {}, fmtTps(r.tg_simulated)),
+      h("td", {}, fmtTps(r.pp_measured)), h("td", {}, fmtTps(r.pp_simulated)));
   });
-  return measuredTable(rows.length,
-    h("p", { style: "margin:0 0 6px" }, `${t("measured.intro")} `, h("a", { href: rows[0].source }, t("measured.source"))),
+  return measuredTable(check.rows.length,
+    h("p", { style: "margin:0 0 6px" }, `${t("measured.intro")} `, h("a", { href: check.sources[0] }, t("measured.source"))),
     t("measured.quant"), body,
-    rows.some((m) => m.old_build) ? h("p", { class: "old-build" }, t("measured.oldBuildNote")) : null);
+    check.rows.some((r) => r.old_build) ? h("p", { class: "old-build" }, t("measured.oldBuildNote")) : null);
 }
 
 function measuredTable(n, intro, firstHead, body, footer) {
@@ -513,33 +497,48 @@ function measuredTable(n, intro, firstHead, body, footer) {
 
 // CPU-only runs on the selected CPU. Each row is simulated with the memory that run used,
 // not the RAM chosen in the form.
-function renderCpuMeasured(cfg) {
-  const { groups, sources } = groupCpuRuns(P.cpu_measurements.filter((m) => m.preset === cfg.cpu));
-  if (!groups.length) return null;
-  const body = groups.map((g) => {
-    const system = buildSystem({ kind: "pc", cpu: cfg.cpu, ram_gb: 1024,
-                                 ram_bandwidth_gbps: g.ram_bandwidth_gbps || 1, gpus: [] }, P);
-    const est = estimate(system, P.models.find((x) => x.name === g.sim_model), g.quant,
-                         Math.max(g.n_prompt || 0, g.n_gen || 0, 1), 16, P.efficiency, P.quant_bpw);
-    const memory = g.dimms && g.mem_mts ? `${g.mem_mts} MT/s × ${g.dimms}` : t("measured.memUnknown");
-    const test = [g.n_prompt ? `pp${g.n_prompt}` : null, g.n_gen ? `tg${g.n_gen}` : null].filter(Boolean).join(" ");
-    const meta = [memory, g.threads ? t("measured.threads", { n: g.threads }) : null, test,
-                  `×${g.n}`, `[${g.sources.join(",")}]`].filter(Boolean).join(" · ");
-    const has = (v) => v != null;
+function renderCpuMeasured(cfg, system) {
+  const check = cpuChecks(P, system);
+  if (!check) return null;
+  const body = check.rows.map((r) => {
+    const memory = r.dimms && r.mem_mts ? `${r.mem_mts} MT/s × ${r.dimms}` : t("measured.memUnknown");
+    const test = [r.n_prompt ? `pp${r.n_prompt}` : null, r.n_gen ? `tg${r.n_gen}` : null].filter(Boolean).join(" ");
+    const meta = [memory, r.threads ? t("measured.threads", { n: r.threads }) : null, test,
+                  `×${r.runs}`, `[${r.sources.join(",")}]`].filter(Boolean).join(" · ");
     return h("tr", {},
-      h("td", {}, `${g.model} · ${g.quant}`, h("span", { class: "run-meta" }, meta)),
-      h("td", {}, has(g.tg_tps) ? fmtTps(g.tg_tps) : "–"),
-      h("td", {}, has(g.tg_tps) ? fmtTps(benchGenTps(est, g.n_gen)) : "–"),
-      h("td", {}, has(g.pp_tps) ? fmtTps(g.pp_tps) : "–"),
-      h("td", {}, has(g.pp_tps) ? fmtTps(est.prefill_tps) : "–"));
+      h("td", {}, `${r.model} · ${r.quant}`, h("span", { class: "run-meta" }, meta)),
+      h("td", {}, fmtTps(r.tg_measured)), h("td", {}, fmtTps(r.tg_simulated)),
+      h("td", {}, fmtTps(r.pp_measured)), h("td", {}, fmtTps(r.pp_simulated)));
   });
   const key = `${cfg.cpu}|cpu`;
   const fitted = key in P.efficiency.device_bandwidth || key in P.efficiency.device_compute;
-  return measuredTable(groups.length,
+  return measuredTable(check.rows.length,
     h("p", { style: "margin:0 0 6px" }, t("measured.cpuIntro"), fitted ? ` ${t("measured.cpuFitted")}` : null),
     t("measured.model"), body,
     h("p", { class: "sources" }, `${t("measured.sources")} `,
-      sources.flatMap((url, i) => [i ? " " : null, h("a", { href: url }, `[${i + 1}]`)])));
+      check.sources.flatMap((url, i) => [i ? " " : null, h("a", { href: url }, `[${i + 1}]`)])));
+}
+
+// ---------- report export ----------
+
+function downloadReport(format) {
+  readMockInputs();
+  saveState();
+  const timing = { prompt_tokens: state.prompt, max_tokens: state.maxTokens, depth: state.depth };
+  const configs = state.configs.map((cfg, i) => ({
+    label: state.configs.length > 1 ? LETTERS[i] : null, system: systemSpec(cfg), model: cfg.model,
+    quant: cfg.quant, context: cfg.context, kv_bits: cfg.kvBits, timing,
+  }));
+  const rep = buildReport(P, configs, "web", location.href);
+  const [body, type, ext] = format === "json"
+    ? [`${JSON.stringify(rep, null, 2)}\n`, "application/json", "json"]
+    : [markdown(rep), "text/markdown", "md"];
+  const url = URL.createObjectURL(new Blob([body], { type: `${type};charset=utf-8` }));
+  const a = h("a", { href: url, download: `llm-sim-bench-report.${ext}` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // ---------- events ----------
@@ -551,6 +550,7 @@ function onConfigEvent(e) {
     state.configs.push({ ...state.configs[state.configs.length - 1] });
     return changed();
   }
+  if (e.type === "click" && act?.dataset.act === "report") return downloadReport(act.dataset.v);
   if (!panel) return;
   const i = Number(panel.dataset.i);
   const cfg = state.configs[i];
