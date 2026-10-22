@@ -53,6 +53,8 @@ class Model:
     max_context: int
     active_params_b: float | None = None  # MoE: parameters used per token
     tokenizer: str = ""  # tokenizer family in data/tokenizer_ratios.json, "" if unknown
+    n_experts: int = 0  # MoE: routed experts per layer (config.json on Hugging Face)
+    experts_per_token: int = 0  # MoE: experts each token is routed to
 
     @property
     def active_b(self) -> float:
@@ -438,9 +440,12 @@ MODEL_PRESETS: dict[str, Model] = {
         Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3"),
         Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3"),
         Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3"),
-        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3, tokenizer="qwen3"),
-        Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss"),
-        Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1, tokenizer="gpt-oss"),
+        Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 131072, active_params_b=3.3, tokenizer="qwen3",
+              n_experts=128, experts_per_token=8),
+        Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss",
+              n_experts=32, experts_per_token=4),
+        Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1, tokenizer="gpt-oss",
+              n_experts=128, experts_per_token=4),
     ]
 }
 

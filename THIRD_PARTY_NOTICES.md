@@ -16,7 +16,34 @@ and retrieval date. No comment text or contributor names were copied.
 | llama.cpp community scoreboards on GitHub Discussions: [CUDA #15013](https://github.com/ggml-org/llama.cpp/discussions/15013), [Apple Silicon #4167](https://github.com/ggml-org/llama.cpp/discussions/4167), [ROCm #15021](https://github.com/ggml-org/llama.cpp/discussions/15021), [Vulkan #10879](https://github.com/ggml-org/llama.cpp/discussions/10879); [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733); [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) | `llamacpp-scoreboards.jsonl`, `llamacpp-apple-2026.jsonl`, `llamacpp-rocm.jsonl`, `llamacpp-vulkan.jsonl`, part of `cpu-runs.jsonl` | Results posted by individual contributors. The discussions state no license; GitHub's [Terms of Service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) apply to the posts. |
 | [llama.cpp Intel SYCL scoreboard #23313](https://github.com/ggml-org/llama.cpp/discussions/23313) | `llamacpp-sycl.jsonl` | The opening post says the data is shared for reference only, is not double-checked, and "can not be used as any commercial purpose". These records are **not** covered by `LICENSE-DATA`; do not use them commercially. The same applies to their copies in `web/data/presets.json` and `src/llm_sim_bench/data/calibration.json`, and to the check table of a report for an Intel GPU. |
 | [OpenBenchmarking.org](https://openbenchmarking.org/) `pts/llama-cpp` results, read through Wayback Machine copies | most of `cpu-runs.jsonl` | Results uploaded by Phoronix Test Suite users. The site states no license for result data (see its [legal page](https://openbenchmarking.org/legal)). |
+| llama.cpp [`benches/`](https://github.com/ggml-org/llama.cpp/tree/c7fc5094179bf8a9c73c18593db714f8da41a402/benches) (`dgx-spark`, `nemotron`, `mac-m2-ultra`), read at commit `c7fc509` | `llamacpp-batched.jsonl` | Part of the llama.cpp repository, MIT license, "Copyright (c) 2023-2026 The ggml authors" (full text below). |
 | [geerlingguy/ai-benchmarks issue #53](https://github.com/geerlingguy/ai-benchmarks/issues/53) | 2 records in `cpu-runs.jsonl` | Posted in an issue; GitHub's Terms of Service apply. |
+
+### llama.cpp license
+
+```
+MIT License
+
+Copyright (c) 2023-2026 The ggml authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Book excerpts (public domain)
 

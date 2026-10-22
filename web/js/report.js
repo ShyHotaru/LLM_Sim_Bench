@@ -3,7 +3,7 @@
 // keeps the two in sync. Reports are in English; notes and warnings carry a code and
 // parameters, which the app also uses to show them in the interface language.
 
-import { buildSystem, estimate } from "./estimator.js";
+import { buildSystem, estimate, parallelLevels } from "./estimator.js";
 import { benchGenTps, groupCpuRuns } from "./measured.js";
 
 export const SCHEMA = "llmsimbench.report/1";
@@ -19,6 +19,9 @@ const TEXTS = {
   decode_uncalibrated: "{backend} generation speed is not calibrated yet.",
   prefill_uncalibrated: "{backend} prompt processing speed is not calibrated yet.",
   moe_routing: "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic.",
+  parallel_uncalibrated: "No concurrent-request measurements for {backend} yet: the speed-up from batching uses the CUDA factor.",
+  parallel_device_uncalibrated: "Concurrent-request speeds are fitted to other hardware only, not to {device}.",
+  moe_parallel: "Concurrent requests of a mixture-of-experts model are not calibrated: the estimate assumes every request picks experts at random, while measured speed-ups are higher.",
 };
 
 function item(code, params = {}) {
@@ -26,15 +29,20 @@ function item(code, params = {}) {
   return { code, params, text: TEXTS[code].replace(/\{(\w+)\}/g, (_, k) => shown(params[k])) };
 }
 
-// Python's f"{x:,.{digits}f}": grouping commas and round-half-even on the exact value.
-const formatters = new Map();
+// Python's f"{x:,.{digits}f}": grouping commas, rounding the exact binary value with ties
+// to even. (Intl.NumberFormat rounds the shortest decimal form instead, so 70.35, which is
+// 70.3499... in binary, would become 70.4 rather than Python's 70.3.)
 export function fmt(x, digits) {
-  if (!formatters.has(digits)) {
-    formatters.set(digits, new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: digits, maximumFractionDigits: digits, roundingMode: "halfEven",
-    }));
-  }
-  return formatters.get(digits).format(x);
+  const exact = Math.abs(x).toFixed(Math.min(100, digits + 30));
+  const [whole, frac] = exact.split(".");
+  let kept = BigInt(whole + frac.slice(0, digits));
+  const rest = frac.slice(digits);
+  const tie = rest[0] === "5" && /^0*$/.test(rest.slice(1));
+  if (rest[0] > "5" || (rest[0] === "5" && !tie) || (tie && kept % 2n === 1n)) kept += 1n;
+  const s = kept.toString().padStart(digits + 1, "0");
+  const int = s.slice(0, s.length - digits).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const sign = x < 0 && kept !== 0n ? "-" : "";
+  return sign + int + (digits ? `.${s.slice(s.length - digits)}` : "");
 }
 
 function label(P, name) {
@@ -98,6 +106,20 @@ export function warnings(P, system, est) {
     else if (!pp) out.push(item("prefill_uncalibrated", { backend: BACKEND_NAMES[b] }));
   }
   if (est.model.active_params_b) out.push(item("moe_routing"));
+  if (est.parallel > 1) {
+    const batched = new Set(P.batch_devices);
+    for (const b of backends) {
+      if (!(`${b}/batch` in cal)) out.push(item("parallel_uncalibrated", { backend: BACKEND_NAMES[b] }));
+    }
+    const devs = [];
+    for (const g of system.gpus) {
+      if (`${g.backend}/batch` in cal && !batched.has(`${g.name}|${g.backend}`) && !devs.includes(label(P, g.name))) {
+        devs.push(label(P, g.name));
+      }
+    }
+    for (const device of devs) out.push(item("parallel_device_uncalibrated", { device }));
+    if (est.model.active_params_b) out.push(item("moe_parallel"));
+  }
   return out;
 }
 
@@ -157,11 +179,54 @@ export function cpuChecks(P, system) {
 }
 
 // Time to the first token and to the whole reply for {prompt_tokens, max_tokens, depth},
-// as the mock plays it.
+// as the mock plays it. With several slots, also the times when every slot gets such a
+// request at once: the prompts share prompt processing, then the replies each decode step.
 export function timingInfo(est, timing) {
-  const ttft = timing.prompt_tokens / est.prefill_tps;
-  const gen = genTime(est, timing.depth + timing.prompt_tokens, timing.max_tokens);
-  return { ...timing, ttft_s: ttft, reply_s: ttft + gen };
+  const { prompt_tokens: prompt, depth, max_tokens: maxTokens } = timing;
+  const ttft = prompt / est.prefill_tps;
+  const out = { ...timing, ttft_s: ttft, reply_s: ttft + genTime(est, depth + prompt, maxTokens) };
+  if (est.parallel > 1) {
+    const n = est.parallel;
+    const ttftAll = (n * prompt) / est.prefill_tps;
+    let gen = 0;
+    for (let i = 1; i < maxTokens; i++) gen += est.stepTime(Array(n).fill(depth + prompt + i));
+    Object.assign(out, { ttft_all_s: ttftAll, reply_all_s: ttftAll + gen });
+  }
+  return out;
+}
+
+// Speeds with 1, 2, 4, ... requests active, up to the number of slots.
+export function concurrency(est) {
+  if (est.parallel === 1) return null;
+  return parallelLevels(est.parallel).map((n) => {
+    const empty = est.parallelTps(n, 0);
+    const full = est.parallelTps(n, est.context);
+    return { requests: n, per_request_tps_empty: empty, per_request_tps_full: full,
+             total_tps_empty: n * empty, total_tps_full: n * full };
+  });
+}
+
+// llama-batched-bench runs on the selected GPU or chip, each simulated with the backend,
+// model, prompt length and number of sequences of the run.
+export function parallelChecks(P, system, est, kvBits) {
+  if (est.parallel === 1 || system.gpus.length !== 1) return null;
+  const rows = P.batched_measurements.filter((m) => m.preset === system.gpus[0].name);
+  if (!rows.length) return null;
+  const sources = [];
+  const out = rows.map((m) => {
+    if (!sources.includes(m.source)) sources.push(m.source);
+    const { n_parallel: n, n_prompt: pp, n_gen: tg } = m;
+    const sim = estimate(withBackend(system, m.backend.toLowerCase()), model(P, m.sim_model), m.quant,
+                         pp + tg, kvBits, P.efficiency, P.quant_bpw, n);
+    let t = 0;
+    for (let i = 0; i < tg; i++) t += sim.stepTime(Array(n).fill(pp + i));
+    return {
+      backend: m.backend, model: m.model, quant: m.quant, n_prompt: pp, n_gen: tg, requests: n,
+      tg_measured: m.tg_tps, tg_simulated: (n * tg) / t, pp_measured: m.pp_tps,
+      pp_simulated: sim.prefill_tps, sources: [sources.indexOf(m.source) + 1],
+    };
+  });
+  return { kind: "parallel", rows: out, sources };
 }
 
 // One configuration's part of a report; `timing` adds timingInfo().
@@ -173,7 +238,7 @@ export function result(P, system, est, kvBits, timing = null, lbl = null) {
       system: systemInfo(P, system),
       model: { name: m.name, params_b: m.params_b, active_params_b: m.active_params_b ?? null,
                layers: m.n_layers, max_context: m.max_context },
-      quant: est.quant, context: est.context, kv_bits: kvBits,
+      quant: est.quant, context: est.context, kv_bits: kvBits, parallel: est.parallel,
     },
     memory: {
       weights_gb: est.weights_gb, kv_gb: est.kv_gb, total_gb: est.weights_gb + est.kv_gb,
@@ -183,19 +248,24 @@ export function result(P, system, est, kvBits, timing = null, lbl = null) {
         weights_gb: p.weights_gb, kv_gb: p.kv_gb,
       })),
     },
-    speed: { prefill_tps: est.prefill_tps, decode_tps_empty: est.decode_tps_empty, decode_tps_full: est.decode_tps_full },
+    speed: {
+      prefill_tps: est.prefill_tps, decode_tps_empty: est.decode_tps_empty,
+      decode_tps_full: est.decode_tps_full, concurrency: concurrency(est),
+    },
     timing: timing ? timingInfo(est, timing) : null,
     notes: notes(system, est),
     warnings: warnings(P, system, est),
     check: gpuChecks(P, system, kvBits) || cpuChecks(P, system),
+    parallel_check: parallelChecks(P, system, est, kvBits),
   };
 }
 
-// configs: [{label, system: spec as in buildSystem, model, quant, context, kv_bits, timing}]
+// configs: [{label, system: spec as in buildSystem, model, quant, context, kv_bits, parallel, timing}]
 export function buildReport(P, configs, surface = "web", shareUrl = null) {
   const results = configs.map((c) => {
     const system = buildSystem(c.system, P);
-    const est = estimate(system, model(P, c.model), c.quant, c.context, c.kv_bits, P.efficiency, P.quant_bpw);
+    const est = estimate(system, model(P, c.model), c.quant, c.context, c.kv_bits, P.efficiency,
+                         P.quant_bpw, c.parallel ?? 1);
     return result(P, system, est, c.kv_bits, c.timing ?? null, c.label ?? null);
   });
   return {
@@ -251,7 +321,9 @@ function systemLine(s) {
 function modelLine(c) {
   const m = c.model;
   const size = `${g6(m.params_b)}B${m.active_params_b ? `, ${g6(m.active_params_b)}B active` : ""}`;
-  return `${m.name} (${size}), ${c.quant}, context ${fmt(c.context, 0)}, KV cache ${c.kv_bits}-bit`;
+  const slots = c.parallel > 1
+    ? ` per request × ${c.parallel} slots (llama-server -np ${c.parallel} -c ${c.context * c.parallel})` : "";
+  return `${m.name} (${size}), ${c.quant}, context ${fmt(c.context, 0)}${slots}, KV cache ${c.kv_bits}-bit`;
 }
 
 function checkLines(check) {
@@ -297,11 +369,36 @@ function resultLines(r, heading) {
     const depth = t.depth ? `, ${fmt(t.depth, 0)} tokens already cached` : "";
     speed.push([`First token (${fmt(t.prompt_tokens, 0)} prompt tokens${depth})`, fmtTime(t.ttft_s)],
                [`Whole reply (${fmt(t.max_tokens, 0)} tokens)`, fmtTime(t.reply_s)]);
+    if ("ttft_all_s" in t) {
+      const n = c.parallel;
+      speed.push([`First token, ${n} such requests at once`, fmtTime(t.ttft_all_s)],
+                 [`Whole reply, ${n} such requests at once`, fmtTime(t.reply_all_s)]);
+    }
   }
   lines.push(...table(["Metric", "Estimate"], speed));
+  if (sp.concurrency) {
+    lines.push("", "### Concurrent requests", "",
+      "Generation speed with this many requests active (tok/s); the total is the throughput of all of them together.", "",
+      ...table(["Requests", "Each, empty context", "Each, full context", "Total, empty context", "Total, full context"],
+        sp.concurrency.map((x) => [x.requests, fmtTps(x.per_request_tps_empty), fmtTps(x.per_request_tps_full),
+          fmtTps(x.total_tps_empty), fmtTps(x.total_tps_full)])));
+  }
   if (r.notes.length) lines.push("", "### Notes", "", ...r.notes.map((n) => `- ${n.text}`));
   if (r.warnings.length) lines.push("", "### Estimate only", "", ...r.warnings.map((w) => `- ${w.text}`));
   if (r.check) lines.push("", ...checkLines(r.check));
+  if (r.parallel_check) lines.push("", ...parallelCheckLines(r.parallel_check));
+  return lines;
+}
+
+function parallelCheckLines(check) {
+  const rows = check.rows.map((r) => [
+    `${r.backend} · ${r.model} · ${r.quant} · pp${r.n_prompt} tg${r.n_gen} ${r.sources.map((n) => `[${n}]`).join("")}`,
+    r.requests, fmtTps(r.tg_measured), fmtTps(r.tg_simulated)]);
+  const lines = ["### Check against concurrent benchmarks", "",
+    "llama-batched-bench on this hardware: total generation speed of all sequences, measured vs. this simulator (tok/s).", "",
+    ...table(["Run", "Requests", "Gen real", "Gen sim"], rows),
+    "", ...check.sources.map((url, i) => `[${i + 1}] ${url}  `)];
+  lines[lines.length - 1] = lines[lines.length - 1].trimEnd();
   return lines;
 }
 

@@ -28,3 +28,4 @@ kv_bits = 16
 # [sim]
 # decode_tps = 25      # force a fixed decode speed instead of the estimate
 # prefill_tps = 1500
+# parallel = 4         # concurrent request slots, each with the full context

@@ -31,6 +31,30 @@ function forBackend(eff, backend) {
   return [eff[`${p}_bandwidth`], eff[`${p}_compute`], eff[`${p}_layer_overhead_us`] / 1e6];
 }
 
+const batchCompute = (eff, backend) => eff[`${backendPrefix(backend)}_batch_compute`];
+
+// Seconds of compute per token for `layers` layers: 2 FLOPs per active parameter.
+function flopTime(model, layers, tflops) {
+  return (2 * activeB(model) * 1e9 * (layers / model.n_layers)) / (tflops * 1e12);
+}
+
+// Share of the weights read in a decode step for n requests (see estimator.py).
+export function weightReadRatio(model, n) {
+  const ratio = activeB(model) / model.params_b;
+  if (!model.n_experts || n <= 1) return ratio;
+  const share = model.experts_per_token / model.n_experts;
+  const expert = (model.params_b - activeB(model)) / (1 - share);
+  const shared = model.params_b - expert;
+  return (shared + expert * (1 - (1 - share) ** n)) / model.params_b;
+}
+
+// Concurrency levels shown for up to n requests: powers of two and n itself.
+export function parallelLevels(n) {
+  const levels = [];
+  for (let k = 1; k < n; k *= 2) levels.push(k);
+  return [...levels, n];
+}
+
 // Build a system from the JSON spec shared with export.py:
 //   {kind: "pc", cpu, ram_gb, ram_bandwidth_gbps, gpus: [names], backend?: override}
 //   {kind: "unified", chip, memory_gb}
@@ -63,8 +87,10 @@ export function buildSystem(spec, presets) {
   };
 }
 
-export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
+// `parallel` request slots each get `context` tokens of KV cache (llama-server -np N -c N*context).
+export function estimate(system, model, quant, context, kvBits, eff, quantBpw, parallel = 1) {
   if (!(quant in quantBpw)) throw new Error(`Unknown quant ${quant}`);
+  if (parallel < 1) throw new Error("parallel must be at least 1");
   const notes = [];
   if (context > model.max_context) {
     notes.push(`context ${context} exceeds model max ${model.max_context}`);
@@ -72,7 +98,7 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
 
   const weights = (model.params_b * 1e9 * quantBpw[quant]) / 8;
   const kvTok = kvBytesPerToken(model, kvBits);
-  const kvTotal = kvTok * context;
+  const kvTotal = kvTok * context * parallel;
   const layerW = weights / model.n_layers;
   const layerKv = kvTotal / model.n_layers;
 
@@ -87,11 +113,13 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
     if (n > 0) {
       const [bwEff, backendCEff, layerS] = forBackend(eff, gpu.backend || "cuda");
       const cEff = eff.device_compute?.[`${gpu.name}|${gpu.backend || "cuda"}`] ?? backendCEff;
+      const tflops = gpu.fp16_tflops * cEff;
       placements.push({
         device: gpu.name, layers: n,
         weights_gb: (n * layerW) / GB, kv_gb: (n * layerKv) / GB,
-        bandwidth_gbps: gpu.bandwidth_gbps * bwEff, tflops: gpu.fp16_tflops * cEff,
+        bandwidth_gbps: gpu.bandwidth_gbps * bwEff, tflops,
         is_gpu: true, overhead_s: n * layerS,
+        batch_s: flopTime(model, n, tflops) / batchCompute(eff, gpu.backend || "cuda"),
       });
       remaining -= n;
       gpuUsedGb += (n * (layerW + layerKv)) / GB;
@@ -107,11 +135,13 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
     const [backendBw, backendC, layerS] = forBackend(eff, "cpu");
     const bwEff = eff.device_bandwidth?.[`${system.cpu.name}|cpu`] ?? backendBw;
     const cEff = eff.device_compute?.[`${system.cpu.name}|cpu`] ?? backendC;
+    const tflops = system.cpu.fp32_tflops * cEff;
     placements.push({
       device: `cpu:${system.cpu.name}`, layers: remaining,
       weights_gb: (remaining * layerW) / GB, kv_gb: (remaining * layerKv) / GB,
       bandwidth_gbps: system.ram.bandwidth_gbps * bwEff,
-      tflops: system.cpu.fp32_tflops * cEff, is_gpu: false, overhead_s: remaining * layerS,
+      tflops, is_gpu: false, overhead_s: remaining * layerS,
+      batch_s: flopTime(model, remaining, tflops) / batchCompute(eff, "cpu"),
     });
     ramNeededGb = cpuGb;
     if (cpuGb > ramFreeGb) {
@@ -125,20 +155,36 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
   const activeRatio = activeB(model) / model.params_b;
   let baseTime = 0;
   let prefillTime = 0;
+  let overhead = 0;
+  let weightRead = 0;
+  let batchTime = 0;
   const kvTerms = [];
   for (const p of placements) {
     const frac = p.layers / model.n_layers;
     const bw = p.bandwidth_gbps * GB;
     baseTime += (p.weights_gb * GB * activeRatio) / bw + p.overhead_s;
     kvTerms.push([kvTok * frac, bw]);
-    prefillTime += (2 * activeB(model) * 1e9 * frac) / (p.tflops * 1e12);
+    prefillTime += flopTime(model, p.layers, p.tflops);
+    overhead += p.overhead_s;
+    weightRead += (p.weights_gb * GB) / bw;
+    batchTime += p.batch_s;
   }
 
+  // Decode speed of a single request when `filled` tokens are in its KV cache.
   const decodeTpsAt = (filled) => {
     let t = baseTime;
     for (const [b, bw] of kvTerms) t += (b * filled) / bw;
     return t > 0 ? 1 / t : Infinity;
   };
+  // Seconds for one decode step that gives each active request (KV fills) one token.
+  const stepTime = (fills) => {
+    const n = fills.length;
+    let t = overhead + weightRead * weightReadRatio(model, n) + (n - 1) * batchTime;
+    for (const f of fills) for (const [b, bw] of kvTerms) t += (b * f) / bw;
+    return t;
+  };
+  // Decode speed of each of n concurrent requests; the aggregate is n times this.
+  const parallelTps = (n, filled) => 1 / stepTime(Array(n).fill(filled));
 
   return {
     model, quant, context,
@@ -147,7 +193,8 @@ export function estimate(system, model, quant, context, kvBits, eff, quantBpw) {
     prefill_tps: 1 / prefillTime,
     decode_tps_empty: decodeTpsAt(0),
     decode_tps_full: decodeTpsAt(context),
-    decodeTpsAt,
+    parallel,
+    decodeTpsAt, stepTime, parallelTps,
     // Extra fields for the UI (not in the Python Estimate).
     gpu_used_gb: gpuUsedGb, ram_needed_gb: ramNeededGb, ram_free_gb: ramFreeGb,
   };
