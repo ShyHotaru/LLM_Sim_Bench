@@ -356,6 +356,11 @@ button.link {
 .measured .old-build { color: var(--muted); font-size: 0.75rem; }
 .measured p.old-build { margin: 6px 0 0; }
 .measured td { vertical-align: top; }
+/* Numbers and their headings stay on one line; a table too wide for the panel scrolls. */
+.measured { overflow-x: auto; }
+.measured table { overflow-wrap: normal; }
+.measured th:first-child { min-width: 9em; }
+.measured th:not(:first-child), .measured td:not(:first-child) { white-space: nowrap; }
 .measured .run-meta { display: block; font-size: 0.72rem; }
 .measured p.sources { margin: 6px 0 0; }
 
