@@ -5,8 +5,9 @@ Simulates local LLM hardware and models, estimates tok/s, and runs a speed-match
 - Python 3.11+, standard library only. Keep it dependency-free unless there is a strong reason.
 - Code lives in `src/llm_sim_bench/`: `profiles.py` (presets), `estimator.py` (memory/speed
   model), `mock.py` (paced token stream), `texts.py` (output texts, split like
-  `web/js/tokenize.js`), `server.py` (OpenAI-compatible API), `cli.py`.
-- `web/` is a static site with a JavaScript port of the estimator. Python is the reference:
+  `web/js/tokenize.js`), `report.py` (JSON/Markdown reports, ported in `web/js/report.js`),
+  `server.py` (OpenAI-compatible API), `cli.py`.
+- `web/` is a static site with a JavaScript port of the estimator and reports. Python is the reference:
   after changing presets, data or the estimator, run `PYTHONPATH=src python -m llm_sim_bench
   export-web` and keep `web/js/estimator.js` in sync.
 - Measurement records live in `data/measurements/` (schema in `data/README.md`); never guess

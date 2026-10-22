@@ -14,6 +14,10 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313); its opening post asks that the data not be used for commercial purposes (see [Licensing](#licensing)) | 104 |
 | `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1594 |
 
+`llmsimbench export-web` copies the calibration error stats and the rows of the web app's check
+tables into `web/data/presets.json` and `src/llm_sim_bench/data/calibration.json` (for
+reports from the installed command-line tool); do not edit the copies.
+
 GPU scoreboard records are Llama 2 7B Q4_0 (SYCL also lists other models), `llama-bench -p 512
 -n 128`. Values were transcribed from the scoreboard tables on the `retrieved` date. Only the
 numbers and hardware descriptions were copied; contributor names were not.

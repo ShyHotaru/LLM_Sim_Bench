@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import tomllib
 from dataclasses import replace
@@ -122,10 +123,37 @@ def make_script(args, est: Estimate) -> texts.Script:
     return script
 
 
+def _timing(args) -> dict | None:
+    if args.prompt_tokens is None and args.max_tokens is None and args.depth is None:
+        return None
+    return {"prompt_tokens": args.prompt_tokens or 128, "max_tokens": args.max_tokens or 200,
+            "depth": args.depth or 0}
+
+
 def cmd_estimate(args):
-    system, est, _ = _estimate(args)
-    print(describe_system(system))
-    print(format_estimate(est))
+    from . import report
+
+    system, est, run = _estimate(args)
+    timing = _timing(args)
+    if args.format == "text":
+        lines = [describe_system(system), format_estimate(est)]
+        if timing:
+            t = report.timing_info(est, timing)
+            lines += [f"First tok ~{report.fmt_time(t['ttft_s'])} "
+                      f"({t['prompt_tokens']} prompt tokens, {t['depth']} cached)",
+                      f"Reply     ~{report.fmt_time(t['reply_s'])} ({t['max_tokens']} tokens)"]
+        out = "\n".join(lines) + "\n"
+    else:
+        rep = report.report([report.result(system, est, run["kv_bits"], report.load_data(),
+                                           timing)])
+        out = (json.dumps(rep, indent=2, ensure_ascii=False) + "\n" if args.format == "json"
+               else report.markdown(rep))
+    if args.output:
+        with open(args.output, "w", encoding="utf-8", newline="\n") as f:
+            f.write(out)
+        print(f"wrote {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(out)
     return 0 if est.fits else 2
 
 
@@ -283,8 +311,19 @@ def parser() -> argparse.ArgumentParser:
     tx = sub.add_parser("texts", help="show output texts and their sources")
     tx.add_argument("id", nargs="?", help="only this text")
     tx.set_defaults(func=cmd_texts)
-    sub.add_parser("estimate", parents=[common], help="estimate memory and tok/s"
-                   ).set_defaults(func=cmd_estimate)
+    e = sub.add_parser("estimate", parents=[common], help="estimate memory and tok/s; "
+                       "exits with 2 when the model does not fit")
+    e.add_argument("--format", choices=("text", "json", "markdown"), default="text",
+                   help="output format: text (default), or a JSON or Markdown report with "
+                   "notes, warnings and the check against real benchmarks")
+    e.add_argument("-o", "--output", help="write to this file instead of standard output")
+    e.add_argument("--prompt-tokens", type=int,
+                   help="also estimate the time to the first token for this prompt (default 128)")
+    e.add_argument("--max-tokens", type=int,
+                   help="also estimate the time for a reply of this length (default 200)")
+    e.add_argument("--depth", type=int,
+                   help="tokens already in the KV cache before the prompt (default 0)")
+    e.set_defaults(func=cmd_estimate)
 
     r = sub.add_parser("run", parents=[common, text], help="stream mock tokens in the terminal")
     r.add_argument("--prompt", help="prompt text (only its length matters)")

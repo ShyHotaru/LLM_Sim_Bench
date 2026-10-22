@@ -20,9 +20,10 @@ Exceptions, described in THIRD_PARTY_NOTICES.md:
   structure, normalization and annotations), not any rights others may hold
   in the original results.
 - Records from the llama.cpp Intel SYCL scoreboard (data/measurements/
-  llamacpp-sycl.jsonl and the copies of those records in web/data/presets.json)
-  are not covered: its opening post asks that the data not be used for
-  commercial purposes.
+  llamacpp-sycl.jsonl and the copies of those records in web/data/presets.json,
+  src/llm_sim_bench/data/calibration.json and exported reports) are not
+  covered: its opening post asks that the data not be used for commercial
+  purposes.
 - The book excerpts in web/data/texts/ (ja-neko, ja-botchan, ja-takasebune,
   en-alice, en-pride) and their copies in src/llm_sim_bench/data/texts/ are in
   the public domain. The Aozora Bunko edition and transcription notes in

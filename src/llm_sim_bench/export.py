@@ -14,7 +14,7 @@ import json
 from dataclasses import asdict, replace
 from pathlib import Path
 
-from . import calibrate, measurements, texts
+from . import __version__, calibrate, measurements, report, texts
 from .estimator import Efficiency, estimate
 from .profiles import (CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM, UNIFIED_PRESETS,
                        System, lookup, unified_system)
@@ -86,6 +86,47 @@ def golden() -> list[dict]:
     return cases
 
 
+# Reports for the web app to reproduce: (label, system spec, model, quant, context,
+# kv_bits, timing). Cases with the same share_url form one multi-configuration report.
+REPORT_CASES = [
+    [(None, {"kind": "pc", "cpu": "i7-13700k", "ram_gb": 32, "ram_bandwidth_gbps": 89.6,
+             "gpus": ["rtx4090-24gb"]}, "llama-3.1-8b", "Q4_K_M", 8192, 16,
+      {"prompt_tokens": 1000, "max_tokens": 300, "depth": 0})],
+    [(None, {"kind": "pc", "cpu": "ryzen9-7950x", "ram_gb": 64, "ram_bandwidth_gbps": 96,
+             "gpus": []}, "llama-3.1-8b", "Q4_0", 4096, 16, None)],
+    [("A", {"kind": "unified", "chip": "apple-m4-max-40c", "memory_gb": 48},
+      "llama-3.1-70b", "Q4_K_M", 8192, 16, {"prompt_tokens": 2000, "max_tokens": 4000,
+                                            "depth": 4096}),
+     ("B", {"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 32, "ram_bandwidth_gbps": 51.2,
+            "gpus": ["rtx4060ti-16gb"], "backend": "vulkan"}, "qwen3-30b-a3b", "Q4_K_M",
+      16384, 4, {"prompt_tokens": 1000, "max_tokens": 300, "depth": 0})],
+    [(None, {"kind": "pc", "cpu": "i5-12400", "ram_gb": 16, "ram_bandwidth_gbps": 51.2,
+             "gpus": ["rtx3060-12gb"]}, "llama-3.1-70b", "Q4_K_M", 200000, 16, None)],
+]
+SHARE_URL = "https://example.invalid/#state"
+
+
+def report_golden(data: dict) -> list[dict]:
+    """Python reports (JSON and Markdown) that web/js/report.js must reproduce."""
+    cases = []
+    for configs in REPORT_CASES:
+        results = []
+        for label, spec, model, quant, context, kv_bits, timing in configs:
+            system = build_system(spec)
+            est = estimate(system, MODEL_PRESETS[model], quant, context, kv_bits)
+            results.append(report.result(system, est, kv_bits, data, timing, label))
+        surface = "web" if len(configs) > 1 else "cli"
+        rep = report.report(results, surface, SHARE_URL if surface == "web" else None)
+        cases.append({
+            "input": [{"label": label, "system": spec, "model": model, "quant": quant,
+                       "context": context, "kv_bits": kv_bits, "timing": timing}
+                      for label, spec, model, quant, context, kv_bits, timing in configs],
+            "surface": surface, "share_url": rep["share_url"],
+            "report": rep, "markdown": report.markdown(rep),
+        })
+    return cases
+
+
 # Edge cases for chunk_text, stored with every piece: ties at .5 (Python's round()
 # differs from Math.round), the whitespace /\s/ matches, ratios below one and at two.
 CHUNK_CASES = [
@@ -151,8 +192,8 @@ def package_data() -> dict[Path, bytes]:
 
 
 def presets(records: list[dict]) -> dict:
-    stats = calibrate.summary(calibrate.evaluate(records, Efficiency()))
     return {
+        "version": __version__,
         "efficiency": asdict(Efficiency()),
         "quant_bpw": QUANT_BPW,
         "cpus": [asdict(c) for c in CPU_PRESETS.values()],
@@ -160,6 +201,17 @@ def presets(records: list[dict]) -> dict:
         "unified": [asdict(a) for a in UNIFIED_PRESETS.values()],
         "models": [asdict(m) for m in MODEL_PRESETS.values()],
         "tokenizers": json.loads(TOKENIZER_RATIOS.read_text(encoding="utf-8")),
+        **calibration_data(records),
+    }
+
+
+def calibration_data(records: list[dict]) -> dict:
+    """Calibration error stats and the benchmark rows of the check tables.
+
+    The web app reads them from presets.json; the package keeps a copy for reports.
+    """
+    stats = calibrate.summary(calibrate.evaluate(records, Efficiency()))
+    return {
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),
                             "max": round(v["max"], 4)} for k, v in stats.items()},
         "measurements": [{
@@ -213,10 +265,13 @@ def _dump(obj) -> str:
 
 
 def outputs(records: list[dict]) -> dict[Path, bytes]:
+    data = calibration_data(records)
     return {
         WEB_DIR / "data" / "presets.json": _dump(presets(records)).encode("utf-8"),
         WEB_DIR / "test" / "golden.json": _dump(golden()).encode("utf-8"),
         WEB_DIR / "test" / "chunks.json": _dump(chunk_golden()).encode("utf-8"),
+        WEB_DIR / "test" / "report.json": _dump(report_golden(data)).encode("utf-8"),
+        report.CALIBRATION_DATA: _dump(data).encode("utf-8"),
         **package_data(),
     }
 

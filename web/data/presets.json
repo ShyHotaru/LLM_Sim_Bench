@@ -1,4 +1,5 @@
 {
+ "version": "0.1.0",
  "efficiency": {
   "gpu_bandwidth": 0.84,
   "gpu_compute": 0.49,
