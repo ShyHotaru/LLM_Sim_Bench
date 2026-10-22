@@ -61,7 +61,7 @@ class MockTests(unittest.TestCase):
         engine = MockEngine(prefill_tps=1000, decode_tps=lambda _: 200, jitter=0, seed=1)
         stats = StreamStats()
         start = time.perf_counter()
-        tokens = list(engine.stream(prompt_tokens=50, max_tokens=41, stats=stats))
+        tokens = list(engine.stream(prompt_tokens=50, pieces=["x"] * 41, stats=stats))
         elapsed = time.perf_counter() - start
         self.assertEqual(len(tokens), 41)
         # 0.05 s prefill + 40 * 5 ms decode = 0.25 s

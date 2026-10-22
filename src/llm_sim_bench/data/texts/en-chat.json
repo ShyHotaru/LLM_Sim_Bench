@@ -1,0 +1,20 @@
+{
+  "turns": [
+    {
+      "user": "I'd like to try running an LLM locally. Can my current PC handle it? It has an RTX 3060 12GB and 32 GB of RAM.",
+      "assistant": "Yes, it can. An RTX 3060 12GB is a pretty good card to start with.\n\nAn 8-billion-parameter (8B) model quantized to Q4_K_M has about 5 GB of weights, so even with the KV cache for an 8K context it fits entirely in VRAM. Generation should run at roughly 50 to 60 tokens per second, which feels much faster than you can read.\n\nI'd start with an 8B-class model, get a feel for how you use it, and then decide whether you need something bigger."
+    },
+    {
+      "user": "How fast would a 14B model be?",
+      "assistant": "A 14B model at Q4_K_M has about 9 GB of weights. With an 8K context the KV cache still fits within 12 GB, so every layer runs on the GPU.\n\nExpect around 30 tokens per second. That is slower than the 8B model, but not slow enough to feel sluggish in a conversation.\n\nIf you raise the context to something like 32K, though, the KV cache grows and some layers may spill into system RAM, and then the speed drops noticeably."
+    },
+    {
+      "user": "Could I run a 32B model too?",
+      "assistant": "It will run, but I wouldn't recommend it.\n\nEven at Q4_K_M a 32B model has about 20 GB of weights, so only about half of it fits in 12 GB of VRAM. The other half has to be read from system RAM, and dual-channel DDR4 has only about a seventh of the bandwidth of the graphics card's memory.\n\nAs a result, generation drops to around 2 to 3 tokens per second. A single paragraph takes tens of seconds, which is frustrating for everyday chat."
+    },
+    {
+      "user": "What are my options if I upgrade?",
+      "assistant": "If the goal is to run 32B-class models comfortably, there are three main directions.\n\n1. A 24 GB graphics card: with an RTX 3090 or 4090, a 32B model at Q4_K_M fits entirely in VRAM. An RTX 3090 should give around 35 tokens per second, and it is relatively easy to find used.\n2. A 32 GB graphics card: the RTX 5090 has far more bandwidth and can generate the same model at over 60 tokens per second. The trade-off is price and power draw.\n3. A Mac with lots of unified memory: a configuration like an M4 Max with 64 GB can hold even larger models. Generation is slower than on the graphics cards, around 20 tokens per second, but it is quiet and power efficient.\n\nThe right choice depends on which models you want to use and your budget. Put the options side by side in this simulator and compare the speeds yourself."
+    }
+  ]
+}

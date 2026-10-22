@@ -1,0 +1,76 @@
+{
+  "policy": "Only texts written for this project, or public-domain works whose author died in or before 1925 and that were first published before 1931 (public domain worldwide, including life+100 and US terms).",
+  "texts": [
+    {
+      "id": "ko-answer", "lang": "ko", "kind": "answer", "origin": "authored",
+      "title": "LLM 답변 예시", "file": "ko-answer.txt"
+    },
+    {
+      "id": "ko-chat", "lang": "ko", "kind": "chat", "origin": "authored",
+      "title": "대화 테스트", "file": "ko-chat.json"
+    },
+    {
+      "id": "ja-answer", "lang": "ja", "kind": "answer", "origin": "authored",
+      "title": "LLM回答の例", "file": "ja-answer.txt"
+    },
+    {
+      "id": "ja-chat", "lang": "ja", "kind": "chat", "origin": "authored",
+      "title": "会話テスト", "file": "ja-chat.json"
+    },
+    {
+      "id": "ja-neko", "lang": "ja", "kind": "book", "origin": "public-domain",
+      "title": "吾輩は猫である", "author": "夏目漱石", "author_died": 1916, "first_published": 1905,
+      "file": "ja-neko.txt", "excerpt_chars": 8000,
+      "source": {
+        "name": "青空文庫", "page": "https://www.aozora.gr.jp/cards/000148/card789.html",
+        "fetch": "https://www.aozora.gr.jp/cards/000148/files/789_14547.html", "format": "aozora-xhtml"
+      }
+    },
+    {
+      "id": "ja-botchan", "lang": "ja", "kind": "book", "origin": "public-domain",
+      "title": "坊っちゃん", "author": "夏目漱石", "author_died": 1916, "first_published": 1906,
+      "file": "ja-botchan.txt", "excerpt_chars": 8000,
+      "source": {
+        "name": "青空文庫", "page": "https://www.aozora.gr.jp/cards/000148/card752.html",
+        "fetch": "https://www.aozora.gr.jp/cards/000148/files/752_14964.html", "format": "aozora-xhtml"
+      }
+    },
+    {
+      "id": "ja-takasebune", "lang": "ja", "kind": "book", "origin": "public-domain",
+      "title": "高瀬舟", "author": "森鴎外", "author_died": 1922, "first_published": 1916,
+      "file": "ja-takasebune.txt", "excerpt_chars": 8000,
+      "source": {
+        "name": "青空文庫", "page": "https://www.aozora.gr.jp/cards/000129/card45245.html",
+        "fetch": "https://www.aozora.gr.jp/cards/000129/files/45245_22007.html", "format": "aozora-xhtml"
+      }
+    },
+    {
+      "id": "en-answer", "lang": "en", "kind": "answer", "origin": "authored",
+      "title": "Sample LLM answer", "file": "en-answer.txt"
+    },
+    {
+      "id": "en-chat", "lang": "en", "kind": "chat", "origin": "authored",
+      "title": "Conversation test", "file": "en-chat.json"
+    },
+    {
+      "id": "en-alice", "lang": "en", "kind": "book", "origin": "public-domain",
+      "title": "Alice's Adventures in Wonderland", "author": "Lewis Carroll", "author_died": 1898,
+      "first_published": 1865, "file": "en-alice.txt", "excerpt_chars": 20000,
+      "source": {
+        "name": "Project Gutenberg eBook #11", "page": "https://www.gutenberg.org/ebooks/11",
+        "fetch": "https://raw.githubusercontent.com/GITenberg/Alice-s-Adventures-in-Wonderland_11/master/11.txt",
+        "format": "gutenberg-txt", "start": "CHAPTER I."
+      }
+    },
+    {
+      "id": "en-pride", "lang": "en", "kind": "book", "origin": "public-domain",
+      "title": "Pride and Prejudice", "author": "Jane Austen", "author_died": 1817,
+      "first_published": 1813, "file": "en-pride.txt", "excerpt_chars": 20000,
+      "source": {
+        "name": "Project Gutenberg eBook #1342", "page": "https://www.gutenberg.org/ebooks/1342",
+        "fetch": "https://raw.githubusercontent.com/GITenberg/Pride-and-Prejudice_1342/master/1342.txt",
+        "format": "gutenberg-txt", "start": "Chapter 1"
+      }
+    }
+  ]
+}

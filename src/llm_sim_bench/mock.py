@@ -1,22 +1,11 @@
-"""Mock inference engine that emits dummy tokens at a simulated speed."""
+"""Mock inference engine that streams text pieces at a simulated speed."""
 
 from __future__ import annotations
 
 import random
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-
-_WORDS = (
-    "the model simulates local inference on virtual hardware so you can feel "
-    "the latency before buying anything memory bandwidth decides decode speed "
-    "while compute decides prefill speed and context length slowly drags it down"
-).split()
-
-
-def count_tokens(text: str) -> int:
-    """Rough token count (~4 characters per token)."""
-    return max(1, round(len(text) / 4))
 
 
 @dataclass
@@ -36,7 +25,8 @@ class MockEngine:
     """Paces token output by a prefill rate and a context-dependent decode rate.
 
     `decode_tps` is a callable of the current KV fill so decode slows as the
-    context grows, matching the estimator.
+    context grows, matching the estimator. Pieces come from texts.chunk_text, one
+    per token.
     """
 
     def __init__(
@@ -51,23 +41,28 @@ class MockEngine:
         self.jitter = jitter
         self.rng = random.Random(seed)
 
-    def stream(self, prompt_tokens: int, max_tokens: int, stats: StreamStats | None = None
-               ) -> Iterator[str]:
+    def stream(self, prompt_tokens: int, pieces: Sequence[str],
+               stats: StreamStats | None = None, cached_tokens: int = 0) -> Iterator[str]:
+        """Yield `pieces` one token at a time after prefilling `prompt_tokens`.
+
+        `cached_tokens` are already in the KV cache (earlier turns of a chat): they
+        are not prefilled again but slow decode like the rest of the context.
+        """
         stats = stats if stats is not None else StreamStats()
         stats.prompt_tokens = prompt_tokens
         start = time.perf_counter()
         # Prefill produces the first token.
         deadline = start + prompt_tokens / self.prefill_tps
-        for i in range(max_tokens):
+        for i, piece in enumerate(pieces):
             if i:
-                rate = self.decode_tps(prompt_tokens + i)
+                rate = self.decode_tps(cached_tokens + prompt_tokens + i)
                 deadline += self._jittered(1.0 / rate)
             _sleep_until(deadline)
             if i == 0:
                 stats.ttft_s = time.perf_counter() - start
             stats.completion_tokens = i + 1
             stats.total_s = time.perf_counter() - start
-            yield (" " if i else "") + self.rng.choice(_WORDS)
+            yield piece
 
     def _jittered(self, dt: float) -> float:
         return max(0.0, dt * (1 + self.rng.uniform(-self.jitter, self.jitter)))
