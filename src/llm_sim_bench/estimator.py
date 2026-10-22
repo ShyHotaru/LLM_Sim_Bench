@@ -78,8 +78,11 @@ class Efficiency:
     vulkan_compute: float = 0.40
     vulkan_layer_overhead_us: float = 22.0
     sycl_bandwidth: float = 0.85
-    sycl_compute: float = 0.10
+    sycl_compute: float = 0.07
     sycl_layer_overhead_us: float = 58.0
+    # SYCL builds with GGML_SYCL_F16=ON ("sycl-f16") share every SYCL factor but this one:
+    # their prompt processing runs in FP16 and is about twice as fast as the default build.
+    sycl_f16_compute: float = 0.19
     cpu_bandwidth: float = 0.79
     cpu_compute: float = 0.35
     cpu_layer_overhead_us: float = 119.0
@@ -136,7 +139,7 @@ class Efficiency:
     def for_backend(self, backend: str) -> tuple[float, float, float]:
         """(bandwidth, compute, per-layer overhead in seconds) for a device backend."""
         p = backend_prefix(backend)
-        return (getattr(self, f"{p}_bandwidth"), getattr(self, f"{p}_compute"),
+        return (getattr(self, f"{p}_bandwidth"), getattr(self, compute_field(backend)),
                 getattr(self, f"{p}_layer_overhead_us") / 1e6)
 
     def batch_compute(self, backend: str) -> float:
@@ -154,14 +157,21 @@ class Efficiency:
                 getattr(self, f"{p}_moe_compute"))
 
 
-BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu")
+# "sycl" is llama.cpp's default SYCL build (FP32); "sycl-f16" is built with GGML_SYCL_F16=ON.
+BACKENDS = ("cuda", "metal", "rocm", "vulkan", "sycl", "sycl-f16", "cpu")
 
 
 def backend_prefix(backend: str) -> str:
-    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu")."""
+    """Efficiency field prefix for a backend ("cuda" predates the others as "gpu"; both SYCL
+    builds share the "sycl" fields)."""
     if backend not in BACKENDS:
         raise ValueError(f"Unknown backend {backend!r}. Known: {', '.join(BACKENDS)}")
-    return "gpu" if backend == "cuda" else backend
+    return {"cuda": "gpu", "sycl-f16": "sycl"}.get(backend, backend)
+
+
+def compute_field(backend: str) -> str:
+    """Efficiency field of a backend's prompt-processing compute share."""
+    return "sycl_f16_compute" if backend == "sycl-f16" else f"{backend_prefix(backend)}_compute"
 
 
 @dataclass

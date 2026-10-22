@@ -7,7 +7,7 @@ import { buildSystem, estimate, parallelLevels } from "./estimator.js";
 import { benchGenTps, groupCpuRuns } from "./measured.js";
 
 export const SCHEMA = "llmsimbench.report/1";
-export const BACKEND_NAMES = { cuda: "CUDA", metal: "Metal", rocm: "ROCm", vulkan: "Vulkan", sycl: "SYCL", cpu: "CPU" };
+export const BACKEND_NAMES = { cuda: "CUDA", metal: "Metal", rocm: "ROCm", vulkan: "Vulkan", sycl: "SYCL", "sycl-f16": "SYCL FP16", cpu: "CPU" };
 // Contexts from which an uncalibrated slowdown with depth is worth a warning.
 export const LONG_CONTEXT = 8192;
 
@@ -151,10 +151,10 @@ export function gpuChecks(P, system, kvBits) {
   return {
     kind: "gpu",
     rows: rows.map((m) => {
-      const est = estimate(withBackend(system, m.backend.toLowerCase()), model(P, m.model), m.quant,
+      const est = estimate(withBackend(system, m.sim_backend), model(P, m.model), m.quant,
                            m.n_prompt + m.n_gen, kvBits, P.efficiency, P.quant_bpw, 1, P.quant_shared_bpw);
       return {
-        backend: m.backend, model: m.model, quant: m.quant, flash_attn: m.flash_attn,
+        backend: BACKEND_NAMES[m.sim_backend], model: m.model, quant: m.quant, flash_attn: m.flash_attn,
         old_build: m.old_build, n_prompt: m.n_prompt, n_gen: m.n_gen,
         tg_measured: m.tg_tps, tg_simulated: m.n_gen / genTime(est, 0, m.n_gen + 1),
         pp_measured: m.pp_tps, pp_simulated: m.n_prompt / est.prefillTime(m.n_prompt), sources: [1],
@@ -228,7 +228,7 @@ export function parallelChecks(P, system, est, kvBits) {
   const out = rows.map((m) => {
     if (!sources.includes(m.source)) sources.push(m.source);
     const { n_parallel: n, n_prompt: pp, n_gen: tg } = m;
-    const sim = estimate(withBackend(system, m.backend.toLowerCase()), model(P, m.sim_model), m.quant,
+    const sim = estimate(withBackend(system, m.sim_backend), model(P, m.sim_model), m.quant,
                          pp + tg, kvBits, P.efficiency, P.quant_bpw, n, P.quant_shared_bpw);
     let t = 0;
     for (let i = 0; i < tg; i++) t += sim.stepTime(Array(n).fill(pp + i));

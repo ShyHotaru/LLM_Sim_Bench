@@ -66,6 +66,10 @@ def validate(rec: dict) -> list[str]:
         errors.append("source.url must be https")
     if rec["software"]["backend"] not in BACKENDS:
         errors.append(f"unknown backend {rec['software']['backend']!r}")
+    sw = rec["software"]
+    if sw["backend"] == "SYCL" and not ("sycl_f16" in sw and (
+            sw["sycl_f16"] is None or isinstance(sw["sycl_f16"], bool))):
+        errors.append("SYCL records need software.sycl_f16 (true, false or null)")
     if not isinstance(rec["model"]["quant"], str) or not rec["model"]["quant"]:
         errors.append("model.quant must be a string")
     res = rec["results"]

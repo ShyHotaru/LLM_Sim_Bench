@@ -49,6 +49,7 @@ guess.
 | `hardware.cpu_preset`, `hardware.dimms`, `hardware.mem_mts`, `hardware.ram_channels`, `hardware.sockets`, `hardware.threads` | CPU runs only: matching CPU preset, DIMM count, memory speed (MT/s), memory channels, sockets and threads used, each when stated |
 | `notes` | Optional free-form details from the source (test profile, run id, standard error, ...) |
 | `software.runtime`, `software.backend`, `software.commit`, `software.flash_attn` | Runtime, backend (`CUDA`, `Metal`, `ROCm`, `Vulkan`, `SYCL`, `CPU`), build commit, flash attention on/off |
+| `software.sycl_f16` | SYCL records only: built with `GGML_SYCL_F16=ON` (`true`) or the default FP32 build (`false`), from the scoreboard's `Fp32/FP16` column; FP16 builds are calibrated as their own backend |
 | `model.name`, `model.quant`, `model.file` | Model preset name, quantization, GGUF file name |
 | `run.n_gpu_layers`, `run.n_prompt`, `run.n_gen`, `run.depth` | llama-bench `-ngl` (`-1`: the tool's default, as many layers as fit), `-p`, `-n`, `-d` |
 | `run.tool`, `run.n_parallel`, `run.pp_shared`, `run.n_batch`, `run.n_ubatch` | Records from llama.cpp's `benches/` only: the benchmark tool (`llama-batched-bench` or `llama-bench`), and for batched records (required with the `batched` flag, except the batch sizes) the number of sequences run at once (`B`), whether they share one prompt (`-pps`), `-b` and `-ub`. Batched `results.pp_tps` and `results.tg_tps` are throughput over all sequences (`S_PP`, `S_TG`). Records with `run.tool` stay out of the main fit and calibrate long contexts, mixture-of-experts models and concurrency instead |
@@ -74,9 +75,9 @@ guess.
 - CPU runs give DIMM counts rather than memory channels. Calibration assumes DIMMs fill
   separate channels first, up to the CPU's channel count.
 - Prompt-processing efficiency differs strongly between devices (data-center GPUs reach far
-  less of their peak at this batch size than consumer cards; Intel results mix FP16 and FP32
-  builds), so every measured device gets its own factor in
-  `src/llm_sim_bench/device_calibration.json` (`llmsimbench calibrate --write`). The same file
+  less of their peak at this batch size than consumer cards; FP16 SYCL builds process prompts
+  about 2.7 times faster than the default build), so every measured device gets its own factor
+  in `src/llm_sim_bench/device_calibration.json` (`llmsimbench calibrate --write`). The same file
   holds per-CPU decode bandwidth factors: single-CCD Ryzen parts reach about 0.6 of their
   DRAM bandwidth, dual-CCD parts about 0.85.
 - Mixture-of-experts models stay out of the main fit; their overhead is fitted to the

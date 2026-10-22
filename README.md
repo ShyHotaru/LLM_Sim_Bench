@@ -199,11 +199,16 @@ suite fails if the defaults drift from the data. Current median error:
 | Backend | Decode | Prefill |
 | --- | --- | --- |
 | CUDA (55 results) | 6.5 % | 6.0 % |
-| ROCm (33) | 4.2 % | 2.6 % |
-| Vulkan (62) | 7.7 % | 5.4 % |
-| SYCL (21) | 1.7 % | 29 % |
-| Metal (15, M5 family and M6) | 3.0 % | 0.7 % |
-| CPU (174 decode, 29 prefill) | 3.0 % | 6.2 % |
+| ROCm (33) | 4.3 % | 2.6 % |
+| Vulkan (62) | 7.6 % | 5.4 % |
+| SYCL, default FP32 build (9) | 1.6 % | 4.5 % |
+| SYCL, FP16 build (12) | 2.0 % | 25 % |
+| Metal (15, M5 family and M6) | 2.9 % | 0.7 % |
+| CPU (174 decode, 29 prefill) | 3.1 % | 6.2 % |
+
+Intel GPUs have two SYCL choices: llama.cpp's default build and one with `GGML_SYCL_F16=ON`,
+whose prompt processing is about 2.7 times faster (more without flash attention, less with
+it; the model does not distinguish the two, hence the larger error).
 
 Long contexts and mixture-of-experts models are fitted to `llama-bench` runs at depths of
 0–32768 tokens in llama.cpp's `benches/` folder: DGX Spark (CUDA) and an M2 Ultra (Metal),
@@ -255,7 +260,6 @@ Calibration data:
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
 - Apple M1–M4 on current llama.cpp builds (only 2023 builds are recorded), and the M5 Ultra
   prompt-processing gap (about 20 % below the other M5 chips per GPU core).
-- Intel SYCL FP16 vs. FP32 builds as a separate option.
 - Concurrent-request (`llama-batched-bench`) results beyond DGX Spark, and the GPU core count of
   the M2 Ultra in llama.cpp's `benches/` (its 108 batched results are recorded but unused;
   its `llama-bench` results calibrate only what does not depend on the core count).

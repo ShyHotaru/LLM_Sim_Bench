@@ -41,17 +41,22 @@ export function activeB(model) {
   return model.active_params_b || model.params_b;
 }
 
-export const BACKENDS = ["cuda", "metal", "rocm", "vulkan", "sycl", "cpu"];
+// "sycl" is llama.cpp's default SYCL build (FP32); "sycl-f16" is built with GGML_SYCL_F16=ON.
+export const BACKENDS = ["cuda", "metal", "rocm", "vulkan", "sycl", "sycl-f16", "cpu"];
 
-// Efficiency field prefix for a backend ("cuda" predates the others as "gpu").
+// Efficiency field prefix for a backend ("cuda" predates the others as "gpu"; both SYCL
+// builds share the "sycl" fields).
 export function backendPrefix(backend) {
   if (!BACKENDS.includes(backend)) throw new Error(`Unknown backend ${backend}`);
-  return backend === "cuda" ? "gpu" : backend;
+  return { cuda: "gpu", "sycl-f16": "sycl" }[backend] ?? backend;
 }
+
+// Efficiency field of a backend's prompt-processing compute share.
+const computeField = (backend) => (backend === "sycl-f16" ? "sycl_f16_compute" : `${backendPrefix(backend)}_compute`);
 
 function forBackend(eff, backend) {
   const p = backendPrefix(backend);
-  return [eff[`${p}_bandwidth`], eff[`${p}_compute`], eff[`${p}_layer_overhead_us`] / 1e6];
+  return [eff[`${p}_bandwidth`], eff[computeField(backend)], eff[`${p}_layer_overhead_us`] / 1e6];
 }
 
 const batchCompute = (eff, backend) => eff[`${backendPrefix(backend)}_batch_compute`];

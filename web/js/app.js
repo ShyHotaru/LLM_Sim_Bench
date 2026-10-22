@@ -118,7 +118,8 @@ function modelLabel(m) {
 }
 
 // Backends llama.cpp offers per GPU vendor; the first is the default.
-const VENDOR_BACKENDS = { NVIDIA: ["cuda", "vulkan"], AMD: ["rocm", "vulkan"], Intel: ["sycl", "vulkan"], Apple: ["metal"] };
+// Intel's default is llama.cpp's default SYCL build (FP32); "sycl-f16" is built with GGML_SYCL_F16=ON.
+const VENDOR_BACKENDS = { NVIDIA: ["cuda", "vulkan"], AMD: ["rocm", "vulkan"], Intel: ["sycl", "sycl-f16", "vulkan"], Apple: ["metal"] };
 
 const chipName = (a) => a.label || a.name;
 
@@ -966,7 +967,7 @@ function renderStatic() {
   document.documentElement.lang = lang;
   translateDom();
   document.getElementById("play").textContent = t(playback ? "mock.stop" : "mock.play");
-  const list = ["cuda", "rocm", "vulkan", "sycl", "metal", "cpu"].filter((b) => P.calibration[`${b}/tg`])
+  const list = ["cuda", "rocm", "vulkan", "sycl", "sycl-f16", "metal", "cpu"].filter((b) => P.calibration[`${b}/tg`])
     .map((b) => {
       const c = P.calibration[`${b}/tg`];
       return `${BACKEND_NAMES[b]} ${(c.median * 100).toFixed(1)}% (${fmtInt(c.n)})`;

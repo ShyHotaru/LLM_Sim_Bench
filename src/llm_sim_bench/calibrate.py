@@ -28,7 +28,7 @@ import statistics
 from dataclasses import dataclass, replace
 
 from .estimator import (DEVICE_CALIBRATION, BACKENDS, Efficiency, add_in_order, backend_prefix,
-                        estimate)
+                        compute_field, estimate)
 from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
@@ -52,7 +52,17 @@ _STAND_IN = {"M2 Ultra": "apple-m2-ultra-76c"}
 # Peak hardware with no overhead: the fit's x values.
 _UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
-                      for k, v in (("bandwidth", 1), ("compute", 1), ("layer_overhead_us", 0))})
+                      for k, v in (("bandwidth", 1), ("layer_overhead_us", 0))},
+                   **{compute_field(b): 1 for b in BACKENDS})
+
+
+def backend_of(rec: dict) -> str | None:
+    """Simulator backend of a record; SYCL records name their build (software.sycl_f16)."""
+    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    if backend == "sycl":
+        f16 = rec["software"].get("sycl_f16")
+        return None if f16 is None else "sycl-f16" if f16 else "sycl"
+    return backend
 
 
 @dataclass
@@ -107,7 +117,7 @@ def _ram_bandwidth(hw: dict) -> float | None:
 def system_for(rec: dict, stand_in: bool = False) -> System | None:
     """The record's system; with `stand_in`, also for devices in _STAND_IN."""
     hw = rec["hardware"]
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     if backend == "cpu":
         cpu = CPU_PRESETS.get(hw.get("cpu_preset"))
         # Capacity does not matter for speed; bandwidth may be unknown (prefill only).
@@ -124,7 +134,7 @@ def system_for(rec: dict, stand_in: bool = False) -> System | None:
 def usable(rec: dict) -> bool:
     """Known presets and backend, not flagged; GPU runs single-GPU and fully offloaded,
     CPU runs single-socket with nothing offloaded."""
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     model = _model(rec)
     if (not backend or not model or model.active_params_b  # MoE is fitted separately
             or rec["model"]["quant"] not in QUANT_BPW or _EXCLUDE & set(rec["flags"])
@@ -140,7 +150,7 @@ def usable(rec: dict) -> bool:
 
 def predict(rec: dict, eff: Efficiency) -> Point:
     model = _model(rec)
-    backend = _BACKEND_KEY[rec["software"]["backend"]]
+    backend = backend_of(rec)
     run, res = rec["run"], rec["results"]
     n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
     est = estimate(system_for(rec), model, rec["model"]["quant"],
@@ -166,18 +176,20 @@ def fit(records: list[dict]) -> Efficiency:
     """Return an Efficiency with every measured backend's factors fitted to the records."""
     points = [predict(r, _UNIT) for r in records if usable(r)]
     fitted = {}
-    for backend in sorted({p.backend for p in points}):
-        pts = [p for p in points if p.backend == backend]
-        prefix = backend_prefix(backend)
-        dec = [p for p in pts if p.tg_meas and p.tg_pred]
+    # Decode per field prefix (both SYCL builds decode alike), prompt processing per backend.
+    for prefix in sorted({backend_prefix(p.backend) for p in points}):
+        dec = [p for p in points if backend_prefix(p.backend) == prefix and p.tg_meas
+               and p.tg_pred]
         if dec:
             inv_eff, overhead = _fit_decode([(1 / p.tg_pred, p.layers, 1 / p.tg_meas)
                                              for p in dec])
             fitted[f"{prefix}_bandwidth"] = round(1 / inv_eff, 3)
             fitted[f"{prefix}_layer_overhead_us"] = round(overhead * 1e6, 1)
-        pre = [p.pp_meas / p.pp_pred for p in pts if p.pp_meas and p.pp_pred]
+    for backend in sorted({p.backend for p in points}):
+        pre = [p.pp_meas / p.pp_pred for p in points if p.backend == backend and p.pp_meas
+               and p.pp_pred]
         if pre:
-            fitted[f"{prefix}_compute"] = round(statistics.median(pre), 3)
+            fitted[compute_field(backend)] = round(statistics.median(pre), 3)
     by_device: dict[str, list[float]] = {}
     for p in points:
         if p.device and p.pp_meas and p.pp_pred:
@@ -259,7 +271,7 @@ def depth_points(records: list[dict], eff: Efficiency) -> list[DepthPoint]:
     and MoE depth-0 speeds predicted outright (prompt processing only with a preset)."""
     points = []
     for zero, deeper in depth_series(records):
-        backend = _BACKEND_KEY[zero["software"]["backend"]]
+        backend = backend_of(zero)
         moe = bool(_model(zero).active_params_b)
         res0 = zero["results"]
         if moe and res0["tg_tps"]:
@@ -286,7 +298,7 @@ def _grid_fit(records: list[dict], eff: Efficiency, field: str, values, backend:
               metric: str, dense_only: bool = False) -> float:
     """The value of `field` minimizing the squared log error of the backend's points."""
     records = [r for r in records if r["run"].get("tool") == "llama-bench"
-               and _BACKEND_KEY.get(r["software"]["backend"]) == backend]
+               and backend_of(r) == backend]
     best = None
     for v in values:
         pts = [p for p in depth_points(records, replace(eff, **{field: v}))
@@ -362,7 +374,7 @@ class BatchPoint:
 def usable_batched(rec: dict) -> bool:
     """llama-batched-bench runs on a known single GPU or chip, fully offloaded, each
     sequence with its own prompt."""
-    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    backend = backend_of(rec)
     model = _model(rec)
     run = rec["run"]
     if ("batched" not in rec["flags"] or _EXCLUDE - {"batched"} & set(rec["flags"])
@@ -396,7 +408,7 @@ def batch_points(records: list[dict], eff: Efficiency) -> list[BatchPoint]:
         n, one = r["run"]["n_parallel"], single.get(key(r))
         if n == 1 or one is None:
             continue
-        backend = _BACKEND_KEY[r["software"]["backend"]]
+        backend = backend_of(r)
         p = BatchPoint(r["id"], backend, f"{r['hardware']['gpu_preset']}|{backend}", n,
                        bool(_model(r).active_params_b),
                        r["results"]["tg_tps"] / one["results"]["tg_tps"])
@@ -411,7 +423,7 @@ def _fit_batch(records: list[dict], backend: str, eff: Efficiency) -> float:
     """batch_compute minimizing the squared log error of the speed-ups (dense models)."""
     field = f"{backend_prefix(backend)}_batch_compute"
     records = [r for r in records if usable_batched(r) and not _model(r).active_params_b
-               and _BACKEND_KEY[r["software"]["backend"]] == backend]
+               and backend_of(r) == backend]
     best = None
     for c in (k / 100 for k in range(5, 301)):
         pts = [p for p in batch_points(records, replace(eff, **{field: c})) if p.pred]

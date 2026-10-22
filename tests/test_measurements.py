@@ -36,16 +36,18 @@ class CalibrationTests(unittest.TestCase):
 
     # Median and worst-case relative error allowed per backend and metric.
     LIMITS = {"tg": {"median": 0.08, "max": 0.60}, "pp": {"median": 0.10, "max": 1.5}}
-    PP_MEDIAN = {"sycl": 0.35}  # Intel results mix FP16 and FP32 builds
+    # FP16 SYCL builds gain much more from flash attention, which the model ignores.
+    PP_MEDIAN = {"sycl-f16": 0.35}
+    MIN_N = {"sycl": 5, "sycl-f16": 5}  # the SYCL results are split by build
 
     def test_defaults_match_measurements(self):
         stats = calibrate.summary(calibrate.evaluate(RECORDS, Efficiency()))
-        for backend in ("cuda", "metal", "rocm", "vulkan", "sycl", "cpu"):
+        for backend in ("cuda", "metal", "rocm", "vulkan", "sycl", "sycl-f16", "cpu"):
             for metric, limit in self.LIMITS.items():
                 s = stats[f"{backend}/{metric}"]
                 median = self.PP_MEDIAN.get(backend, limit["median"]) if metric == "pp" \
                     else limit["median"]
-                self.assertGreaterEqual(s["n"], 10, backend)
+                self.assertGreaterEqual(s["n"], self.MIN_N.get(backend, 10), backend)
                 self.assertLess(s["median"], median, f"{backend}/{metric}")
                 self.assertLess(s["max"], limit["max"], f"{backend}/{metric}")
 
@@ -81,6 +83,14 @@ class CalibrationTests(unittest.TestCase):
         self.assertLess(stats["cuda/moe_pp"]["max"], 0.3)
         # The benches/ runs use other test sizes and stay out of the main fit.
         self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "tool" in r["run"]))
+
+    def test_sycl_records_name_their_build(self):
+        sycl = [r for r in RECORDS if r["software"]["backend"] == "SYCL"]
+        self.assertTrue(sycl)
+        self.assertEqual({calibrate.backend_of(r) for r in sycl}, {"sycl", "sycl-f16"})
+        sw = {k: v for k, v in sycl[0]["software"].items() if k != "sycl_f16"}
+        self.assertIn("SYCL records need software.sycl_f16 (true, false or null)",
+                      measurements.validate(dict(sycl[0], software=sw)))
 
     def test_batched_records_need_their_run_fields(self):
         rec = next(r for r in RECORDS if "batched" in r["flags"])

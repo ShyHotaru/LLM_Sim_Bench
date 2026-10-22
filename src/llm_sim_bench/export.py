@@ -63,6 +63,11 @@ GOLDEN_CASES = [
      "qwen3-32b", "Q6_K", 32768, 16),
     ({"kind": "unified", "chip": "apple-m1-8c", "memory_gb": 8},
      "llama-3.2-3b", "Q4_0", 4096, 16),
+    # Both SYCL builds on a measured Intel GPU.
+    ({"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 32, "ram_bandwidth_gbps": 51.2,
+      "gpus": ["arc-b580-12gb"]}, "llama-3.1-8b", "Q4_K_M", 8192, 16),
+    ({"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 32, "ram_bandwidth_gbps": 51.2,
+      "gpus": ["arc-b580-12gb"], "backend": "sycl-f16"}, "llama-3.1-8b", "Q4_K_M", 8192, 16),
     # Request slots (the sixth value): KV cache for each slot, batched decode steps.
     ({"kind": "unified", "chip": "nvidia-dgx-spark", "memory_gb": 128},
      "qwen2.5-7b", "Q8_0", 8192, 16, 8),
@@ -249,7 +254,8 @@ def calibration_data(records: list[dict]) -> dict:
         "batch_devices": calibrate.batch_devices(batch),
         "measurements": [{
             "id": r["id"], "gpu": r["hardware"]["gpu"], "preset": r["hardware"]["gpu_preset"],
-            "backend": r["software"]["backend"], "flash_attn": r["software"]["flash_attn"],
+            "backend": r["software"]["backend"], "sim_backend": calibrate.backend_of(r),
+            "flash_attn": r["software"]["flash_attn"],
             "model": r["model"]["name"], "quant": r["model"]["quant"],
             "n_prompt": r["run"]["n_prompt"], "n_gen": r["run"]["n_gen"],
             "pp_tps": r["results"]["pp_tps"], "tg_tps": r["results"]["tg_tps"],
@@ -258,7 +264,8 @@ def calibration_data(records: list[dict]) -> dict:
         } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]
             and "batched" not in r["flags"]
             and r["model"]["name"] in MODEL_PRESETS and r["model"]["quant"] in QUANT_BPW
-            and r["run"]["n_prompt"] and r["run"]["n_gen"] and not r["run"]["depth"]],
+            and r["run"]["n_prompt"] and r["run"]["n_gen"] and not r["run"]["depth"]
+            and calibrate.backend_of(r)],
         "cpu_measurements": cpu_measurements(records),
         "batched_measurements": batched_measurements(records),
     }
@@ -274,7 +281,8 @@ def batched_measurements(records: list[dict]) -> list[dict]:
         shortest[k] = min(shortest.get(k, r["run"]["n_prompt"]), r["run"]["n_prompt"])
     return [{
         "id": r["id"], "preset": r["hardware"]["gpu_preset"], "backend": r["software"]["backend"],
-        "model": r["model"]["name"], "sim_model": calibrate._model(r).name,
+        "sim_backend": calibrate.backend_of(r), "model": r["model"]["name"],
+        "sim_model": calibrate._model(r).name,
         "quant": r["model"]["quant"], "n_prompt": r["run"]["n_prompt"], "n_gen": r["run"]["n_gen"],
         "n_parallel": r["run"]["n_parallel"], "pp_tps": r["results"]["pp_tps"],
         "tg_tps": r["results"]["tg_tps"], "source": r["source"]["url"],
