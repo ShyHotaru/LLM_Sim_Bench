@@ -2,6 +2,7 @@ import { buildSystem, estimate, ramBandwidthGbps } from "./estimator.js";
 import {
   LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
 } from "./i18n.js";
+import { benchGenTps, groupCpuRuns } from "./measured.js";
 import { Schedule } from "./mock.js";
 import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
@@ -20,6 +21,8 @@ function ramKinds() {
 }
 const CONTEXTS = [2048, 4096, 8192, 16384, 32768, 65536, 131072];
 const KV_BITS = [16, 8, 4];
+// Tokens already in the KV cache when playback starts (llama-bench -d).
+const DEPTHS = [0, 4096, 8192, 16384, 32768, 65536, 131072];
 const MAX_CONFIGS = 2;
 const LETTERS = "AB";
 
@@ -46,6 +49,7 @@ const DEFAULT_STATE = {
   configs: [DEFAULT_CONFIG],
   prompt: 1000,
   maxTokens: 300,
+  depth: 0,
 };
 
 let P; // presets.json
@@ -232,6 +236,7 @@ function loadState() {
     configs: configs.length ? configs : [sanitizeConfig(DEFAULT_CONFIG)],
     prompt: clamp(src.prompt, 1, 200000, DEFAULT_STATE.prompt),
     maxTokens: clamp(src.maxTokens, 1, 4000, DEFAULT_STATE.maxTokens),
+    depth: DEPTHS.includes(src.depth) ? src.depth : DEFAULT_STATE.depth,
     text: TEXTS.texts.some((x) => x.id === src.text) ? src.text : defaultTextId(),
   };
 }
@@ -358,7 +363,7 @@ function renderResult(cfg) {
   else if (gpuLayers < n) badge = h("p", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
 
   const ttft = state.prompt / est.prefill_tps;
-  const gen = genTime(est, state.prompt, state.maxTokens);
+  const gen = genTime(est, state.depth + state.prompt, state.maxTokens);
   const notes = localizedNotes(cfg, system, est);
   const result = h("div", { class: "result" },
     badge,
@@ -474,6 +479,7 @@ function renderBars(system, est) {
 }
 
 function renderMeasured(cfg) {
+  if (isPcLike(cfg) && !cfg.gpus.length) return renderCpuMeasured(cfg);
   const preset = !isPcLike(cfg) ? activeChip(cfg).name : (cfg.gpus.length === 1 ? cfg.gpus[0] : null);
   const rows = preset ? P.measurements.filter((m) => m.preset === preset) : [];
   if (!rows.length) return null;
@@ -487,16 +493,53 @@ function renderMeasured(cfg) {
       h("td", {}, fmtTps(m.tg_tps)), h("td", {}, fmtTps(tgEst)),
       h("td", {}, fmtTps(m.pp_tps)), h("td", {}, fmtTps(est.prefill_tps)));
   });
+  return measuredTable(rows.length,
+    h("p", { style: "margin:0 0 6px" }, `${t("measured.intro")} `, h("a", { href: rows[0].source }, t("measured.source"))),
+    t("measured.quant"), body,
+    rows.some((m) => m.old_build) ? h("p", { class: "old-build" }, t("measured.oldBuildNote")) : null);
+}
+
+function measuredTable(n, intro, firstHead, body, footer) {
   return h("details", { class: "measured-wrap" },
-    h("summary", {}, t("measured.summary", { n: rows.length })),
+    h("summary", {}, t("measured.summary", { n })),
     h("div", { class: "measured" },
-      h("p", { style: "margin:0 0 6px" }, `${t("measured.intro")} `,
-        h("a", { href: rows[0].source }, t("measured.source"))),
+      intro,
       h("table", {},
-        h("thead", {}, h("tr", {}, h("th", {}, t("measured.quant")), h("th", {}, t("measured.genReal")),
+        h("thead", {}, h("tr", {}, h("th", {}, firstHead), h("th", {}, t("measured.genReal")),
           h("th", {}, t("measured.genSim")), h("th", {}, t("measured.promptReal")), h("th", {}, t("measured.promptSim")))),
         h("tbody", {}, body)),
-      rows.some((m) => m.old_build) ? h("p", { class: "old-build" }, t("measured.oldBuildNote")) : null));
+      footer));
+}
+
+// CPU-only runs on the selected CPU. Each row is simulated with the memory that run used,
+// not the RAM chosen in the form.
+function renderCpuMeasured(cfg) {
+  const { groups, sources } = groupCpuRuns(P.cpu_measurements.filter((m) => m.preset === cfg.cpu));
+  if (!groups.length) return null;
+  const body = groups.map((g) => {
+    const system = buildSystem({ kind: "pc", cpu: cfg.cpu, ram_gb: 1024,
+                                 ram_bandwidth_gbps: g.ram_bandwidth_gbps || 1, gpus: [] }, P);
+    const est = estimate(system, P.models.find((x) => x.name === g.sim_model), g.quant,
+                         Math.max(g.n_prompt || 0, g.n_gen || 0, 1), 16, P.efficiency, P.quant_bpw);
+    const memory = g.dimms && g.mem_mts ? `${g.mem_mts} MT/s × ${g.dimms}` : t("measured.memUnknown");
+    const test = [g.n_prompt ? `pp${g.n_prompt}` : null, g.n_gen ? `tg${g.n_gen}` : null].filter(Boolean).join(" ");
+    const meta = [memory, g.threads ? t("measured.threads", { n: g.threads }) : null, test,
+                  `×${g.n}`, `[${g.sources.join(",")}]`].filter(Boolean).join(" · ");
+    const has = (v) => v != null;
+    return h("tr", {},
+      h("td", {}, `${g.model} · ${g.quant}`, h("span", { class: "run-meta" }, meta)),
+      h("td", {}, has(g.tg_tps) ? fmtTps(g.tg_tps) : "–"),
+      h("td", {}, has(g.tg_tps) ? fmtTps(benchGenTps(est, g.n_gen)) : "–"),
+      h("td", {}, has(g.pp_tps) ? fmtTps(g.pp_tps) : "–"),
+      h("td", {}, has(g.pp_tps) ? fmtTps(est.prefill_tps) : "–"));
+  });
+  const key = `${cfg.cpu}|cpu`;
+  const fitted = key in P.efficiency.device_bandwidth || key in P.efficiency.device_compute;
+  return measuredTable(groups.length,
+    h("p", { style: "margin:0 0 6px" }, t("measured.cpuIntro"), fitted ? ` ${t("measured.cpuFitted")}` : null),
+    t("measured.model"), body,
+    h("p", { class: "sources" }, `${t("measured.sources")} `,
+      sources.flatMap((url, i) => [i ? " " : null, h("a", { href: url }, `[${i + 1}]`)])));
 }
 
 // ---------- events ----------
@@ -654,9 +697,22 @@ function renderStreams() {
       h("div", { class: "stream-head" },
         h("strong", {}, state.configs.length > 1 ? h("span", { class: "tag" }, `[${LETTERS[i]}] `) : null, label),
         h("span", { class: "tok" }, tok),
-        h("span", { class: "stats" })),
+        h("span", { class: "stats" }),
+        h("span", { class: "problem" }, contextProblem(cfg, state.depth + state.prompt + state.maxTokens))),
       h("div", { class: "stream-out waiting", "aria-live": "off" }, t("mock.ready")));
   }));
+  document.getElementById("depth-note").hidden = !state.depth;
+}
+
+// Only a problem gets a line: a run that needs more context than the configuration has.
+function contextProblem(cfg, need) {
+  return need > cfg.context
+    ? t("mock.overContext", { need: fmtInt(need), context: fmtInt(cfg.context) }) : "";
+}
+
+function renderDepthPicker() {
+  document.getElementById("depth").replaceChildren(...DEPTHS.map((d) => h("option",
+    { value: String(d), selected: d === state.depth }, d ? t("option.context", { k: d / 1024 }) : t("mock.depthNone"))));
 }
 
 async function startPlayback() {
@@ -675,14 +731,16 @@ async function startPlayback() {
       const turns = entry.kind === "chat"
         ? content.map((x) => ({ user: chunkText(x.user, tk.value), assistant: chunkText(x.assistant, tk.value) }))
         : [{ user: null, assistant: chunkText(content, tk.value) }];
-      streams.push({
-        el, est, shown: 0, block: null, chat: entry.kind === "chat",
-        schedule: new Schedule({ turns, promptTokens: state.prompt, maxTokens: state.maxTokens,
-                                 prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i }),
-      });
+      const schedule = new Schedule({
+        turns, promptTokens: state.prompt, maxTokens: state.maxTokens, cachedTokens: state.depth,
+        prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i });
+      streams.push({ el, est, shown: 0, block: null, chat: entry.kind === "chat", schedule });
+      // The real text length is known now; a conversation can need more than one reply.
+      el.querySelector(".problem").textContent = contextProblem(cfg, schedule.events.at(-1)?.fill ?? 0);
       const out = el.querySelector(".stream-out");
       out.replaceChildren();
       out.classList.remove("waiting");
+      if (state.depth) out.append(h("div", { class: "cached" }, t("mock.depthCached", { n: fmtInt(state.depth) })));
     } catch (e) {
       el.querySelector(".stats").textContent = e.message;
     }
@@ -759,11 +817,14 @@ function tick() {
       const genElapsed = now - turn.firstAt;
       const rate = done.length > 1 && genElapsed > 0 ? (done.length - 1) / genElapsed : 0;
       const chars = done.slice(1).reduce((a, ev) => a + Array.from(ev.text).length, 0);
+      const fill = n ? sch.events[n - 1].fill : state.depth + state.prompt;
+      // With a pre-filled context, show how much slower generation is than when empty.
+      const slower = state.depth ? Math.round(100 * (1 - s.est.decodeTpsAt(fill) / s.est.decode_tps_empty)) : 0;
       stats.textContent = turnLabel + t("mock.stats", {
         ttft: fmtTime(turn.ttft), n: done.length, total: turn.tokens,
         rate: rate ? fmtTps(rate) : "–", cps: rate ? fmtTps(chars / genElapsed) : "–",
-        fill: fmtInt(n ? sch.events[n - 1].fill : state.prompt),
-      });
+        fill: fmtInt(fill),
+      }) + (slower > 0 ? ` · ${t("mock.depthSlowdown", { pct: slower })}` : "");
     }
     if (n < sch.events.length) running = true;
   }
@@ -775,6 +836,7 @@ function readMockInputs() {
   const clamp = (el, lo, hi) => Math.min(hi, Math.max(lo, Math.round(Number(el.value) || lo)));
   state.prompt = clamp(document.getElementById("prompt-tokens"), 1, 200000);
   state.maxTokens = clamp(document.getElementById("max-tokens"), 1, 4000);
+  state.depth = Number(document.getElementById("depth").value) || 0;
 }
 
 // ---------- part search ----------
@@ -863,6 +925,7 @@ async function switchLang(code) {
   await loadLocale(code);
   renderStatic();
   renderTextPicker();
+  renderDepthPicker();
   renderConfigs();
 }
 
@@ -918,7 +981,8 @@ async function main() {
   const configs = document.getElementById("configs");
   configs.addEventListener("click", onConfigEvent);
   configs.addEventListener("change", onConfigEvent);
-  for (const id of ["prompt-tokens", "max-tokens"]) {
+  renderDepthPicker();
+  for (const id of ["depth", "prompt-tokens", "max-tokens"]) {
     document.getElementById(id).addEventListener("change", () => {
       readMockInputs();
       changed();
@@ -936,6 +1000,7 @@ async function main() {
     stopPlayback();
     state = loadState();
     renderTextPicker();
+    renderDepthPicker();
     renderConfigs();
   });
 

@@ -104,7 +104,39 @@ def presets(records: list[dict]) -> dict:
         } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]
             and r["model"]["name"] in MODEL_PRESETS and r["model"]["quant"] in QUANT_BPW
             and r["run"]["n_prompt"] and r["run"]["n_gen"]],
+        "cpu_measurements": cpu_measurements(records),
     }
+
+
+def cpu_measurements(records: list[dict]) -> list[dict]:
+    """CPU-only runs the app can compare with the simulator, filtered like calibration.
+
+    A result is dropped when calibration ignores it (OpenBLAS prompt processing,
+    thread-limited decode) or when the run's memory speed is unknown (decode only).
+    """
+    rows = []
+    for r in records:
+        if r["software"]["backend"] != "CPU" or not calibrate.usable(r):
+            continue
+        hw, run, res, flags = r["hardware"], r["run"], r["results"], set(r["flags"])
+        bandwidth = calibrate._ram_bandwidth(hw)
+        pp = res["pp_tps"] if run["n_prompt"] and not calibrate._NO_PP & flags else None
+        tg = (res["tg_tps"] if run["n_gen"] and bandwidth and not calibrate._NO_TG & flags
+              else None)
+        if pp is None and tg is None:
+            continue
+        rows.append({
+            "id": r["id"], "cpu": hw["cpu"], "preset": hw["cpu_preset"],
+            "model": r["model"]["name"], "sim_model": calibrate._model(r).name,
+            "quant": r["model"]["quant"], "threads": hw.get("threads"),
+            "dimms": hw.get("dimms"), "mem_mts": hw.get("mem_mts"),
+            "ram_bandwidth_gbps": bandwidth,
+            "n_prompt": run["n_prompt"] if pp is not None else None,
+            "n_gen": run["n_gen"] if tg is not None else None,
+            "pp_tps": pp, "tg_tps": tg, "source": r["source"]["url"],
+            "commit": r["software"]["commit"],
+        })
+    return rows
 
 
 def _dump(obj) -> str:

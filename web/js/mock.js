@@ -15,7 +15,9 @@ function mulberry32(seed) {
 
 // turns: [{ user: pieces | null, assistant: pieces }], where pieces are token
 // texts from chunkText(). Before the first turn the context already holds
-// `promptTokens` tokens. Each turn prefills only its new user tokens (the
+// `cachedTokens` tokens, which cost no time (a conversation or prompt cache that is
+// already in the KV cache), followed by `promptTokens` tokens that the first turn
+// has to process. Each turn prefills only its new user tokens (the
 // earlier conversation stays in the KV cache, as llama.cpp's prompt cache does),
 // then generates up to `maxTokens` assistant tokens at the decode speed for the
 // current context fill. `pause` seconds separate turns.
@@ -23,13 +25,13 @@ function mulberry32(seed) {
 // Events: { t, role: "user" | "assistant", turn, text, fill }. A user event
 // carries the whole message; an assistant event is one token.
 export class Schedule {
-  constructor({ turns, promptTokens, maxTokens, prefillTps, decodeTps, pause = 1,
-                jitter = 0.05, seed = 1 }) {
+  constructor({ turns, promptTokens, maxTokens, prefillTps, decodeTps, cachedTokens = 0,
+                pause = 1, jitter = 0.05, seed = 1 }) {
     const rand = mulberry32(seed);
     this.events = [];
     this.turns = [];
     let t = 0;
-    let fill = promptTokens;
+    let fill = cachedTokens + promptTokens;
     turns.forEach((turn, k) => {
       if (k) t += pause;
       const start = t;
