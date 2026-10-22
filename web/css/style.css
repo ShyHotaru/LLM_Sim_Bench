@@ -24,6 +24,7 @@
   --term-muted: #6f9c7f;
   --term-accent: #39ff88;
   --term-user: #14221a;
+  --term-warn: #ffb547;
   --sans: "Noto Sans KR Variable", "Noto Sans JP Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono Variable", "Noto Sans KR Variable", "Noto Sans JP Variable", ui-monospace, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -354,6 +355,14 @@ button.link {
 .measured th:first-child, .measured td:first-child { text-align: left; }
 .measured .old-build { color: var(--muted); font-size: 0.75rem; }
 .measured p.old-build { margin: 6px 0 0; }
+.measured td { vertical-align: top; }
+/* Numbers and their headings stay on one line; a table too wide for the panel scrolls. */
+.measured { overflow-x: auto; }
+.measured table { overflow-wrap: normal; }
+.measured th:first-child { min-width: 9em; }
+.measured th:not(:first-child), .measured td:not(:first-child) { white-space: nowrap; }
+.measured .run-meta { display: block; font-size: 0.72rem; }
+.measured p.sources { margin: 6px 0 0; }
 
 details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; margin-top: 14px; }
 
@@ -370,6 +379,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 .mock-controls label > span { white-space: nowrap; }
 .mock-controls .text-picker { width: 260px; max-width: 100%; }
 .hint { color: var(--muted); font-size: 0.85rem; margin: 10px 0; }
+.caution { color: var(--warn); font-size: 0.85rem; margin: 10px 0; }
+.caution::before { content: "! "; content: "! " / ""; font-family: var(--mono); font-weight: 600; }
 .credits { font-size: 0.82rem; margin: 10px 0 0; }
 .credit-notes { color: var(--muted); }
 .credit-notes summary { margin: 4px 0 0; font-size: 0.8rem; }
@@ -403,6 +414,9 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
 .stream-head .tok { color: var(--term-muted); }
 .stream-head .stats { color: var(--term-accent); }
 .stream-head .tag { color: var(--term-accent); }
+.stream-head .problem { flex-basis: 100%; color: var(--term-warn); }
+.stream-head .problem:empty { display: none; }
+.stream-head .problem::before { content: "▲ "; content: "▲ " / ""; }
 .stream-out {
   height: 260px;
   overflow-y: auto;
@@ -426,7 +440,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; marg
   border-radius: 4px;
   padding: 6px 10px;
 }
-.stream-out .pending { color: var(--term-muted); }
+.stream-out .pending, .stream-out .cached { color: var(--term-muted); }
 /* A cursor follows the newest text while playback runs. */
 .streams.live .msg:last-child .body::after {
   content: "█";

@@ -52,7 +52,10 @@ Note      8/48 layers offloaded to CPU
 RAM), a Mac, a unified-memory PC (DGX Spark, Ryzen AI Max) or a server (data-center GPUs and
 server CPUs), a model and a quantization, and watch mock tokens stream at the simulated speed.
 Lists show the newest parts first, and a search box finds any GPU, CPU or chip and switches to
-the right tab. Add a second configuration to compare both side by side. The whole setup is
+the right tab. Add a second configuration to compare both side by side. Playback can start with
+the context already partly filled (cached, so it adds no prompt-processing time) to feel the
+slowdown at long contexts. Under each result, a check table compares the simulator with real
+llama.cpp results for the selected GPU, chip or, in a CPU-only setup, CPU. The whole setup is
 kept in the URL, so a link reproduces it. The interface is available in English, Korean and
 Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style URL parameter, or
 the picker in the header.
@@ -177,8 +180,8 @@ Before a public release:
 
 Calibration data:
 
-- Long-context results (`llama-bench -d`): decode slowdown and prompt processing at depth are
-  modeled but not calibrated.
+- Long-context results (`llama-bench -d`): the decode slowdown at depth is modeled but not
+  calibrated, and prompt processing does not slow down with depth in the model yet.
 - Larger models and multi-GPU layer splits (all GPU data is Llama 2 7B on one GPU).
 - Mixture-of-experts routing overhead (currently excluded from calibration and flagged).
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
@@ -191,8 +194,6 @@ Calibration data:
 
 Features:
 
-- Start playback at a given context fill to feel the slowdown at long contexts.
-- Show CPU-only measurements in the benchmark check table.
 - Concurrent-request simulation and report export (JSON/Markdown).
 
 ## Development

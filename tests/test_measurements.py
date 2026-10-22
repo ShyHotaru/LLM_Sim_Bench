@@ -70,6 +70,21 @@ class ExportTests(unittest.TestCase):
                          "run `llmsimbench export-web` to regenerate the web data")
 
 
+    def test_cpu_measurements_follow_calibration_filters(self):
+        from llm_sim_bench import calibrate, export
+
+        rows = export.cpu_measurements(RECORDS)
+        by_id = {r["id"]: r for r in RECORDS}
+        self.assertGreater(len(rows), 100)
+        for row in rows:
+            rec = by_id[row["id"]]
+            self.assertTrue(calibrate.usable(rec), row["id"])
+            point = calibrate.predict(rec, calibrate.Efficiency())
+            # Exactly the results calibration compares with a prediction are shown.
+            self.assertEqual(row["pp_tps"], point.pp_meas if point.pp_pred else None, row["id"])
+            self.assertEqual(row["tg_tps"], point.tg_meas if point.tg_pred else None, row["id"])
+
+
 class WebServerTests(unittest.TestCase):
     def test_serves_app_from_any_working_directory(self):
         import os
