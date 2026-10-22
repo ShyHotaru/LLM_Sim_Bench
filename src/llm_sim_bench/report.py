@@ -18,7 +18,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
-from .estimator import Efficiency, Estimate, add_in_order, estimate, parallel_levels
+from .estimator import (Efficiency, Estimate, add_in_order, estimate, parallel_levels,
+                        without_flash_attention)
 from .profiles import CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRESETS, System
 
 SCHEMA = "llmsimbench.report/1"
@@ -190,8 +191,9 @@ def gpu_checks(system: System, kv_bits: int, data: dict) -> dict | None:
         return None
     out = []
     for m in rows:
+        eff = without_flash_attention(Efficiency()) if m["flash_attn"] is False else Efficiency()
         est = estimate(_with_backend(system, m["sim_backend"]), MODEL_PRESETS[m["model"]],
-                       m["quant"], m["n_prompt"] + m["n_gen"], kv_bits)
+                       m["quant"], m["n_prompt"] + m["n_gen"], kv_bits, eff=eff)
         out.append({
             "backend": BACKEND_NAMES[m["sim_backend"]], "model": m["model"], "quant": m["quant"],
             "flash_attn": m["flash_attn"], "old_build": m["old_build"],

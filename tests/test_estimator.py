@@ -131,6 +131,23 @@ class ParallelTests(unittest.TestCase):
         self.assertAlmostEqual(grow[0], grow[1], delta=1e-6 * grow[0])
         self.assertGreater(grow[0], 0)
 
+    def test_flash_attention_off_scales_prompt_compute(self):
+        from llm_sim_bench.estimator import Efficiency, without_flash_attention
+
+        eff = Efficiency()
+        off = without_flash_attention(eff)
+        self.assertAlmostEqual(off.gpu_compute, eff.gpu_compute * eff.gpu_compute_no_fa)
+        self.assertAlmostEqual(off.sycl_f16_compute,
+                               eff.sycl_f16_compute * eff.sycl_f16_compute_no_fa)
+        key = "rtx4090-24gb|cuda"
+        self.assertAlmostEqual(off.device_compute[key],
+                               eff.device_compute[key] * eff.gpu_compute_no_fa)
+        self.assertEqual(off.gpu_bandwidth, eff.gpu_bandwidth)  # decode is unchanged
+        system = System(CPU, RAM64, (GPU_PRESETS["rtx4090-24gb"],))
+        on_est, off_est = estimate(system, LLAMA8, eff=eff), estimate(system, LLAMA8, eff=off)
+        self.assertLess(off_est.prefill_tps, on_est.prefill_tps)
+        self.assertEqual(off_est.decode_tps_empty, on_est.decode_tps_empty)
+
     def test_context_sum(self):
         from llm_sim_bench.estimator import context_sum
 

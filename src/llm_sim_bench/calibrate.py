@@ -28,7 +28,7 @@ import statistics
 from dataclasses import dataclass, replace
 
 from .estimator import (DEVICE_CALIBRATION, BACKENDS, Efficiency, add_in_order, backend_prefix,
-                        compute_field, estimate)
+                        compute_field, estimate, without_flash_attention)
 from .profiles import (CPU, CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, System, ram_bandwidth_gbps, unified_system)
 
@@ -55,7 +55,8 @@ _STAND_IN = {"M2 Ultra": "apple-m2-ultra-76c"}
 _UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
                       for k, v in (("bandwidth", 1), ("layer_overhead_us", 0))},
-                   **{compute_field(b): 1 for b in BACKENDS})
+                   **{compute_field(b): 1 for b in BACKENDS},
+                   **{f"{compute_field(b)}_no_fa": 1 for b in BACKENDS})
 
 
 def backend_of(rec: dict) -> str | None:
@@ -78,6 +79,7 @@ class Point:
     tg_pred: float | None = None
     device: str = ""  # "<preset>|<backend>", e.g. "rtx4090-24gb|cuda" or "ryzen9-7950x|cpu"
     tg_x: float | None = None  # decode seconds per token at 100 % bandwidth (no overhead)
+    no_fa: bool = False  # flash attention off (null in the record counts as llama.cpp's default)
 
     @property
     def pp_err(self) -> float | None:
@@ -181,8 +183,10 @@ def predict(rec: dict, eff: Efficiency) -> Point:
     backend = backend_of(rec)
     run, res = rec["run"], rec["results"]
     n_prompt, n_gen = run["n_prompt"] or 0, run["n_gen"] or 0
+    no_fa = rec["software"]["flash_attn"] is False
     est = estimate(system_for(rec), model, rec["model"]["quant"],
-                   context=run["depth"] + max(n_prompt, n_gen, 1), eff=eff)
+                   context=run["depth"] + max(n_prompt, n_gen, 1),
+                   eff=without_flash_attention(eff) if no_fa else eff)
     depth = run["depth"]
     on_device = backend == "cpu" or all(p.is_gpu for p in est.placements)
     tg = None
@@ -197,7 +201,7 @@ def predict(rec: dict, eff: Efficiency) -> Point:
                  None if _NO_TG & flags else res["tg_tps"],
                  n_prompt / est.prefill_time(n_prompt, depth) if on_device and n_prompt
                  else None, tg, device,
-                 1 / tg if tg else None)
+                 1 / tg if tg else None, no_fa)
 
 
 def fit(records: list[dict]) -> Efficiency:
@@ -213,15 +217,19 @@ def fit(records: list[dict]) -> Efficiency:
                                              for p in dec])
             fitted[f"{prefix}_bandwidth"] = round(1 / inv_eff, 3)
             fitted[f"{prefix}_layer_overhead_us"] = round(overhead * 1e6, 1)
+    # Prompt compute with flash attention on; runs without it count through their backend's
+    # ratio, fitted to runs measured both ways.
+    no_fa = _fa_ratios(records)
+    fitted.update({f"{compute_field(b)}_no_fa": r for b, r in no_fa.items()})
+    ratio = lambda p: p.pp_meas / p.pp_pred / (no_fa.get(p.backend, 1.0) if p.no_fa else 1)  # noqa: E731
     for backend in sorted({p.backend for p in points}):
-        pre = [p.pp_meas / p.pp_pred for p in points if p.backend == backend and p.pp_meas
-               and p.pp_pred]
+        pre = [ratio(p) for p in points if p.backend == backend and p.pp_meas and p.pp_pred]
         if pre:
             fitted[compute_field(backend)] = round(statistics.median(pre), 3)
     by_device: dict[str, list[float]] = {}
     for p in points:
         if p.device and p.pp_meas and p.pp_pred:
-            by_device.setdefault(p.device, []).append(p.pp_meas / p.pp_pred)
+            by_device.setdefault(p.device, []).append(ratio(p))
     devices = {d: round(statistics.median(v), 3) for d, v in sorted(by_device.items())}
     # CPUs: bandwidth efficiency that reproduces each measured decode speed, given the
     # fitted per-layer overhead.
@@ -240,6 +248,24 @@ def fit(records: list[dict]) -> Efficiency:
                            if not p.moe and p.pred}):
         batch[f"{backend_prefix(backend)}_batch_compute"] = _fit_batch(records, backend, base)
     return replace(base, **batch)
+
+
+def _fa_ratios(records: list[dict]) -> dict[str, float]:
+    """Per backend: median prompt speed with flash attention off over on, from runs that
+    differ only in it (same source, device, build, model, quantization and host)."""
+    key = lambda r: (r["source"]["url"], r["hardware"]["gpu"], r["hardware"].get("cpu"),  # noqa: E731
+                     r["software"]["commit"], backend_of(r), r["model"]["name"],
+                     r["model"]["quant"], r["run"]["n_prompt"])
+    runs: dict[tuple, dict[bool, float]] = {}
+    for r in records:
+        fa, pp = r["software"]["flash_attn"], r["results"]["pp_tps"]
+        if usable(r) and fa is not None and pp and not _NO_PP & set(r["flags"]):
+            runs.setdefault(key(r), {})[fa] = pp
+    by_backend: dict[str, list[float]] = {}
+    for k, v in runs.items():
+        if True in v and False in v:
+            by_backend.setdefault(k[4], []).append(v[False] / v[True])
+    return {b: round(statistics.median(v), 2) for b, v in sorted(by_backend.items())}
 
 
 @dataclass

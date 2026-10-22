@@ -37,8 +37,7 @@ class CalibrationTests(unittest.TestCase):
     # Median and worst-case relative error allowed per backend and metric.
     # The worst decode result is a 128-core EPYC 9754 run on OpenBenchmarking (+65 %).
     LIMITS = {"tg": {"median": 0.08, "max": 0.70}, "pp": {"median": 0.10, "max": 1.5}}
-    # FP16 SYCL builds gain much more from flash attention, which the model ignores.
-    PP_MEDIAN = {"sycl-f16": 0.35}
+    PP_MEDIAN: dict[str, float] = {}
     MIN_N = {"sycl": 5, "sycl-f16": 5}  # the SYCL results are split by build
 
     def test_defaults_match_measurements(self):
@@ -88,8 +87,9 @@ class CalibrationTests(unittest.TestCase):
         multi = calibrate.multi_gpu_summary(RECORDS, Efficiency())
         self.assertGreaterEqual(multi["cuda/multi_tg"]["n"], 5)
         self.assertLess(multi["cuda/multi_tg"]["max"], 0.25)
-        # F16 prompts run slower per FLOP than Q4_0 ones, which the model does not distinguish.
-        self.assertLess(multi["cuda/multi_pp"]["max"], 0.25)
+        # F16 prompts run slower per FLOP than Q4_0 ones, which the model does not distinguish,
+        # and the RTX 4090 slows down less with depth than the CUDA average.
+        self.assertLess(multi["cuda/multi_pp"]["max"], 0.3)
         self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "split_mode" in r["run"]))
         # The benches/ runs use other test sizes and stay out of the main fit.
         self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "tool" in r["run"]))

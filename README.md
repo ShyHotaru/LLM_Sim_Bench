@@ -200,21 +200,27 @@ suite fails if the defaults drift from the data. Current median error:
 
 | Backend | Decode | Prefill |
 | --- | --- | --- |
-| CUDA (55 results) | 6.0 % | 6.0 % |
-| ROCm (31) | 5.1 % | 3.3 % |
-| Vulkan (62) | 7.6 % | 5.3 % |
-| SYCL, default FP32 build (9) | 2.0 % | 4.2 % |
-| SYCL, FP16 build (12) | 2.1 % | 25 % |
+| CUDA (55 results) | 6.0 % | 1.1 % |
+| ROCm (31) | 5.1 % | 1.2 % |
+| Vulkan (62) | 7.6 % | 2.6 % |
+| SYCL, default FP32 build (9) | 2.0 % | 0.5 % |
+| SYCL, FP16 build (12) | 2.1 % | 1.8 % |
 | Metal (18: M5 family, M6, M1 Ultra) | 3.4 % | 0.9 % |
 | CPU (174 decode, 29 prefill) | 1.0 % | 5.2 % |
+
+Prompt processing depends on flash attention, which barely changes decode. Estimates assume
+llama.cpp's default (`-fa auto`, on where supported); each backend also has a factor for runs
+without it, fitted to results measured both ways: without flash attention prompts run at 0.89
+(CUDA), 0.95 (ROCm), 0.92 (Vulkan) and 0.86 (SYCL) times the speed, but at 2.05 times on SYCL
+FP16 builds.
 
 The MI300X results come from a virtual function on a cloud host and reach far less of the
 GPU's bandwidth than the model expects (a 70B model decodes about a third slower than
 estimated), so they are shown in the app's check table but not fitted.
 
-Intel GPUs have two SYCL choices: llama.cpp's default build and one with `GGML_SYCL_F16=ON`,
-whose prompt processing is about 2.7 times faster (more without flash attention, less with
-it; the model does not distinguish the two, hence the larger error).
+Intel GPUs have two SYCL choices: llama.cpp's default build and one with `GGML_SYCL_F16=ON`.
+With flash attention the FP16 build processes prompts only about 1.25 times as fast; without
+it, about 3 times as fast as the default build.
 
 Long contexts and mixture-of-experts models are fitted to `llama-bench` runs at depths of
 up to 32768 tokens in llama.cpp's `benches/` folder, DGX Spark (CUDA) and an M2 Ultra
@@ -229,9 +235,9 @@ Other backends have no such measurements and keep the plain model (no extra cost
 the KV cache, attention at the full compute rate, no MoE overhead); the app says so.
 
 Several GPUs split by layers are checked, not fitted: on two and four RTX 4090s the estimate
-is 10 % slow for decode (median; 13 % at most); short prompts are within 14 % for Q4_0 but
-16–22 % fast for F16, whose prompts reach less of the GPU's compute (the model does not
-distinguish quantizations there). Long prompts on several GPUs are faster than estimated because llama.cpp pipelines
+is 10 % slow for decode (median; 13 % at most); short prompts are 5–20 % fast for Q4_0
+(more at depth) and 22–29 % fast for F16, whose prompts reach less of the GPU's compute (the
+model does not distinguish quantizations there). Long prompts on several GPUs are faster than estimated because llama.cpp pipelines
 them across the GPUs, which the model does not.
 
 Concurrent decode is fitted to how the total speed grows from one sequence to 2–32 in

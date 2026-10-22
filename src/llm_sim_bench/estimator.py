@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .profiles import QUANT_BPW, QUANT_SHARED_BPW, Model, System
@@ -66,23 +66,33 @@ class Efficiency:
     """
 
     gpu_bandwidth: float = 0.83
-    gpu_compute: float = 0.48
+    gpu_compute: float = 0.52
     gpu_layer_overhead_us: float = 36.0
     metal_bandwidth: float = 0.96
     metal_compute: float = 0.65
     metal_layer_overhead_us: float = 77.0
     rocm_bandwidth: float = 0.95
-    rocm_compute: float = 0.32
+    rocm_compute: float = 0.33
     rocm_layer_overhead_us: float = 114.0
     vulkan_bandwidth: float = 0.79
-    vulkan_compute: float = 0.38
+    vulkan_compute: float = 0.41
     vulkan_layer_overhead_us: float = 22.0
     sycl_bandwidth: float = 0.84
-    sycl_compute: float = 0.07
+    sycl_compute: float = 0.08
     sycl_layer_overhead_us: float = 58.0
     # SYCL builds with GGML_SYCL_F16=ON ("sycl-f16") share every SYCL factor but this one:
     # their prompt processing runs in FP16 and is about twice as fast as the default build.
-    sycl_f16_compute: float = 0.19
+    sycl_f16_compute: float = 0.10
+    # The *_compute factors describe prompt processing with flash attention on (llama.cpp's
+    # default, "auto"); without it, prompts reach *_compute_no_fa times that rate. Fitted to
+    # runs measured both ways; 1.0 without such pairs. Decode barely changes.
+    gpu_compute_no_fa: float = 0.89
+    metal_compute_no_fa: float = 1.0
+    rocm_compute_no_fa: float = 0.95
+    vulkan_compute_no_fa: float = 0.92
+    sycl_compute_no_fa: float = 0.86
+    sycl_f16_compute_no_fa: float = 2.05
+    cpu_compute_no_fa: float = 1.0
     cpu_bandwidth: float = 0.75
     cpu_compute: float = 0.31
     cpu_layer_overhead_us: float = 118.0
@@ -111,7 +121,7 @@ class Efficiency:
     vulkan_moe_layer_overhead_us: float = 0.0
     sycl_moe_layer_overhead_us: float = 0.0
     cpu_moe_layer_overhead_us: float = 0.0
-    gpu_moe_compute: float = 0.52
+    gpu_moe_compute: float = 0.49
     metal_moe_compute: float = 1.0
     rocm_moe_compute: float = 1.0
     vulkan_moe_compute: float = 1.0
@@ -120,12 +130,12 @@ class Efficiency:
     # Share of the prompt-processing compute rate that each request beyond the first
     # reaches in a decode batch. Fitted for CUDA to llama-batched-bench results (DGX
     # Spark); the other backends use the CUDA value until they have measurements.
-    gpu_batch_compute: float = 0.42
-    metal_batch_compute: float = 0.42
-    rocm_batch_compute: float = 0.42
-    vulkan_batch_compute: float = 0.42
-    sycl_batch_compute: float = 0.42
-    cpu_batch_compute: float = 0.42
+    gpu_batch_compute: float = 0.40
+    metal_batch_compute: float = 0.40
+    rocm_batch_compute: float = 0.40
+    vulkan_batch_compute: float = 0.40
+    sycl_batch_compute: float = 0.40
+    cpu_batch_compute: float = 0.40
     vram_reserve_gb: float = 1.0  # CUDA context + compute buffers, per GPU
     ram_reserve_gb: float = 4.0  # OS and other processes
     unified_gpu_fraction: float = 0.75  # share of unified memory the GPU may wire
@@ -172,6 +182,15 @@ def backend_prefix(backend: str) -> str:
 def compute_field(backend: str) -> str:
     """Efficiency field of a backend's prompt-processing compute share."""
     return "sycl_f16_compute" if backend == "sycl-f16" else f"{backend_prefix(backend)}_compute"
+
+
+def without_flash_attention(eff: Efficiency) -> Efficiency:
+    """Efficiency for runs with flash attention off: every prompt compute share, per backend
+    and per device, scaled by its backend's *_compute_no_fa."""
+    scale = {b: getattr(eff, f"{compute_field(b)}_no_fa") for b in BACKENDS}
+    fields = {compute_field(b): getattr(eff, compute_field(b)) * scale[b] for b in BACKENDS}
+    devices = {k: v * scale[k.split("|")[1]] for k, v in eff.device_compute.items()}
+    return replace(eff, device_compute=devices, **fields)
 
 
 @dataclass

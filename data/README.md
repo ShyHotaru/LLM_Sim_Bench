@@ -89,8 +89,8 @@ guess.
 - CPU runs give DIMM counts rather than memory channels. Calibration assumes DIMMs fill
   separate channels first, up to the CPU's channel count.
 - Prompt-processing efficiency differs strongly between devices (data-center GPUs reach far
-  less of their peak at this batch size than consumer cards; FP16 SYCL builds process prompts
-  about 2.7 times faster than the default build), so every measured device gets its own factor
+  less of their peak at this batch size than consumer cards; flash attention speeds up prompts
+  on most backends but slows down FP16 SYCL builds, which is fitted per backend), so every measured device gets its own factor
   in `src/llm_sim_bench/device_calibration.json` (`llmsimbench calibrate --write`). The same file
   holds per-CPU decode bandwidth factors: single-CCD Ryzen parts reach about 0.6 of their
   DRAM bandwidth, dual-CCD parts about 0.85.

@@ -54,6 +54,17 @@ export function backendPrefix(backend) {
 // Efficiency field of a backend's prompt-processing compute share.
 const computeField = (backend) => (backend === "sycl-f16" ? "sycl_f16_compute" : `${backendPrefix(backend)}_compute`);
 
+// Efficiency for runs with flash attention off: every prompt compute share, per backend and
+// per device, scaled by its backend's *_compute_no_fa (see estimator.py).
+export function withoutFlashAttention(eff) {
+  const scale = Object.fromEntries(BACKENDS.map((b) => [b, eff[`${computeField(b)}_no_fa`]]));
+  const out = { ...eff };
+  for (const b of BACKENDS) out[computeField(b)] = eff[computeField(b)] * scale[b];
+  out.device_compute = Object.fromEntries(Object.entries(eff.device_compute || {})
+    .map(([k, v]) => [k, v * scale[k.split("|")[1]]]));
+  return out;
+}
+
 function forBackend(eff, backend) {
   const p = backendPrefix(backend);
   return [eff[`${p}_bandwidth`], eff[computeField(backend)], eff[`${p}_layer_overhead_us`] / 1e6];
