@@ -8,7 +8,7 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | File | Source | Records |
 | --- | --- | --- |
 | `measurements/llamacpp-scoreboards.jsonl` | llama.cpp community scoreboards: [CUDA (#15013)](https://github.com/ggml-org/llama.cpp/discussions/15013), [Apple Silicon (#4167)](https://github.com/ggml-org/llama.cpp/discussions/4167) | 191 |
-| `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`): M5 Pro, M5 Max, M5 Ultra, M6 | 15 |
+| `measurements/llamacpp-apple-2026.jsonl` | Apple Silicon scoreboard rows measured on 2026 builds (`c1d0e7a`, `60081bb`, `0c1e570`): M5 Pro, M5 Max, M5 Ultra, M6 | 15 |
 | `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021) | 46 |
 | `measurements/llamacpp-vulkan.jsonl` | [llama.cpp Vulkan scoreboard (#10879)](https://github.com/ggml-org/llama.cpp/discussions/10879) | 237 |
 | `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313); its opening post asks that the data not be used for commercial purposes (see [Licensing](#licensing)) | 104 |
@@ -63,10 +63,12 @@ guess.
   rows use a mix of 2025 builds.
 - The M5 row with a 10-core GPU was not recorded: the source lists four values without making
   clear which quantization columns they belong to.
-- M6 rows have no matching preset yet (`gpu_preset` is null).
+- The M6 rows follow the original comment (12-core GPU, 32 GB, build `0c1e570`); the
+  scoreboard table lists 8 GPU cores and commit `c1d0e7a` for them.
 - M5 GPU compute assumes Apple's "over 4x M4 peak GPU AI compute" for the Neural Accelerators;
   it matches measured prompt processing within about 10 %, except the four-die M5 Ultra, which
-  is about 40 % slower than that scaling suggests.
+  is about 20 % slower than that scaling suggests. The M6 assumes Apple's "nearly 30 percent"
+  more than the 10-core M5 and matches within about 6 %.
 - One CUDA row is flagged `suspect` (Quadro T1000 with flash attention: the source lists the
   same value for prefill and decode).
 - CPU runs give DIMM counts rather than memory channels. Calibration assumes DIMMs fill

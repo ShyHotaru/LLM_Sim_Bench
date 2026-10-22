@@ -199,11 +199,11 @@ suite fails if the defaults drift from the data. Current median error:
 | Backend | Decode | Prefill |
 | --- | --- | --- |
 | CUDA (55 results) | 6.5 % | 6.0 % |
-| ROCm (33) | 4.3 % | 2.6 % |
-| Vulkan (62) | 7.6 % | 5.4 % |
-| SYCL (21) | 1.6 % | 29 % |
-| Metal (12, M5 family) | 1.7 % | 0.6 % |
-| CPU (174 decode, 29 prefill) | 3.1 % | 6.2 % |
+| ROCm (33) | 4.2 % | 2.6 % |
+| Vulkan (62) | 7.7 % | 5.4 % |
+| SYCL (21) | 1.7 % | 29 % |
+| Metal (15, M5 family and M6) | 3.0 % | 0.7 % |
+| CPU (174 decode, 29 prefill) | 3.0 % | 6.2 % |
 
 Long contexts and mixture-of-experts models are fitted to `llama-bench` runs at depths of
 0–32768 tokens in llama.cpp's `benches/` folder: DGX Spark (CUDA) and an M2 Ultra (Metal),
@@ -253,8 +253,8 @@ Calibration data:
 - Mixture-of-experts results beyond DGX Spark and M2 Ultra, and MoE prompt processing on
   Metal (the M2 Ultra's GPU core count is unknown).
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
-- Apple M1–M4 on current llama.cpp builds (only 2023 builds are recorded), an M6 preset, and
-  the M5 Ultra prompt-processing gap.
+- Apple M1–M4 on current llama.cpp builds (only 2023 builds are recorded), and the M5 Ultra
+  prompt-processing gap (about 20 % below the other M5 chips per GPU core).
 - Intel SYCL FP16 vs. FP32 builds as a separate option.
 - Concurrent-request (`llama-batched-bench`) results beyond DGX Spark, and the GPU core count of
   the M2 Ultra in llama.cpp's `benches/` (its 108 batched results are recorded but unused;

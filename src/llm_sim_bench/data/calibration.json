@@ -21,14 +21,14 @@
    "max": 0.4767
   },
   "metal/pp": {
-   "n": 12,
-   "median": 0.0064,
+   "n": 15,
+   "median": 0.0066,
    "max": 0.0508
   },
   "metal/tg": {
-   "n": 12,
-   "median": 0.0167,
-   "max": 0.095
+   "n": 15,
+   "median": 0.0291,
+   "max": 0.0822
   },
   "rocm/pp": {
    "n": 33,
@@ -87,8 +87,8 @@
   },
   "metal/depth_tg": {
    "n": 16,
-   "median": 0.0097,
-   "max": 0.0292
+   "median": 0.0098,
+   "max": 0.0289
   },
   "metal/depth_pp": {
    "n": 4,
@@ -97,8 +97,8 @@
   },
   "metal/moe_tg": {
    "n": 3,
-   "median": 0.0487,
-   "max": 0.054
+   "median": 0.0488,
+   "max": 0.0518
   }
  },
  "batch_devices": [
@@ -295,6 +295,54 @@
    "tg_tps": 179.1,
    "source": "https://github.com/ggml-org/llama.cpp/discussions/4167",
    "commit": "c1d0e7a",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m6-12c-f16",
+   "gpu": "Apple M6",
+   "preset": "apple-m6-12c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "F16",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 952.53,
+   "tg_tps": 11.59,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18694932",
+   "commit": "0c1e570",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m6-12c-q8_0",
+   "gpu": "Apple M6",
+   "preset": "apple-m6-12c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 970.46,
+   "tg_tps": 21.01,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18694932",
+   "commit": "0c1e570",
+   "old_build": false
+  },
+  {
+   "id": "llamacpp-4167-m6-12c-q4_0",
+   "gpu": "Apple M6",
+   "preset": "apple-m6-12c",
+   "backend": "Metal",
+   "flash_attn": false,
+   "model": "llama-2-7b",
+   "quant": "Q4_0",
+   "n_prompt": 512,
+   "n_gen": 128,
+   "pp_tps": 988.93,
+   "tg_tps": 35.74,
+   "source": "https://github.com/ggml-org/llama.cpp/discussions/4167#discussioncomment-18694932",
+   "commit": "0c1e570",
    "old_build": false
   },
   {

@@ -68,9 +68,9 @@ class Efficiency:
     gpu_bandwidth: float = 0.84
     gpu_compute: float = 0.49
     gpu_layer_overhead_us: float = 36.0
-    metal_bandwidth: float = 0.99
+    metal_bandwidth: float = 0.97
     metal_compute: float = 0.66
-    metal_layer_overhead_us: float = 72.0
+    metal_layer_overhead_us: float = 67.0
     rocm_bandwidth: float = 0.97
     rocm_compute: float = 0.31
     rocm_layer_overhead_us: float = 114.0
@@ -89,7 +89,7 @@ class Efficiency:
     # measurements keep 1.0.
     gpu_kv_read: float = 1.21
     gpu_attention: float = 1.61
-    metal_kv_read: float = 2.35
+    metal_kv_read: float = 2.30
     metal_attention: float = 0.53
     rocm_kv_read: float = 1.0
     rocm_attention: float = 1.0
@@ -103,7 +103,7 @@ class Efficiency:
     # (routing, gathering the experts; 0 without measurements) and the share of the
     # prompt-processing FLOP rate their weights reach (1.0 without measurements).
     gpu_moe_layer_overhead_us: float = 0.0
-    metal_moe_layer_overhead_us: float = 113.0
+    metal_moe_layer_overhead_us: float = 117.0
     rocm_moe_layer_overhead_us: float = 0.0
     vulkan_moe_layer_overhead_us: float = 0.0
     sycl_moe_layer_overhead_us: float = 0.0
