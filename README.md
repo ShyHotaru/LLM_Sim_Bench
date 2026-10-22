@@ -196,17 +196,27 @@ CPU-only runs. Metal uses only results from 2026 builds, because 2023 builds had
 per-token overhead. Measured devices also get their own prompt-processing factor, and
 measured CPUs their own memory-bandwidth factor. `llmsimbench calibrate` refits everything and
 prints the error against every record (`--write` stores the per-device factors); the test
-suite fails if the defaults drift from the data. Current median error:
+suite fails if the defaults drift from the data.
 
-| Backend | Decode | Prefill |
-| --- | --- | --- |
-| CUDA (55 results) | 6.0 % | 1.1 % |
-| ROCm (31) | 5.1 % | 1.2 % |
-| Vulkan (62) | 7.6 % | 2.6 % |
-| SYCL, default FP32 build (9) | 2.0 % | 0.5 % |
-| SYCL, FP16 build (12) | 2.1 % | 1.8 % |
-| Metal (18: M5 family, M6, M1 Ultra) | 3.4 % | 0.9 % |
-| CPU (174 decode, 29 prefill) | 1.0 % | 5.2 % |
+How far off an estimate is depends mostly on whether the device has measurements of its own.
+The table gives the error that 8 of 10 results stay within, judged on results the estimate
+was not fitted to: for a measured device each result is left out of that device's factor, and
+for another device all of its results are left out. The app and the reports show the same
+range next to each estimate (±).
+
+| Backend (results) | Decode | Prompt, measured device | Prompt, other devices |
+| --- | --- | --- | --- |
+| CUDA (55) | 10 % | 6 % | 29 % |
+| ROCm (31) | 20 % | 4 % | 43 % |
+| Vulkan (62) | 19 % | 17 % | 39 % |
+| SYCL, default FP32 build (9) | 5 % | 9 % | 28 % |
+| SYCL, FP16 build (12) | 5 % | 6 % | 18 % |
+| Metal (18: M5 family, M6, M1 Ultra) | 8 % | 4 % | 19 % |
+| CPU (174 decode, 29 prompt) | 9 % (15 % for other CPUs) | 15 % | 57 % |
+
+GPU decode has no per-device factor, so its error is the same for every device. These ranges
+come from Llama 2 7B at short context (pp512, tg128) on one GPU: other models, long contexts,
+CPU offload and several GPUs add errors that the ranges do not include.
 
 Prompt processing depends on flash attention, which barely changes decode. Estimates assume
 llama.cpp's default (`-fa auto`, on where supported); each backend also has a factor for runs

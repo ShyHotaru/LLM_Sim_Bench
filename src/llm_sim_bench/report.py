@@ -172,6 +172,26 @@ def warnings(system: System, est: Estimate, data: dict,
     return out
 
 
+def speed_bands(system: System, est: Estimate, data: dict,
+                eff: Efficiency = Efficiency()) -> dict:
+    """The error 8 of 10 measured results stay within for this configuration's decode and
+    prompt speeds (calibrate.error_bands), taking the widest of the devices used; None
+    where a device's backend has too few results."""
+    gpu_backend = {g.name: g.backend for g in system.gpus}
+    out: dict = {"decode": 0.0, "prefill": 0.0}
+    for p in est.placements:
+        backend = gpu_backend[p.device] if p.is_gpu else "cpu"
+        name = p.device if p.is_gpu else system.cpu.name
+        band = data["bands"].get(backend, {})
+        pp = band.get("pp_measured" if f"{name}|{backend}" in eff.device_compute
+                      else "pp_other")
+        tg = band.get("tg_other" if backend == "cpu" and not system.unified
+                      and f"{name}|cpu" not in eff.device_bandwidth else "tg_measured")
+        for key, v in (("decode", tg), ("prefill", pp)):
+            out[key] = None if v is None or out[key] is None else max(out[key], v)
+    return out
+
+
 def gen_time(est: Estimate, filled: int, max_tokens: int) -> float:
     """Seconds for tokens 2..max_tokens of a reply after `filled` context tokens."""
     return add_in_order(1 / est.decode_tps_at(filled + i) for i in range(1, max_tokens))
@@ -351,6 +371,7 @@ def result(system: System, est: Estimate, kv_bits: int, data: dict, timing: dict
             "prefill_tps": est.prefill_tps,
             "decode_tps_empty": est.decode_tps_empty,
             "decode_tps_full": est.decode_tps_full,
+            "bands": speed_bands(system, est, data),
             "concurrency": concurrency(est),
         },
         "timing": timing_info(est, timing) if timing else None,
@@ -472,9 +493,11 @@ def _result_lines(r: dict, heading: str) -> list[str]:
     rows.append(["Total", c["model"]["layers"], fmt(mem["weights_gb"], 2), fmt(mem["kv_gb"], 2)])
     lines += _table(["Device", "Layers", "Weights GB", "KV cache GB"], rows)
     lines += ["", f"Fits in memory: {'yes' if mem['fits'] else '**no**'}", "", "### Speed", ""]
-    rows = [["Generation, empty context", f"{fmt_tps(sp['decode_tps_empty'])} tok/s"],
+    band = lambda v: f" (±{fmt(100 * v, 0)} %)" if v is not None else ""  # noqa: E731
+    rows = [["Generation, empty context",
+             f"{fmt_tps(sp['decode_tps_empty'])} tok/s{band(sp['bands']['decode'])}"],
             ["Generation, full context", f"{fmt_tps(sp['decode_tps_full'])} tok/s"],
-            ["Prompt processing", f"{fmt_tps(sp['prefill_tps'])} tok/s"]]
+            ["Prompt processing", f"{fmt_tps(sp['prefill_tps'])} tok/s{band(sp['bands']['prefill'])}"]]
     if r["timing"]:
         t = r["timing"]
         depth = f", {fmt(t['depth'], 0)} tokens already cached" if t["depth"] else ""
@@ -486,6 +509,9 @@ def _result_lines(r: dict, heading: str) -> list[str]:
             rows += [[f"First token, {n} such requests at once", fmt_time(t["ttft_all_s"])],
                      [f"Whole reply, {n} such requests at once", fmt_time(t["reply_all_s"])]]
     lines += _table(["Metric", "Estimate"], rows)
+    if sp["bands"]["decode"] is not None or sp["bands"]["prefill"] is not None:
+        lines += ["", "± is the error that 8 of 10 benchmark results of comparable hardware stay "
+                      "within."]
     if sp["concurrency"]:
         lines += ["", "### Concurrent requests", "",
                   "Generation speed with this many requests active (tok/s); the total is the "

@@ -284,6 +284,9 @@ button.link {
 }
 .headline .big { font: 600 2.6rem/1.15 var(--mono); letter-spacing: -0.04em; }
 .headline .unit { color: var(--muted); }
+/* The error band after an estimate: secondary to the number itself. */
+.band { font: 400 0.85rem var(--mono); color: var(--muted); cursor: help; }
+.headline .band { margin-left: -6px; }
 
 /* Readings as a list with dotted leaders. */
 .metrics { margin: 8px 0 14px; }

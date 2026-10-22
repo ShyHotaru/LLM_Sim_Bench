@@ -45,6 +45,20 @@ class ReportTests(unittest.TestCase):
         self.assertIn("layers_on_cpu", [n["code"] for n in res["notes"]])
         self.assertIsNone(res["timing"])
 
+    def test_error_bands_widen_for_unmeasured_devices(self):
+        measured = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (GPU_PRESETS["rtx4090-24gb"],))
+        other = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2),
+                       (GPU_PRESETS["rtx3070-8gb"],))
+        m = report.speed_bands(measured, estimate(measured, MODEL_PRESETS["llama-3.1-8b"]), DATA)
+        o = report.speed_bands(other, estimate(other, MODEL_PRESETS["llama-3.1-8b"]), DATA)
+        self.assertEqual(m["prefill"], DATA["bands"]["cuda"]["pp_measured"])
+        self.assertEqual(o["prefill"], DATA["bands"]["cuda"]["pp_other"])
+        self.assertLess(m["prefill"], o["prefill"])
+        # Offloaded layers widen the band to the CPU's.
+        small = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (GPU_PRESETS["rtx3080-10gb"],))
+        off = report.speed_bands(small, estimate(small, MODEL_PRESETS["llama-3.1-70b"]), DATA)
+        self.assertGreaterEqual(off["prefill"], DATA["bands"]["cpu"]["pp_other"])
+
     def test_markdown_lists_every_configuration(self):
         system = System(CPU_PRESETS["ryzen9-7950x"], RAM(64, 96))
         est = estimate(system, MODEL_PRESETS["llama-3.1-8b"], "Q4_0", 4096)

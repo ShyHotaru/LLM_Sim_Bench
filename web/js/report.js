@@ -188,6 +188,25 @@ export function cpuChecks(P, system) {
   };
 }
 
+// The error 8 of 10 measured results stay within for this configuration's decode and prompt
+// speeds, the widest of the devices used; null where a backend has too few results.
+export function speedBands(P, system, est) {
+  const eff = P.efficiency;
+  const out = { decode: 0, prefill: 0 };
+  for (const p of est.placements) {
+    const backend = p.is_gpu ? system.gpus.find((g) => g.name === p.device).backend : "cpu";
+    const name = p.is_gpu ? p.device : system.cpu.name;
+    const band = P.bands[backend] || {};
+    const pp = band[`${name}|${backend}` in eff.device_compute ? "pp_measured" : "pp_other"];
+    const tg = band[backend === "cpu" && !system.unified && !(`${name}|cpu` in eff.device_bandwidth)
+      ? "tg_other" : "tg_measured"];
+    for (const [key, v] of [["decode", tg], ["prefill", pp]]) {
+      out[key] = v == null || out[key] == null ? null : Math.max(out[key], v);
+    }
+  }
+  return out;
+}
+
 // Time to the first token and to the whole reply for {prompt_tokens, max_tokens, depth},
 // as the mock plays it. With several slots, also the times when every slot gets such a
 // request at once: the prompts share prompt processing, then the replies each decode step.
@@ -263,7 +282,7 @@ export function result(P, system, est, kvBits, timing = null, lbl = null) {
     },
     speed: {
       prefill_tps: est.prefill_tps, decode_tps_empty: est.decode_tps_empty,
-      decode_tps_full: est.decode_tps_full, concurrency: concurrency(est),
+      decode_tps_full: est.decode_tps_full, bands: speedBands(P, system, est), concurrency: concurrency(est),
     },
     timing: timing ? timingInfo(est, timing) : null,
     notes: notes(system, est),
@@ -374,9 +393,10 @@ function resultLines(r, heading) {
   rows.push(["Total", c.model.layers, fmt(mem.weights_gb, 2), fmt(mem.kv_gb, 2)]);
   lines.push(...table(["Device", "Layers", "Weights GB", "KV cache GB"], rows));
   lines.push("", `Fits in memory: ${mem.fits ? "yes" : "**no**"}`, "", "### Speed", "");
-  const speed = [["Generation, empty context", `${fmtTps(sp.decode_tps_empty)} tok/s`],
+  const band = (v) => (v != null ? ` (±${fmt(100 * v, 0)} %)` : "");
+  const speed = [["Generation, empty context", `${fmtTps(sp.decode_tps_empty)} tok/s${band(sp.bands.decode)}`],
     ["Generation, full context", `${fmtTps(sp.decode_tps_full)} tok/s`],
-    ["Prompt processing", `${fmtTps(sp.prefill_tps)} tok/s`]];
+    ["Prompt processing", `${fmtTps(sp.prefill_tps)} tok/s${band(sp.bands.prefill)}`]];
   if (r.timing) {
     const t = r.timing;
     const depth = t.depth ? `, ${fmt(t.depth, 0)} tokens already cached` : "";
@@ -389,6 +409,9 @@ function resultLines(r, heading) {
     }
   }
   lines.push(...table(["Metric", "Estimate"], speed));
+  if (sp.bands.decode != null || sp.bands.prefill != null) {
+    lines.push("", "± is the error that 8 of 10 benchmark results of comparable hardware stay within.");
+  }
   if (sp.concurrency) {
     lines.push("", "### Concurrent requests", "",
       "Generation speed with this many requests active (tok/s); the total is the throughput of all of them together.", "",

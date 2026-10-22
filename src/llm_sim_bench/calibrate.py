@@ -250,6 +250,39 @@ def fit(records: list[dict]) -> Efficiency:
     return replace(base, **batch)
 
 
+def _p80(values: list[float]) -> float:
+    """80th percentile (nearest rank)."""
+    v = sorted(values)
+    return v[max(0, math.ceil(0.8 * len(v)) - 1)]
+
+
+def error_bands(records: list[dict], eff: Efficiency, min_n: int = 5) -> dict[str, dict]:
+    """Per backend: the error 8 of 10 results stay within, judged on results not used to
+    fit them. "pp_measured": prompt speed of a device with its own factor, each result left
+    out of that factor; "pp_other": a device without one, its results left out of the
+    backend factor. Decode has no per-device GPU factors; "tg_other" drops CPUs' own memory
+    factors. A band needs min_n results."""
+    no_fa = {b: getattr(eff, f"{compute_field(b)}_no_fa") for b in BACKENDS}
+    points = [predict(r, _UNIT) for r in records if usable(r)]
+    x = [(p.backend, p.device, p.pp_meas / p.pp_pred / (no_fa[p.backend] if p.no_fa else 1))
+         for p in points if p.pp_meas and p.pp_pred]
+    errs: dict[str, dict[str, list[float]]] = {}
+    for i, (b, d, v) in enumerate(x):
+        same = [w for j, (_, dd, w) in enumerate(x) if dd == d and j != i]
+        rest = [w for bb, dd, w in x if bb == b and dd != d]
+        e = errs.setdefault(b, {})
+        if same:
+            e.setdefault("pp_measured", []).append(abs(v / statistics.median(same) - 1))
+        if rest:
+            e.setdefault("pp_other", []).append(abs(v / statistics.median(rest) - 1))
+    for key, e2 in (("tg_measured", eff), ("tg_other", replace(eff, device_bandwidth={}))):
+        for p in evaluate(records, e2):
+            if p.tg_err is not None:
+                errs.setdefault(p.backend, {}).setdefault(key, []).append(abs(p.tg_err))
+    return {b: {k: round(_p80(v), 3) if len(v) >= min_n else None
+                for k, v in sorted(e.items())} for b, e in sorted(errs.items())}
+
+
 def _fa_ratios(records: list[dict]) -> dict[str, float]:
     """Per backend: median prompt speed with flash attention off over on, from runs that
     differ only in it (same source, device, build, model, quantization and host)."""

@@ -53,6 +53,7 @@
   "badge.layersOnCpu": "{total}개 레이어 중 {cpu}개가 CPU에서 실행",
 
   "result.unit": "tok/s 생성 속도 (빈 컨텍스트)",
+  "result.bandHint": "비슷한 하드웨어의 실측 결과 10건 중 8건이 추정값의 이 범위 안에 있습니다.",
   "result.tps": "{v} tok/s",
   "metric.fullContext": "컨텍스트가 가득 찼을 때",
   "metric.prefill": "프롬프트 처리",

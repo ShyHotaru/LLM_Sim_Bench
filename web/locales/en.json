@@ -53,6 +53,7 @@
   "badge.layersOnCpu": "{cpu}/{total} layers on CPU",
 
   "result.unit": "tok/s generation (empty context)",
+  "result.bandHint": "8 of 10 benchmark results of comparable hardware are within this range of the estimate.",
   "result.tps": "{v} tok/s",
   "metric.fullContext": "At full context",
   "metric.prefill": "Prompt processing",

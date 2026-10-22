@@ -252,6 +252,7 @@ def calibration_data(records: list[dict]) -> dict:
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),
                             "max": round(v["max"], 4)} for k, v in stats.items()},
         "batch_devices": calibrate.batch_devices(batch),
+        "bands": calibrate.error_bands(records, Efficiency()),
         "measurements": [{
             "id": r["id"], "gpu": r["hardware"]["gpu"], "preset": r["hardware"]["gpu_preset"],
             "backend": r["software"]["backend"], "sim_backend": calibrate.backend_of(r),
