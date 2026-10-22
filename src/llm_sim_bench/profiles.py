@@ -58,6 +58,9 @@ class Model:
     n_heads: int = 0  # query attention heads (config.json num_attention_heads); 0: n_kv_heads
     sliding_window: int = 0  # tokens a sliding-window attention layer sees, 0 if none
     swa_layers: int = 0  # layers with sliding-window attention
+    embedding_params_b: float = 0.0  # one vocab x hidden matrix (token embedding), billions
+    tied_embeddings: bool = False  # the output layer reuses the token embedding matrix
+    expert_params_b: float = 0.0  # MoE: all routed experts, billions (0: from active_params_b)
 
     @property
     def active_b(self) -> float:
@@ -443,31 +446,49 @@ def unified_system(chip: UnifiedChip, memory_gb: float) -> System:
 # Architecture from each model's config.json on Hugging Face (Meta and Gemma configs read
 # from ungated copies: NousResearch, unsloth). llama.cpp uses sliding-window attention for
 # Gemma 2 and gpt-oss (every other layer) but not for Mistral 7B, whose config also names a
-# window.
+# window. embedding_params_b = vocab_size x hidden_size; Llama 3.2 3B and Gemma 2 tie it to
+# the output layer. expert_params_b = layers x experts x 3 x hidden x expert FFN size.
 MODEL_PRESETS: dict[str, Model] = {
     m.name: m
     for m in [
-        Model("llama-2-7b", 6.74, 32, 32, 128, 4096, tokenizer="llama2", n_heads=32),
-        Model("llama-2-13b", 13.0, 40, 40, 128, 4096, tokenizer="llama2", n_heads=40),
-        Model("llama-2-70b", 69.0, 80, 8, 128, 4096, tokenizer="llama2", n_heads=64),
-        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072, tokenizer="llama3", n_heads=24),
-        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072, tokenizer="llama3", n_heads=32),
-        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072, tokenizer="llama3", n_heads=64),
-        Model("mistral-7b", 7.24, 32, 8, 128, 32768, tokenizer="mistral", n_heads=32),
+        Model("llama-2-7b", 6.74, 32, 32, 128, 4096, tokenizer="llama2", n_heads=32,
+              embedding_params_b=0.131),
+        Model("llama-2-13b", 13.0, 40, 40, 128, 4096, tokenizer="llama2", n_heads=40,
+              embedding_params_b=0.164),
+        Model("llama-2-70b", 69.0, 80, 8, 128, 4096, tokenizer="llama2", n_heads=64,
+              embedding_params_b=0.262),
+        Model("llama-3.2-3b", 3.21, 28, 8, 128, 131072, tokenizer="llama3", n_heads=24,
+              embedding_params_b=0.394, tied_embeddings=True),
+        Model("llama-3.1-8b", 8.03, 32, 8, 128, 131072, tokenizer="llama3", n_heads=32,
+              embedding_params_b=0.525),
+        Model("llama-3.1-70b", 70.6, 80, 8, 128, 131072, tokenizer="llama3", n_heads=64,
+              embedding_params_b=1.051),
+        Model("mistral-7b", 7.24, 32, 8, 128, 32768, tokenizer="mistral", n_heads=32,
+              embedding_params_b=0.131),
         Model("gemma-2-9b", 9.24, 42, 8, 256, 8192, tokenizer="gemma2", n_heads=16,
-              sliding_window=4096, swa_layers=21),
-        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072, tokenizer="qwen2.5", n_heads=28),
-        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40),
-        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40),
-        Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3", n_heads=32),
-        Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3", n_heads=40),
-        Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3", n_heads=64),
+              sliding_window=4096, swa_layers=21,
+              embedding_params_b=0.918, tied_embeddings=True),
+        Model("qwen2.5-7b", 7.62, 28, 4, 128, 131072, tokenizer="qwen2.5", n_heads=28,
+              embedding_params_b=0.545),
+        Model("qwen2.5-14b", 14.8, 48, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40,
+              embedding_params_b=0.779),
+        Model("qwen2.5-32b", 32.8, 64, 8, 128, 131072, tokenizer="qwen2.5", n_heads=40,
+              embedding_params_b=0.779),
+        Model("qwen3-8b", 8.19, 36, 8, 128, 32768, tokenizer="qwen3", n_heads=32,
+              embedding_params_b=0.622),
+        Model("qwen3-14b", 14.8, 40, 8, 128, 32768, tokenizer="qwen3", n_heads=40,
+              embedding_params_b=0.778),
+        Model("qwen3-32b", 32.8, 64, 8, 128, 32768, tokenizer="qwen3", n_heads=64,
+              embedding_params_b=0.778),
         Model("qwen3-30b-a3b", 30.5, 48, 4, 128, 32768, active_params_b=3.3, tokenizer="qwen3",
-              n_experts=128, experts_per_token=8, n_heads=32),
+              n_experts=128, experts_per_token=8, n_heads=32,
+              embedding_params_b=0.311, expert_params_b=28.99),
         Model("gpt-oss-20b", 21.0, 24, 8, 64, 131072, active_params_b=3.6, tokenizer="gpt-oss",
-              n_experts=32, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=12),
+              n_experts=32, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=12,
+              embedding_params_b=0.579, expert_params_b=19.11),
         Model("gpt-oss-120b", 117.0, 36, 8, 64, 131072, active_params_b=5.1, tokenizer="gpt-oss",
-              n_experts=128, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=18),
+              n_experts=128, experts_per_token=4, n_heads=64, sliding_window=128, swa_layers=18,
+              embedding_params_b=0.579, expert_params_b=114.66),
     ]
 }
 

@@ -25,6 +25,15 @@ GPU scoreboard records are Llama 2 7B Q4_0 (SYCL also lists other models), `llam
 -n 128`. Values were transcribed from the scoreboard tables on the `retrieved` date. Only the
 numbers and hardware descriptions were copied; contributor names were not.
 
+## Verification
+
+On 2026-10-22 every record transcribed from a GitHub page (the CUDA, Apple, ROCm, Vulkan and
+SYCL scoreboards, ik_llama.cpp #164, llama.cpp #11733, geerlingguy/ai-benchmarks #53; 612
+records) was compared by script with the page text: results, standard deviations, commits,
+flash attention, build precision and the stated hardware fields. Two SYCL records had the
+OS appended to the host CPU; they are fixed. The 1554 OpenBenchmarking.org records could not
+be checked (the pages and their Wayback Machine copies could not be fetched).
+
 ## Licensing
 
 This project's compilation of the records is licensed under CC BY 4.0
