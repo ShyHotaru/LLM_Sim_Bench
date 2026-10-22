@@ -65,6 +65,16 @@ test("schedule paces a single text by prefill and decode speed", () => {
   assert.equal(s.events.at(-1).fill, 111);
 });
 
+test("cached context costs no time but slows generation", () => {
+  const decodeTps = (fill) => 1000 / (10 + fill / 1000);
+  const s = new Schedule({ turns: [{ user: null, assistant: Array(3).fill("x") }], promptTokens: 100,
+                           cachedTokens: 32000, maxTokens: 50, prefillTps: 1000, decodeTps, jitter: 0 });
+  close(s.turns[0].ttft, 0.1, "ttft counts only the new prompt");
+  assert.equal(s.turns[0].prefillTokens, 100);
+  assert.deepEqual(s.events.map((e) => e.fill), [32101, 32102, 32103]);
+  close(s.totalTime - s.turns[0].firstAt, 1 / decodeTps(32101) + 1 / decodeTps(32102), "decode at depth");
+});
+
 test("schedule caps each turn and prefills only new user tokens", () => {
   const s = new Schedule({
     turns: [{ user: ["hi", "!"], assistant: Array(5).fill("a") },

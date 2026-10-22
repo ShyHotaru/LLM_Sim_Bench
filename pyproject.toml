@@ -19,4 +19,4 @@ llmsimbench = "llm_sim_bench.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-llm_sim_bench = ["device_calibration.json"]
+llm_sim_bench = ["device_calibration.json", "data/*.json", "data/texts/*"]

@@ -75,7 +75,7 @@ guess.
 
 # Output texts and tokenizer ratios
 
-The web mock streams real text instead of filler. Texts live in `web/data/texts/`
+The mock (web app, `llmsimbench run` and `serve`) streams real text instead of filler. Texts live in `web/data/texts/`
 (`manifest.json` lists them):
 
 - **Authored**: an LLM-style answer and a four-turn conversation in Korean, Japanese and
@@ -91,6 +91,10 @@ The web mock streams real text instead of filler. Texts live in `web/data/texts/
   Aozora renders as images.
 
 `tools/build_texts.py` rebuilds the excerpts and `credits.json` from the manifest.
+`llmsimbench export-web` copies the texts and `tokenizer_ratios.json` into
+`src/llm_sim_bench/data/` for the command-line tool and the mock server (do not edit the
+copies), and writes `web/test/chunks.json` so the web tests check that `web/js/tokenize.js`
+splits text exactly like `src/llm_sim_bench/texts.py`.
 
 `tokenizer_ratios.json` holds the measured characters per token for every text and tokenizer
 family, produced by `tools/measure_tokenizers.py` (needs `pip install tokenizers`). Only the

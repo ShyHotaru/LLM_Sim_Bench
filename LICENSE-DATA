@@ -10,6 +10,8 @@ covers:
 - data/ (measurement records, tokenizer ratios and their documentation)
 - web/data/ (presets and calibration exported for the web app, the text
   manifest, and the sample answers and conversations written for this project)
+- src/llm_sim_bench/data/ (copies of the tokenizer ratios and of web/data/texts/
+  packaged for the command-line tool)
 
 Exceptions, described in THIRD_PARTY_NOTICES.md:
 
@@ -22,9 +24,9 @@ Exceptions, described in THIRD_PARTY_NOTICES.md:
   are not covered: its opening post asks that the data not be used for
   commercial purposes.
 - The book excerpts in web/data/texts/ (ja-neko, ja-botchan, ja-takasebune,
-  en-alice, en-pride) are in the public domain. The Aozora Bunko edition and
-  transcription notes in web/data/texts/credits.json are kept as Aozora Bunko
-  asks.
+  en-alice, en-pride) and their copies in src/llm_sim_bench/data/texts/ are in
+  the public domain. The Aozora Bunko edition and transcription notes in
+  credits.json are kept as Aozora Bunko asks.
 
 Suggested attribution: "LLM Sim Bench data by Hotaru Yasuda, CC BY 4.0,
 https://github.com/ShyHotaru/LLM_Sim_Bench".

@@ -2,7 +2,7 @@
 
 Simulate a local LLM rig before you build it. Describe a virtual CPU, RAM, GPU(s) and model,
 get an estimate of memory use and tokens/sec, then run a mock inference engine that streams
-dummy tokens at that exact speed — in the terminal or behind an OpenAI-compatible API — so you
+text at that exact speed — in the terminal or behind an OpenAI-compatible API — so you
 can *feel* the latency in your real tools before spending money on hardware.
 
 ## Why
@@ -24,6 +24,7 @@ pip install -e .
 llmsimbench list
 llmsimbench estimate --gpu rtx3080-10gb --model qwen2.5-14b --quant Q4_K_M --ctx 8192
 llmsimbench run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --max-tokens 300
+llmsimbench run --gpu rtx3060-12gb --model qwen2.5-14b --text ko-chat
 llmsimbench estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
 llmsimbench serve --config examples/rtx3080_desktop.toml --port 8000
 llmsimbench calibrate
@@ -51,7 +52,10 @@ Note      8/48 layers offloaded to CPU
 RAM), a Mac, a unified-memory PC (DGX Spark, Ryzen AI Max) or a server (data-center GPUs and
 server CPUs), a model and a quantization, and watch mock tokens stream at the simulated speed.
 Lists show the newest parts first, and a search box finds any GPU, CPU or chip and switches to
-the right tab. Add a second configuration to compare both side by side. The whole setup is
+the right tab. Add a second configuration to compare both side by side. Playback can start with
+the context already partly filled (cached, so it adds no prompt-processing time) to feel the
+slowdown at long contexts. Under each result, a check table compares the simulator with real
+llama.cpp results for the selected GPU, chip or, in a CPU-only setup, CPU. The whole setup is
 kept in the URL, so a link reproduces it. The interface is available in English, Korean and
 Japanese (`web/locales/`); it follows the browser language, a `?lang=ko` style URL parameter, or
 the picker in the header.
@@ -76,8 +80,10 @@ split at the rate of the sample text in the language it looks like. See
 [`data/README.md`](data/README.md) for sources and licensing.
 
 Python is the reference implementation. `llmsimbench export-web` writes `web/data/presets.json`
-and the golden test vectors in `web/test/golden.json`; rerun it after changing presets,
-measurement data or the estimator, then run `node --test web/test/*.test.mjs`.
+and the golden test vectors in `web/test/golden.json` (estimator) and `web/test/chunks.json`
+(text splitting), and copies the texts and tokenizer ratios into `src/llm_sim_bench/data/` for
+the installed package; rerun it after changing presets, measurement data, texts or the
+estimator, then run `node --test web/test/*.test.mjs`.
 
 ## Configuring a virtual system
 
@@ -101,6 +107,24 @@ Custom hardware or models that are not presets can be defined field-by-field in 
 non-streaming). Point any OpenAI client or chat UI at `http://127.0.0.1:8000/v1` with any API
 key. Time-to-first-token follows the simulated prefill speed for the prompt length, and each
 token after that follows the simulated decode speed at the current context fill.
+
+## Output texts
+
+`run` and `serve` stream real text, the same presets as the web app (`llmsimbench texts`
+lists them with their sources): sample answers and conversations written for this project in
+Korean, Japanese and English, and public-domain book excerpts. `--text ID` picks one (default
+`en-answer`), `--text-file PATH` streams your own UTF-8 file.
+
+Text is split into token-sized pieces with the characters per token measured for the model's
+tokenizer family (`data/tokenizer_ratios.json`), so characters appear at the rate that model
+would show them; `--chars-per-token` overrides the ratio. Prompt lengths are counted with the
+ratio of the sample answer in the prompt's language. An answer stops at the end of the text
+(`finish_reason: "stop"`) or at `--max-tokens` / the request's `max_tokens` (`"length"`).
+
+With a conversation preset, `run` plays every turn and prefills only each new user message,
+since earlier turns stay in the KV cache. `serve` answers the k-th user message of a request
+with the k-th scripted answer (wrapping around), so a chat UI follows the script; it prefills
+the whole prompt on every request.
 
 ## How the estimate works
 
@@ -156,8 +180,8 @@ Before a public release:
 
 Calibration data:
 
-- Long-context results (`llama-bench -d`): decode slowdown and prompt processing at depth are
-  modeled but not calibrated.
+- Long-context results (`llama-bench -d`): the decode slowdown at depth is modeled but not
+  calibrated, and prompt processing does not slow down with depth in the model yet.
 - Larger models and multi-GPU layer splits (all GPU data is Llama 2 7B on one GPU).
 - Mixture-of-experts routing overhead (currently excluded from calibration and flagged).
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
@@ -170,9 +194,6 @@ Calibration data:
 
 Features:
 
-- Start playback at a given context fill to feel the slowdown at long contexts.
-- Show CPU-only measurements in the benchmark check table.
-- Use the text presets and tokenizer ratios in the CLI and the OpenAI-compatible mock server.
 - Concurrent-request simulation and report export (JSON/Markdown).
 
 ## Development
@@ -187,10 +208,10 @@ node --test web/test/*.test.mjs                     # JavaScript estimator vs. P
 
 | What | License |
 | --- | --- |
-| Code (everything outside `data/`, `web/data/`, `web/fonts/` and `web/brand/`) | [MIT](LICENSE) |
-| Data in `data/` and `web/data/`, and the sample texts written for this project | [CC BY 4.0](LICENSE-DATA) |
+| Code (everything outside `data/`, `web/data/`, `src/llm_sim_bench/data/`, `web/fonts/` and `web/brand/`) | [MIT](LICENSE) |
+| Data in `data/`, `web/data/` and its packaged copy in `src/llm_sim_bench/data/`, and the sample texts written for this project | [CC BY 4.0](LICENSE-DATA) |
 | SYCL scoreboard records (`data/measurements/llamacpp-sycl.jsonl`) | Not licensed by this project; the source asks for no commercial use |
-| Book excerpts in `web/data/texts/` | Public domain |
+| Book excerpts in `web/data/texts/` (and their copies in `src/llm_sim_bench/data/texts/`) | Public domain |
 | Fonts in `web/fonts/` (Noto Sans KR, Noto Sans JP, JetBrains Mono) | SIL Open Font License 1.1 |
 | The author's logo in `web/brand/` | Not licensed; all rights reserved |
 

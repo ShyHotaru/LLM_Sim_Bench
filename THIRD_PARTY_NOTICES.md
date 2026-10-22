@@ -22,13 +22,14 @@ and retrieval date. No comment text or contributor names were copied.
 
 The works below were first published before 1931 by authors who died in or before 1922, so
 they are in the public domain in the United States, Japan and Korea. The excerpts are in
-`web/data/texts/`.
+`web/data/texts/`, copied into `src/llm_sim_bench/data/texts/` for the command-line tool.
 
 **青空文庫 (Aozora Bunko)**: 夏目漱石『吾輩は猫である』『坊っちゃん』, 森鴎外『高瀬舟』.
 Aozora Bunko allows free reuse of these files and asks that their edition, transcription and
 proofreading notes be kept
 ([収録ファイルの取り扱い規準](https://www.aozora.gr.jp/guide/kijyunn.html)). The notes are
-stored in `web/data/texts/credits.json` and shown in the app next to each excerpt. Thanks to
+stored in `web/data/texts/credits.json`, shown in the app next to each excerpt and printed by
+`llmsimbench texts`. Thanks to
 the Aozora Bunko volunteers who typed in and proofread these texts.
 
 **Project Gutenberg**: Lewis Carroll, *Alice's Adventures in Wonderland* (eBook #11); Jane
@@ -37,7 +38,7 @@ Austen, *Pride and Prejudice* (eBook #1342), downloaded from the
 [Project Gutenberg license](https://www.gutenberg.org/policy/license.html) requires for
 modified copies, the Project Gutenberg license and all references to Project Gutenberg were
 removed from the excerpts. With thanks to [Project Gutenberg](https://www.gutenberg.org/),
-whose ebook pages the app links to.
+whose ebook pages the app and the command-line tool link to.
 
 ## Tokenizer ratios
 
