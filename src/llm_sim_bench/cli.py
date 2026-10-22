@@ -73,6 +73,7 @@ def build(args) -> tuple[System, Model, dict]:
         "kv_bits": args.kv_bits or model_spec.pop("kv_bits", 16),
         "decode_tps": args.decode_tps or cfg.get("sim", {}).get("decode_tps"),
         "prefill_tps": args.prefill_tps or cfg.get("sim", {}).get("prefill_tps"),
+        "parallel": args.parallel or cfg.get("sim", {}).get("parallel", 1),
     }
     for k in ("quant", "context", "kv_bits"):
         model_spec.pop(k, None)
@@ -96,7 +97,8 @@ def make_engine(est: Estimate, run: dict, seed=None) -> MockEngine:
 
 def _estimate(args):
     system, model, run = build(args)
-    est = estimate(system, model, run["quant"], run["context"], run["kv_bits"])
+    est = estimate(system, model, run["quant"], run["context"], run["kv_bits"],
+                   parallel=run["parallel"])
     return system, est, run
 
 
@@ -291,6 +293,9 @@ def parser() -> argparse.ArgumentParser:
     m.add_argument("--quant", help="quantization, e.g. Q4_K_M")
     m.add_argument("--ctx", type=int, help="context length to allocate")
     m.add_argument("--kv-bits", type=int, choices=(4, 8, 16), help="KV cache precision")
+    m.add_argument("--parallel", type=int, metavar="N",
+                   help="concurrent request slots, each with --ctx tokens of KV cache "
+                   "(llama-server -np N -c N*ctx; default 1)")
     s = common.add_argument_group("speed overrides")
     s.add_argument("--decode-tps", type=float, help="force a fixed decode tok/s")
     s.add_argument("--prefill-tps", type=float, help="force a fixed prefill tok/s")

@@ -5,11 +5,17 @@ where x is the time per token at 100 % of peak bandwidth. The fit minimizes
 relative error so fast and slow devices count equally. Prefill efficiency is
 the median of measured / peak-compute speed, per backend and, for prompt
 processing, also per measured device (stored in device_calibration.json).
+
+Batched records (llama-batched-bench, several sequences at once) fit the
+per-backend `*_batch_compute` factor instead: how the aggregate decode speed
+grows from one sequence to B, so that errors in the single-request speed do not
+enter the fit. Mixture-of-experts batched records are only evaluated.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import statistics
 from dataclasses import dataclass, replace
 
@@ -28,7 +34,8 @@ _NO_PP = {"openblas-build"}  # OpenBLAS runs prompt batches: not llama.cpp's def
 _NO_TG = {"tg_thread_limited"}
 # Fine-tunes share their base model's architecture and therefore its speed.
 MODEL_ALIASES = {"llama-3.1-tulu-3-8b": "llama-3.1-8b",
-                 "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b"}
+                 "deepseek-r1-distill-llama-8b": "llama-3.1-8b", "llama-3-8b": "llama-3.1-8b",
+                 "qwen2.5-coder-7b": "qwen2.5-7b", "qwen3-coder-30b-a3b-instruct": "qwen3-30b-a3b"}
 # Peak hardware with no overhead: the fit's x values.
 _UNIT = Efficiency(device_compute={}, device_bandwidth={},
                    **{f"{backend_prefix(b)}_{k}": v for b in BACKENDS
@@ -170,7 +177,107 @@ def fit(records: list[dict]) -> Efficiency:
             if busy > 0:
                 by_cpu.setdefault(p.device, []).append(p.tg_x / busy)
     bandwidth = {d: round(statistics.median(v), 3) for d, v in sorted(by_cpu.items())}
+    for backend in sorted({p.backend for p in batch_points(records, Efficiency())
+                           if not p.moe and p.pred}):
+        fitted[f"{backend_prefix(backend)}_batch_compute"] = _fit_batch(records, backend,
+                                                                        Efficiency())
     return replace(Efficiency(), device_compute=devices, device_bandwidth=bandwidth, **fitted)
+
+
+@dataclass
+class BatchPoint:
+    """A batched result with B > 1, as the speed-up of aggregate decode over B = 1."""
+
+    id: str
+    backend: str
+    device: str
+    n: int
+    moe: bool
+    meas: float  # measured S_TG(B) / S_TG(1)
+    pred: float | None = None
+
+    @property
+    def err(self) -> float | None:
+        return _rel(self.pred, self.meas)
+
+
+def usable_batched(rec: dict) -> bool:
+    """llama-batched-bench runs on a known single GPU or chip, fully offloaded, each
+    sequence with its own prompt."""
+    backend = _BACKEND_KEY.get(rec["software"]["backend"])
+    model = _model(rec)
+    run = rec["run"]
+    if ("batched" not in rec["flags"] or _EXCLUDE - {"batched"} & set(rec["flags"])
+            or backend in (None, "cpu") or not model or rec["model"]["quant"] not in QUANT_BPW
+            or run.get("tool") != "llama-batched-bench" or run.get("pp_shared")
+            or not run["n_gen"] or not rec["results"]["tg_tps"] or system_for(rec) is None):
+        return False
+    ngl = run["n_gpu_layers"]
+    return rec["hardware"]["gpu_count"] == 1 and (ngl == -1 or ngl >= model.n_layers)
+
+
+def batched_tg(rec: dict, eff: Efficiency, n: int) -> float | None:
+    """Simulated S_TG of the record's run with n sequences, or None if not all on the GPU."""
+    run = rec["run"]
+    est = estimate(system_for(rec), _model(rec), rec["model"]["quant"],
+                   context=run["n_prompt"] + run["n_gen"], eff=eff, parallel=n)
+    if not all(p.is_gpu for p in est.placements):
+        return None
+    t = sum(est.step_time([run["n_prompt"] + i] * n) for i in range(run["n_gen"]))
+    return n * run["n_gen"] / t
+
+
+def batch_points(records: list[dict], eff: Efficiency) -> list[BatchPoint]:
+    """Every usable batched result with B > 1 whose run also has a B = 1 result."""
+    recs = [r for r in records if usable_batched(r)]
+    key = lambda r: (r["source"]["url"], r["model"]["name"], r["model"]["quant"],  # noqa: E731
+                     r["run"]["n_prompt"], r["run"]["n_gen"])
+    single = {key(r): r for r in recs if r["run"]["n_parallel"] == 1}
+    points = []
+    for r in recs:
+        n, one = r["run"]["n_parallel"], single.get(key(r))
+        if n == 1 or one is None:
+            continue
+        backend = _BACKEND_KEY[r["software"]["backend"]]
+        p = BatchPoint(r["id"], backend, f"{r['hardware']['gpu_preset']}|{backend}", n,
+                       bool(_model(r).active_params_b),
+                       r["results"]["tg_tps"] / one["results"]["tg_tps"])
+        tg_n, tg_1 = batched_tg(r, eff, n), batched_tg(r, eff, 1)
+        if tg_n and tg_1:
+            p.pred = tg_n / tg_1
+        points.append(p)
+    return points
+
+
+def _fit_batch(records: list[dict], backend: str, eff: Efficiency) -> float:
+    """batch_compute minimizing the squared log error of the speed-ups (dense models)."""
+    field = f"{backend_prefix(backend)}_batch_compute"
+    records = [r for r in records if usable_batched(r) and not _model(r).active_params_b
+               and _BACKEND_KEY[r["software"]["backend"]] == backend]
+    best = None
+    for c in (k / 100 for k in range(5, 301)):
+        pts = [p for p in batch_points(records, replace(eff, **{field: c})) if p.pred]
+        loss = sum(math.log(p.pred / p.meas) ** 2 for p in pts)
+        if best is None or loss < best[0]:
+            best = (loss, c)
+    return best[1]
+
+
+def batch_summary(points: list[BatchPoint]) -> dict[str, dict[str, float]]:
+    """Per backend: n, median and max absolute error of the dense-model speed-ups."""
+    out = {}
+    for backend in sorted({p.backend for p in points}):
+        errs = [abs(p.err) for p in points if p.backend == backend and not p.moe
+                and p.err is not None]
+        if errs:
+            out[f"{backend}/batch"] = {"n": len(errs), "median": statistics.median(errs),
+                                       "max": max(errs)}
+    return out
+
+
+def batch_devices(points: list[BatchPoint]) -> list[str]:
+    """"<preset>|<backend>" of the devices whose batched results calibrate the model."""
+    return sorted({p.device for p in points if not p.moe and p.err is not None})
 
 
 def write_device_calibration(eff: Efficiency) -> None:
@@ -227,4 +334,13 @@ def format_report(records: list[dict], eff: Efficiency) -> str:
     lines.append("Largest decode errors:")
     lines += [f"  {p.id:<44} pred {p.tg_pred:7.1f}  meas {p.tg_meas:7.1f}  {p.tg_err:+.0%}"
               for p in worst]
+    batch = batch_points(records, eff)
+    lines.append("Concurrent decode, speed-up of B sequences over one (llama-batched-bench):")
+    for moe in (False, True):
+        for backend in sorted({p.backend for p in batch}):
+            errs = [abs(p.err) for p in batch if p.backend == backend and p.moe == moe
+                    and p.err is not None]
+            if errs:
+                lines.append(f"  {backend + (' MoE (not fitted)' if moe else ''):<22}"
+                             f"{len(errs):>5}{statistics.median(errs):>11.1%}{max(errs):>10.1%}")
     return "\n".join(lines)

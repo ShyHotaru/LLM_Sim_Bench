@@ -58,6 +58,24 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(getattr(fitted, k), getattr(default, k),
                              "run `llmsimbench calibrate --write` to store the device calibration")
 
+    def test_concurrent_speedups_match_measurements(self):
+        points = calibrate.batch_points(RECORDS, Efficiency())
+        stats = calibrate.batch_summary(points)
+        self.assertGreaterEqual(stats["cuda/batch"]["n"], 10)
+        self.assertLess(stats["cuda/batch"]["median"], 0.08)
+        self.assertLess(stats["cuda/batch"]["max"], 0.2)
+        # Batched results stay out of the single-request fit.
+        self.assertFalse(any(calibrate.usable(r) for r in RECORDS if "batched" in r["flags"]))
+
+    def test_batched_records_need_their_run_fields(self):
+        rec = next(r for r in RECORDS if "batched" in r["flags"])
+        run = {k: v for k, v in rec["run"].items() if k != "n_parallel"}
+        self.assertIn("batched records need run.n_parallel >= 1",
+                      measurements.validate(dict(rec, run=run)))
+        single = next(r for r in RECORDS if "batched" not in r["flags"])
+        self.assertIn("run.n_parallel needs the batched flag", measurements.validate(
+            dict(single, run=dict(single["run"], n_parallel=2))))
+
     def test_cli_calibrate(self):
         self.assertEqual(main(["calibrate"]), 0)
 

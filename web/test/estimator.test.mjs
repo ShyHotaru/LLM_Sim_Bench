@@ -19,7 +19,8 @@ for (const [i, { input, expected }] of golden.entries()) {
   test(`golden case ${i}: ${input.model} ${input.quant} ctx ${input.context}`, () => {
     const model = presets.models.find((m) => m.name === input.model);
     const est = estimate(buildSystem(input.system, presets), model, input.quant,
-                         input.context, input.kv_bits, presets.efficiency, presets.quant_bpw);
+                         input.context, input.kv_bits, presets.efficiency, presets.quant_bpw,
+                         input.parallel);
     close(est.weights_gb, expected.weights_gb, "weights_gb");
     close(est.kv_gb, expected.kv_gb, "kv_gb");
     assert.equal(est.fits, expected.fits);
@@ -30,7 +31,7 @@ for (const [i, { input, expected }] of golden.entries()) {
       assert.equal(p.device, e.device);
       assert.equal(p.layers, e.layers);
       assert.equal(p.is_gpu, e.is_gpu);
-      for (const k of ["weights_gb", "kv_gb", "bandwidth_gbps", "tflops", "overhead_s"]) {
+      for (const k of ["weights_gb", "kv_gb", "bandwidth_gbps", "tflops", "overhead_s", "batch_s"]) {
         close(p[k], e[k], `placement ${j} ${k}`);
       }
     });
@@ -38,6 +39,8 @@ for (const [i, { input, expected }] of golden.entries()) {
     close(est.decode_tps_empty, expected.decode_tps_empty, "decode_tps_empty");
     close(est.decode_tps_full, expected.decode_tps_full, "decode_tps_full");
     for (const [fill, tps] of expected.decode_tps_at) close(est.decodeTpsAt(fill), tps, `at ${fill}`);
+    for (const [fills, t] of expected.step_time) close(est.stepTime(fills), t, `step ${fills}`);
+    for (const [n, fill, tps] of expected.parallel_tps) close(est.parallelTps(n, fill), tps, `${n} at ${fill}`);
   });
 }
 

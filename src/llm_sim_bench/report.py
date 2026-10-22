@@ -18,7 +18,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
-from .estimator import Efficiency, Estimate, estimate
+from .estimator import Efficiency, Estimate, estimate, parallel_levels
 from .profiles import CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRESETS, System
 
 SCHEMA = "llmsimbench.report/1"
@@ -44,6 +44,13 @@ TEXTS = {
     "prefill_uncalibrated": "{backend} prompt processing speed is not calibrated yet.",
     "moe_routing": "Mixture-of-experts routing overhead is not modeled, so generation may be "
                    "optimistic.",
+    "parallel_uncalibrated": "No concurrent-request measurements for {backend} yet: the "
+                             "speed-up from batching uses the CUDA factor.",
+    "parallel_device_uncalibrated": "Concurrent-request speeds are fitted to other hardware "
+                                    "only, not to {device}.",
+    "moe_parallel": "Concurrent requests of a mixture-of-experts model are not calibrated: the "
+                    "estimate assumes every request picks experts at random, while measured "
+                    "speed-ups are higher.",
 }
 
 
@@ -137,6 +144,19 @@ def warnings(system: System, est: Estimate, data: dict,
             out.append(_item("prefill_uncalibrated", backend=BACKEND_NAMES[b]))
     if est.model.active_params_b:
         out.append(_item("moe_routing"))
+    if est.parallel > 1:
+        batched = set(data["batch_devices"])
+        for b in backends:
+            if f"{b}/batch" not in cal:
+                out.append(_item("parallel_uncalibrated", backend=BACKEND_NAMES[b]))
+        devices = []
+        for g in system.gpus:
+            if (f"{g.backend}/batch" in cal and f"{g.name}|{g.backend}" not in batched
+                    and _label(g.name) not in devices):
+                devices.append(_label(g.name))
+        out += [_item("parallel_device_uncalibrated", device=d) for d in devices]
+        if est.model.active_params_b:
+            out.append(_item("moe_parallel"))
     return out
 
 
@@ -234,10 +254,56 @@ def cpu_checks(system: System, data: dict) -> dict | None:
 
 def timing_info(est: Estimate, timing: dict) -> dict:
     """Time to the first token and to the whole reply for {"prompt_tokens", "max_tokens",
-    "depth"}, as the mock plays it."""
-    ttft = timing["prompt_tokens"] / est.prefill_tps
-    gen = gen_time(est, timing["depth"] + timing["prompt_tokens"], timing["max_tokens"])
-    return {**timing, "ttft_s": ttft, "reply_s": ttft + gen}
+    "depth"}, as the mock plays it. With several slots, also the times when every slot
+    gets such a request at once: the prompts share prompt processing, then the replies
+    share each decode step."""
+    prompt, depth, max_tokens = timing["prompt_tokens"], timing["depth"], timing["max_tokens"]
+    ttft = prompt / est.prefill_tps
+    out = {**timing, "ttft_s": ttft, "reply_s": ttft + gen_time(est, depth + prompt, max_tokens)}
+    if est.parallel > 1:
+        n = est.parallel
+        ttft_all = n * prompt / est.prefill_tps
+        gen = sum(est.step_time([depth + prompt + i] * n) for i in range(1, max_tokens))
+        out.update(ttft_all_s=ttft_all, reply_all_s=ttft_all + gen)
+    return out
+
+
+def concurrency(est: Estimate) -> list[dict] | None:
+    """Speeds with 1, 2, 4, ... requests active, up to the number of slots."""
+    if est.parallel == 1:
+        return None
+    rows = []
+    for n in parallel_levels(est.parallel):
+        empty, full = est.parallel_tps(n, 0), est.parallel_tps(n, est.context)
+        rows.append({"requests": n, "per_request_tps_empty": empty, "per_request_tps_full": full,
+                     "total_tps_empty": n * empty, "total_tps_full": n * full})
+    return rows
+
+
+def parallel_checks(system: System, est: Estimate, kv_bits: int, data: dict) -> dict | None:
+    """llama-batched-bench runs on the selected GPU or chip, each simulated with the
+    backend, model, prompt length and number of sequences of the run."""
+    if est.parallel == 1 or len(system.gpus) != 1:
+        return None
+    rows = [m for m in data["batched_measurements"] if m["preset"] == system.gpus[0].name]
+    if not rows:
+        return None
+    sources: list[str] = []
+    out = []
+    for m in rows:
+        if m["source"] not in sources:
+            sources.append(m["source"])
+        n, pp, tg = m["n_parallel"], m["n_prompt"], m["n_gen"]
+        sim = estimate(_with_backend(system, m["backend"].lower()), MODEL_PRESETS[m["sim_model"]],
+                       m["quant"], pp + tg, kv_bits, parallel=n)
+        t = sum(sim.step_time([pp + i] * n) for i in range(tg))
+        out.append({
+            "backend": m["backend"], "model": m["model"], "quant": m["quant"], "n_prompt": pp,
+            "n_gen": tg, "requests": n, "tg_measured": m["tg_tps"], "tg_simulated": n * tg / t,
+            "pp_measured": m["pp_tps"], "pp_simulated": sim.prefill_tps,
+            "sources": [sources.index(m["source"]) + 1],
+        })
+    return {"kind": "parallel", "rows": out, "sources": sources}
 
 
 def result(system: System, est: Estimate, kv_bits: int, data: dict, timing: dict | None = None,
@@ -252,23 +318,28 @@ def result(system: System, est: Estimate, kv_bits: int, data: dict, timing: dict
             "model": {"name": m.name, "params_b": m.params_b, "active_params_b": m.active_params_b,
                       "layers": m.n_layers, "max_context": m.max_context},
             "quant": est.quant, "context": est.context, "kv_bits": kv_bits,
+            "parallel": est.parallel,
         },
         "memory": {
             "weights_gb": est.weights_gb, "kv_gb": est.kv_gb,
             "total_gb": est.weights_gb + est.kv_gb, "fits": est.fits,
             "ram_needed_gb": need, "ram_free_gb": free,
-            "placements": [{"device": p.device, "label": device_label(system, p), "is_gpu": p.is_gpu, "layers": p.layers,
-                            "weights_gb": p.weights_gb, "kv_gb": p.kv_gb} for p in est.placements],
+            "placements": [{"device": p.device, "label": device_label(system, p),
+                            "is_gpu": p.is_gpu, "layers": p.layers,
+                            "weights_gb": p.weights_gb, "kv_gb": p.kv_gb}
+                           for p in est.placements],
         },
         "speed": {
             "prefill_tps": est.prefill_tps,
             "decode_tps_empty": est.decode_tps_empty,
             "decode_tps_full": est.decode_tps_full,
+            "concurrency": concurrency(est),
         },
         "timing": timing_info(est, timing) if timing else None,
         "notes": notes(system, est),
         "warnings": warnings(system, est, data),
         "check": gpu_checks(system, kv_bits, data) or cpu_checks(system, data),
+        "parallel_check": parallel_checks(system, est, kv_bits, data),
     }
 
 
@@ -333,7 +404,11 @@ def _model_line(c: dict) -> str:
     m = c["model"]
     size = f"{m['params_b']:g}B" + (f", {m['active_params_b']:g}B active"
                                      if m["active_params_b"] else "")
-    return (f"{m['name']} ({size}), {c['quant']}, context {fmt(c['context'], 0)}, "
+    slots = ""
+    if c["parallel"] > 1:
+        slots = (f" per request × {c['parallel']} slots (llama-server -np {c['parallel']} "
+                 f"-c {c['context'] * c['parallel']})")
+    return (f"{m['name']} ({size}), {c['quant']}, context {fmt(c['context'], 0)}{slots}, "
             f"KV cache {c['kv_bits']}-bit")
 
 
@@ -388,13 +463,42 @@ def _result_lines(r: dict, heading: str) -> list[str]:
         rows += [[f"First token ({fmt(t['prompt_tokens'], 0)} prompt tokens{depth})",
                   fmt_time(t["ttft_s"])],
                  [f"Whole reply ({fmt(t['max_tokens'], 0)} tokens)", fmt_time(t["reply_s"])]]
+        if "ttft_all_s" in t:
+            n = c["parallel"]
+            rows += [[f"First token, {n} such requests at once", fmt_time(t["ttft_all_s"])],
+                     [f"Whole reply, {n} such requests at once", fmt_time(t["reply_all_s"])]]
     lines += _table(["Metric", "Estimate"], rows)
+    if sp["concurrency"]:
+        lines += ["", "### Concurrent requests", "",
+                  "Generation speed with this many requests active (tok/s); the total is the "
+                  "throughput of all of them together.", ""]
+        lines += _table(["Requests", "Each, empty context", "Each, full context",
+                         "Total, empty context", "Total, full context"],
+                        [[r["requests"], fmt_tps(r["per_request_tps_empty"]),
+                          fmt_tps(r["per_request_tps_full"]), fmt_tps(r["total_tps_empty"]),
+                          fmt_tps(r["total_tps_full"])] for r in sp["concurrency"]])
     if r["notes"]:
         lines += ["", "### Notes", ""] + [f"- {n['text']}" for n in r["notes"]]
     if r["warnings"]:
         lines += ["", "### Estimate only", ""] + [f"- {w['text']}" for w in r["warnings"]]
     if r["check"]:
         lines += [""] + _check_lines(r["check"])
+    if r["parallel_check"]:
+        lines += [""] + _parallel_check_lines(r["parallel_check"])
+    return lines
+
+
+def _parallel_check_lines(check: dict) -> list[str]:
+    rows = [[f"{r['backend']} · {r['model']} · {r['quant']} · pp{r['n_prompt']} tg{r['n_gen']} "
+             + "".join(f"[{n}]" for n in r["sources"]),
+             r["requests"], fmt_tps(r["tg_measured"]), fmt_tps(r["tg_simulated"])]
+            for r in check["rows"]]
+    lines = ["### Check against concurrent benchmarks", "",
+             "llama-batched-bench on this hardware: total generation speed of all sequences, "
+             "measured vs. this simulator (tok/s).", ""]
+    lines += _table(["Run", "Requests", "Gen real", "Gen sim"], rows)
+    lines += [""] + [f"[{i}] {url}  " for i, url in enumerate(check["sources"], 1)]
+    lines[-1] = lines[-1].rstrip()
     return lines
 
 

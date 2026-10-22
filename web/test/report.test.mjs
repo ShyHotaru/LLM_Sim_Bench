@@ -39,6 +39,10 @@ test("fmt matches Python's round-half-even formatting", () => {
   assert.equal(fmt(3.5, 0), "4");
   assert.equal(fmt(0.125, 2), "0.12");
   assert.equal(fmt(12345.678, 1), "12,345.7");
+  assert.equal(fmt(70.35, 1), "70.3"); // 70.349999... in binary
+  assert.equal(fmt(0.5, 0), "0");
+  assert.equal(fmt(999.96, 1), "1,000.0");
+  assert.equal(fmt(1234567, 0), "1,234,567");
 });
 
 test("fmtTime matches report.fmt_time", () => {

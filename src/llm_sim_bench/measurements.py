@@ -74,6 +74,17 @@ def validate(rec: dict) -> list[str]:
     for k in ("pp_tps", "tg_tps"):
         if res[k] is not None and not (isinstance(res[k], (int, float)) and res[k] > 0):
             errors.append(f"results.{k} must be a positive number or null")
+    run = rec["run"]
+    if "batched" in rec["flags"]:
+        # Several sequences at once: results are throughput over all of them.
+        if not isinstance(run.get("tool"), str):
+            errors.append("batched records need run.tool")
+        if not (isinstance(run.get("n_parallel"), int) and run["n_parallel"] >= 1):
+            errors.append("batched records need run.n_parallel >= 1")
+        if not isinstance(run.get("pp_shared"), bool):
+            errors.append("batched records need run.pp_shared")
+    elif "n_parallel" in run:
+        errors.append("run.n_parallel needs the batched flag")
     return errors
 
 

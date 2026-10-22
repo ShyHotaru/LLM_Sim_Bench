@@ -12,6 +12,7 @@ Real-world llama.cpp benchmark results used to calibrate and test the estimator
 | `measurements/llamacpp-rocm.jsonl` | [llama.cpp ROCm/HIP scoreboard (#15021)](https://github.com/ggml-org/llama.cpp/discussions/15021) | 46 |
 | `measurements/llamacpp-vulkan.jsonl` | [llama.cpp Vulkan scoreboard (#10879)](https://github.com/ggml-org/llama.cpp/discussions/10879) | 237 |
 | `measurements/llamacpp-sycl.jsonl` | [llama.cpp Intel SYCL scoreboard (#23313)](https://github.com/ggml-org/llama.cpp/discussions/23313); its opening post asks that the data not be used for commercial purposes (see [Licensing](#licensing)) | 104 |
+| `measurements/llamacpp-batched.jsonl` | `llama-batched-bench` tables in llama.cpp's [`benches/`](https://github.com/ggml-org/llama.cpp/tree/c7fc5094179bf8a9c73c18593db714f8da41a402/benches) folder (DGX Spark, Nemotron on DGX Spark, Mac M2 Ultra), MIT license; written by `tools/import_llamacpp_benches.py` from a llama.cpp checkout | 252 |
 | `measurements/cpu-runs.jsonl` | CPU-only runs: OpenBenchmarking.org `pts/llama-cpp` results (read through Wayback Machine copies), [ik_llama.cpp #164](https://github.com/ikawrakow/ik_llama.cpp/discussions/164) (mainline column), [llama.cpp #11733](https://github.com/ggml-org/llama.cpp/discussions/11733), [geerlingguy/ai-benchmarks](https://github.com/geerlingguy/ai-benchmarks) | 1594 |
 
 `llmsimbench export-web` copies the calibration error stats and the rows of the web app's check
@@ -49,6 +50,7 @@ guess.
 | `software.runtime`, `software.backend`, `software.commit`, `software.flash_attn` | Runtime, backend (`CUDA`, `Metal`, `ROCm`, `Vulkan`, `SYCL`, `CPU`), build commit, flash attention on/off |
 | `model.name`, `model.quant`, `model.file` | Model preset name, quantization, GGUF file name |
 | `run.n_gpu_layers`, `run.n_prompt`, `run.n_gen`, `run.depth` | llama-bench `-ngl` (`-1`: the tool's default, as many layers as fit), `-p`, `-n`, `-d` |
+| `run.tool`, `run.n_parallel`, `run.pp_shared`, `run.n_batch`, `run.n_ubatch` | Batched records only (required with the `batched` flag, except the batch sizes): the benchmark tool, number of sequences run at once (`B`), whether they share one prompt (`-pps`), `-b` and `-ub`. Their `results.pp_tps` and `results.tg_tps` are throughput over all sequences (`S_PP`, `S_TG`) |
 | `results.pp_tps`, `results.pp_std`, `results.tg_tps`, `results.tg_std` | Prefill and decode tokens/s with standard deviation |
 | `flags` | Quality flags. Excluded from calibration: `suspect` (the source value looks wrong), `old_build` (a llama.cpp build much older than current ones), `multi-socket`, `mobile-class-cpu`, `cpu-model-inferred`, `batched` (many parallel sequences). Partly excluded: `openblas-build` (prompt processing ran through OpenBLAS, not the default CPU path; decode is kept), `tg_thread_limited` (decode run with too few threads) |
 
@@ -76,6 +78,11 @@ guess.
   DRAM bandwidth, dual-CCD parts about 0.85.
 - Mixture-of-experts models are excluded from calibration (routing is not modeled).
 - No depth (`-d`) data yet, so the slowdown as the context fills is not calibrated.
+- Batched records: the M2 Ultra file does not say whether its GPU has 60 or 76 cores, so those
+  rows have no preset and are not used. Gemma 3, GLM-4.7-Flash and Nemotron have no model
+  preset. The Nemotron Super quantization is recorded as `Q4_K`, as the source prints it.
+  Only dense models fit `*_batch_compute` (Qwen2.5-Coder 7B, which shares Qwen2.5 7B's
+  architecture); the mixture-of-experts rows are only compared in `llmsimbench calibrate`.
 
 # Output texts and tokenizer ratios
 

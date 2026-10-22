@@ -19,6 +19,12 @@
   "cpu_bandwidth": 0.79,
   "cpu_compute": 0.35,
   "cpu_layer_overhead_us": 119.0,
+  "gpu_batch_compute": 0.41,
+  "metal_batch_compute": 0.41,
+  "rocm_batch_compute": 0.41,
+  "vulkan_batch_compute": 0.41,
+  "sycl_batch_compute": 0.41,
+  "cpu_batch_compute": 0.41,
   "vram_reserve_gb": 1.0,
   "ram_reserve_gb": 4.0,
   "unified_gpu_fraction": 0.75,
@@ -2099,7 +2105,9 @@
    "head_dim": 128,
    "max_context": 4096,
    "active_params_b": null,
-   "tokenizer": "llama2"
+   "tokenizer": "llama2",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "llama-2-13b",
@@ -2109,7 +2117,9 @@
    "head_dim": 128,
    "max_context": 4096,
    "active_params_b": null,
-   "tokenizer": "llama2"
+   "tokenizer": "llama2",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "llama-2-70b",
@@ -2119,7 +2129,9 @@
    "head_dim": 128,
    "max_context": 4096,
    "active_params_b": null,
-   "tokenizer": "llama2"
+   "tokenizer": "llama2",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "llama-3.2-3b",
@@ -2129,7 +2141,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "llama3"
+   "tokenizer": "llama3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "llama-3.1-8b",
@@ -2139,7 +2153,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "llama3"
+   "tokenizer": "llama3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "llama-3.1-70b",
@@ -2149,7 +2165,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "llama3"
+   "tokenizer": "llama3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "mistral-7b",
@@ -2159,7 +2177,9 @@
    "head_dim": 128,
    "max_context": 32768,
    "active_params_b": null,
-   "tokenizer": "mistral"
+   "tokenizer": "mistral",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "gemma-2-9b",
@@ -2169,7 +2189,9 @@
    "head_dim": 256,
    "max_context": 8192,
    "active_params_b": null,
-   "tokenizer": "gemma2"
+   "tokenizer": "gemma2",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen2.5-7b",
@@ -2179,7 +2201,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "qwen2.5"
+   "tokenizer": "qwen2.5",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen2.5-14b",
@@ -2189,7 +2213,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "qwen2.5"
+   "tokenizer": "qwen2.5",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen2.5-32b",
@@ -2199,7 +2225,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": null,
-   "tokenizer": "qwen2.5"
+   "tokenizer": "qwen2.5",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen3-8b",
@@ -2209,7 +2237,9 @@
    "head_dim": 128,
    "max_context": 32768,
    "active_params_b": null,
-   "tokenizer": "qwen3"
+   "tokenizer": "qwen3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen3-14b",
@@ -2219,7 +2249,9 @@
    "head_dim": 128,
    "max_context": 32768,
    "active_params_b": null,
-   "tokenizer": "qwen3"
+   "tokenizer": "qwen3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen3-32b",
@@ -2229,7 +2261,9 @@
    "head_dim": 128,
    "max_context": 32768,
    "active_params_b": null,
-   "tokenizer": "qwen3"
+   "tokenizer": "qwen3",
+   "n_experts": 0,
+   "experts_per_token": 0
   },
   {
    "name": "qwen3-30b-a3b",
@@ -2239,7 +2273,9 @@
    "head_dim": 128,
    "max_context": 131072,
    "active_params_b": 3.3,
-   "tokenizer": "qwen3"
+   "tokenizer": "qwen3",
+   "n_experts": 128,
+   "experts_per_token": 8
   },
   {
    "name": "gpt-oss-20b",
@@ -2249,7 +2285,9 @@
    "head_dim": 64,
    "max_context": 131072,
    "active_params_b": 3.6,
-   "tokenizer": "gpt-oss"
+   "tokenizer": "gpt-oss",
+   "n_experts": 32,
+   "experts_per_token": 4
   },
   {
    "name": "gpt-oss-120b",
@@ -2259,7 +2297,9 @@
    "head_dim": 64,
    "max_context": 131072,
    "active_params_b": 5.1,
-   "tokenizer": "gpt-oss"
+   "tokenizer": "gpt-oss",
+   "n_experts": 128,
+   "experts_per_token": 4
   }
  ],
  "tokenizers": {
@@ -2464,8 +2504,16 @@
    "n": 62,
    "median": 0.0765,
    "max": 0.5008
+  },
+  "cuda/batch": {
+   "n": 15,
+   "median": 0.0613,
+   "max": 0.1264
   }
  },
+ "batch_devices": [
+  "nvidia-dgx-spark|cuda"
+ ],
  "measurements": [
   {
    "id": "llamacpp-4167-m5-pro-16c-f16",
@@ -10098,6 +10146,368 @@
    "tg_tps": 45.98,
    "source": "https://web.archive.org/web/20251208215126/https://openbenchmarking.org/result/2512033-NE-DEC20251961",
    "commit": "b7083"
+  }
+ ],
+ "batched_measurements": [
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b1",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 1,
+   "pp_tps": 1895.57,
+   "tg_tps": 80.13,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b2",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 2,
+   "pp_tps": 4451.23,
+   "tg_tps": 109.71,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b4",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 4,
+   "pp_tps": 4688.87,
+   "tg_tps": 156.03,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b8",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 8,
+   "pp_tps": 4744.23,
+   "tg_tps": 271.79,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b16",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 16,
+   "pp_tps": 4748.19,
+   "tg_tps": 436.38,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-20b-pp512-tg32-b32",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-20b",
+   "sim_model": "gpt-oss-20b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 32,
+   "pp_tps": 4767.38,
+   "tg_tps": 681.49,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b1",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 1,
+   "pp_tps": 1151.8,
+   "tg_tps": 57.14,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b2",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 2,
+   "pp_tps": 2169.85,
+   "tg_tps": 73.27,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b4",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 4,
+   "pp_tps": 2480.33,
+   "tg_tps": 98.51,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b8",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 8,
+   "pp_tps": 2491.67,
+   "tg_tps": 159.18,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b16",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 16,
+   "pp_tps": 2488.35,
+   "tg_tps": 241.85,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-gpt-oss-120b-pp512-tg32-b32",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "gpt-oss-120b",
+   "sim_model": "gpt-oss-120b",
+   "quant": "MXFP4",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 32,
+   "pp_tps": 2481.07,
+   "tg_tps": 353.31,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b1",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 1,
+   "pp_tps": 1303.73,
+   "tg_tps": 58.36,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b2",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 2,
+   "pp_tps": 2648.68,
+   "tg_tps": 70.35,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b4",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 4,
+   "pp_tps": 3107.63,
+   "tg_tps": 98.33,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b8",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 8,
+   "pp_tps": 3099.35,
+   "tg_tps": 153.42,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b16",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 16,
+   "pp_tps": 3104.63,
+   "tg_tps": 231.44,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen3-coder-30b-a3b-instruct-pp512-tg32-b32",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen3-coder-30b-a3b-instruct",
+   "sim_model": "qwen3-30b-a3b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 32,
+   "pp_tps": 3100.8,
+   "tg_tps": 346.53,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b1",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 1,
+   "pp_tps": 2420.12,
+   "tg_tps": 29.1,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b2",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 2,
+   "pp_tps": 2393.89,
+   "tg_tps": 54.0,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b4",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 4,
+   "pp_tps": 2290.41,
+   "tg_tps": 104.17,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b8",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 8,
+   "pp_tps": 2330.36,
+   "tg_tps": 194.15,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b16",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 16,
+   "pp_tps": 2335.21,
+   "tg_tps": 331.9,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
+  },
+  {
+   "id": "llamacpp-benches-dgx-spark-qwen2.5-coder-7b-pp512-tg32-b32",
+   "preset": "nvidia-dgx-spark",
+   "backend": "CUDA",
+   "model": "qwen2.5-coder-7b",
+   "sim_model": "qwen2.5-7b",
+   "quant": "Q8_0",
+   "n_prompt": 512,
+   "n_gen": 32,
+   "n_parallel": 32,
+   "pp_tps": 2328.93,
+   "tg_tps": 589.21,
+   "source": "https://github.com/ggml-org/llama.cpp/blob/c7fc5094179bf8a9c73c18593db714f8da41a402/benches/dgx-spark/dgx-spark.md",
+   "commit": "11fb327bf"
   }
  ]
 }
