@@ -32,6 +32,7 @@
   "field.quant": "양자화",
   "field.context": "컨텍스트",
   "field.kvCache": "KV 캐시",
+  "field.parallel": "동시 요청",
 
   "gpu.add": "+ GPU 추가",
   "gpu.addFirst": "+ GPU 추가 (현재 CPU만 사용)",
@@ -45,6 +46,7 @@
   "option.chip": "{name} · GPU {cores}코어 · {bw} GB/s",
   "option.moe": "{total}B, 활성 {active}B",
   "option.context": "{k}K 토큰",
+  "option.parallelOne": "1 (한 번에 하나)",
 
   "badge.noFit": "메모리에 올라가지 않음",
   "badge.cpuOnly": "CPU만 사용",
@@ -56,6 +58,15 @@
   "metric.prefill": "프롬프트 처리",
   "metric.firstToken": "첫 토큰까지 ({n}토큰 프롬프트)",
   "metric.reply": "{n}토큰 답변 완료까지",
+  "metric.each": "요청 {n}개 동시, 요청당",
+  "metric.total": "요청 {n}개 합계",
+  "metric.firstTokenAll": "첫 토큰까지 ({n}토큰 프롬프트 {k}개 동시)",
+  "metric.replyAll": "{n}토큰 답변 {k}개 동시 완료까지",
+  "parallel.summary": "동시 요청 1~{n}개일 때 속도",
+  "parallel.intro": "이만큼의 요청이 동시에 생성할 때의 속도 (빈 컨텍스트, tok/s). 슬롯마다 KV 캐시 {context}토큰을 둡니다. llama-server -np {n} -c {total}과 같습니다.",
+  "parallel.requests": "요청 수",
+  "parallel.each": "요청당",
+  "parallel.total": "합계",
 
   "bar.unified": "통합 메모리 (GPU 사용 한도 {limit})",
   "bar.vram": "VRAM",
@@ -86,6 +97,8 @@
   "measured.memUnknown": "메모리 정보 없음",
   "measured.threads": "{n}스레드",
   "measured.sources": "출처",
+  "measured.parallelSummary": "검증: 이 하드웨어의 동시 요청 실측 ({n}건)",
+  "measured.parallelIntro": "llama.cpp의 llama-batched-bench: 모든 시퀀스를 합친 생성 속도의 실측값과 이 시뮬레이터의 추정값 비교 (tok/s).",
 
   "mock.title": "속도 체감하기",
   "mock.promptTokens": "프롬프트 토큰 수",
@@ -119,6 +132,7 @@
   "mock.cpuOnly": "CPU만 사용",
   "mock.prefilling": "프롬프트 {n}토큰 처리 중… {left} 남음",
   "mock.prefillStat": "프롬프트 처리 {v} tok/s",
+  "mock.requests": "요청 {n}개 동시",
   "mock.stats": "첫 토큰 {ttft} · {total}토큰 중 {n} · {rate} tok/s · 초당 {cps}자 · 컨텍스트 {fill}토큰",
 
   "about.title": "추정 방식",
@@ -158,6 +172,9 @@
   "warn.prefillDevice": "{device}는 이 백엔드로 측정한 프롬프트 처리 실측이 없어 백엔드 평균을 썼습니다. 실제와 차이가 클 수 있습니다.",
   "warn.cpuDevice": "{cpu}는 생성 속도 실측이 없어 CPU 평균 메모리 효율을 썼습니다. CCD가 하나인 Ryzen은 실측상 이보다 약 25% 느립니다.",
   "warn.moe": "MoE(전문가 혼합) 모델의 라우팅 비용은 반영되지 않아, 생성 속도가 실제보다 빠르게 나올 수 있습니다.",
+  "warn.parallelUncalibrated": "{backend}는 아직 동시 요청 실측이 없어, 배칭으로 빨라지는 정도는 CUDA 값을 썼습니다.",
+  "warn.parallelDevice": "동시 요청 속도는 다른 하드웨어의 실측에만 맞춘 값이며, {device}의 실측은 없습니다.",
+  "warn.moeParallel": "MoE 모델의 동시 요청은 보정되지 않았습니다. 요청마다 전문가를 무작위로 고른다고 가정했으며, 실측에서는 이보다 더 빨라집니다.",
 
   "platform.server": "서버",
   "search.label": "부품 검색",

@@ -91,8 +91,13 @@ def describe_system(system: System) -> str:
 
 
 def make_engine(est: Estimate, run: dict, seed=None) -> MockEngine:
-    decode = (lambda _fill, r=run["decode_tps"]: r) if run["decode_tps"] else est.decode_tps_at
-    return MockEngine(run["prefill_tps"] or est.prefill_tps, decode, seed=seed)
+    """A forced --decode-tps holds for every request, however many run at once."""
+    if run["decode_tps"]:
+        decode, step = (lambda _fill, r=run["decode_tps"]: r), None
+    else:
+        decode, step = est.decode_tps_at, est.step_time
+    return MockEngine(run["prefill_tps"] or est.prefill_tps, decode, seed=seed, step_time=step,
+                      slots=est.parallel)
 
 
 def _estimate(args):

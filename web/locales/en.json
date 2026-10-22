@@ -32,6 +32,7 @@
   "field.quant": "Quantization",
   "field.context": "Context",
   "field.kvCache": "KV cache",
+  "field.parallel": "Concurrent requests",
 
   "gpu.add": "+ Add another GPU",
   "gpu.addFirst": "+ Add a GPU (currently CPU only)",
@@ -45,6 +46,7 @@
   "option.chip": "{name} · {cores}-core GPU · {bw} GB/s",
   "option.moe": "{total}B, {active}B active",
   "option.context": "{k}K tokens",
+  "option.parallelOne": "1 (one at a time)",
 
   "badge.noFit": "Does not fit in memory",
   "badge.cpuOnly": "CPU only",
@@ -56,6 +58,15 @@
   "metric.prefill": "Prompt processing",
   "metric.firstToken": "First token ({n}-token prompt)",
   "metric.reply": "{n}-token reply",
+  "metric.each": "Each of {n} requests",
+  "metric.total": "Total of {n} requests",
+  "metric.firstTokenAll": "First token ({n}-token prompts, {k} at once)",
+  "metric.replyAll": "{n}-token replies, {k} at once",
+  "parallel.summary": "Speed with 1 to {n} requests at once",
+  "parallel.intro": "Generation speed with this many requests running, at an empty context (tok/s). Each slot keeps {context} tokens of KV cache, like llama-server -np {n} -c {total}.",
+  "parallel.requests": "Requests",
+  "parallel.each": "Each",
+  "parallel.total": "Total",
 
   "bar.unified": "Unified memory (GPU limit {limit})",
   "bar.vram": "VRAM",
@@ -86,6 +97,8 @@
   "measured.memUnknown": "memory not stated",
   "measured.threads": "{n} threads",
   "measured.sources": "Sources",
+  "measured.parallelSummary": "Check: concurrent benchmarks on this hardware ({n})",
+  "measured.parallelIntro": "llama-batched-bench with llama.cpp: total generation speed of all sequences, measured vs. this simulator (tok/s).",
 
   "mock.title": "Feel the speed",
   "mock.promptTokens": "Prompt tokens",
@@ -119,6 +132,7 @@
   "mock.cpuOnly": "CPU only",
   "mock.prefilling": "Processing {n} prompt tokens… {left} left",
   "mock.prefillStat": "prefill {v} tok/s",
+  "mock.requests": "{n} requests at once",
   "mock.stats": "First token {ttft} · {n}/{total} tokens · {rate} tok/s · {cps} chars/s · context {fill} tokens",
 
   "about.title": "How the estimate works",
@@ -158,6 +172,9 @@
   "warn.prefillDevice": "No prompt-processing measurements for {device} with this backend: its prompt speed uses the backend average and can be far off.",
   "warn.cpuDevice": "No decode measurements for the {cpu}: its memory efficiency uses the CPU average. Single-CCD Ryzen parts measure about 25 % slower than that.",
   "warn.moe": "Mixture-of-experts routing overhead is not modeled, so generation may be optimistic.",
+  "warn.parallelUncalibrated": "No concurrent-request measurements for {backend} yet: the speed-up from batching uses the CUDA factor.",
+  "warn.parallelDevice": "Concurrent-request speeds are fitted to other hardware only, not to {device}.",
+  "warn.moeParallel": "Concurrent requests of a mixture-of-experts model are not calibrated: the estimate assumes every request picks experts at random, while measured speed-ups are higher.",
 
   "platform.server": "Server",
   "search.label": "Find a part",
