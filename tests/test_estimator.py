@@ -125,6 +125,50 @@ class MockTests(unittest.TestCase):
         self.assertAlmostEqual(elapsed, 0.25, delta=0.04)
         self.assertAlmostEqual(stats.decode_tps, 200, delta=20)
 
+    @staticmethod
+    def _run_together(engine, jobs, delays=None):
+        """Stream (prompt_tokens, n_pieces) jobs in threads; return their stats."""
+        import threading
+
+        stats = [StreamStats() for _ in jobs]
+
+        def run(i):
+            time.sleep((delays or [0] * len(jobs))[i])
+            list(engine.stream(jobs[i][0], ["x"] * jobs[i][1], stats[i]))
+
+        threads = [threading.Thread(target=run, args=(i,)) for i in range(len(jobs))]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return stats
+
+    def test_concurrent_streams_share_decode_steps(self):
+        # 10 ms per step for one stream, 15 ms when two share it.
+        engine = MockEngine(1e6, lambda _: 100, jitter=0, seed=1, slots=2,
+                            step_time=lambda fills: 0.005 + 0.005 * len(fills))
+        stats = self._run_together(engine, [(1, 31), (1, 31)])
+        for s in stats:
+            self.assertAlmostEqual(s.decode_tps, 1 / 0.015, delta=8)
+            self.assertLess(s.queued_s, 0.01)
+
+    def test_requests_beyond_the_slots_wait(self):
+        engine = MockEngine(1e6, lambda _: 200, jitter=0, seed=1, slots=1)
+        stats = self._run_together(engine, [(1, 21), (1, 21)], delays=[0, 0.02])
+        self.assertLess(stats[0].queued_s, 0.01)
+        # The second request waits for the first to finish (about 0.1 s).
+        self.assertAlmostEqual(stats[1].queued_s, 0.08, delta=0.03)
+        self.assertGreaterEqual(stats[1].ttft_s, stats[1].queued_s)
+
+    def test_a_new_prompt_pauses_other_streams(self):
+        # The first stream decodes 31 tokens at 5 ms (0.15 s); a 0.1 s prompt arrives
+        # meanwhile and holds the engine.
+        engine = MockEngine(1000, lambda _: 200, jitter=0, seed=1, slots=2,
+                            step_time=lambda fills: 0.005)
+        stats = self._run_together(engine, [(1, 31), (100, 2)], delays=[0, 0.03])
+        self.assertAlmostEqual(stats[0].total_s, 0.25, delta=0.04)
+        self.assertAlmostEqual(stats[1].ttft_s, 0.1, delta=0.03)
+
 
 class CliTests(unittest.TestCase):
     def test_estimate_with_example_config(self):

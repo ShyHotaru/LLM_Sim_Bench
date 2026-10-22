@@ -206,11 +206,14 @@ export function concurrency(est) {
   });
 }
 
-// llama-batched-bench runs on the selected GPU or chip, each simulated with the backend,
-// model, prompt length and number of sequences of the run.
+// llama-batched-bench runs on the selected GPU or chip (only those of the selected model
+// if there are any), each simulated with the backend, model, prompt length and number of
+// sequences of the run.
 export function parallelChecks(P, system, est, kvBits) {
   if (est.parallel === 1 || system.gpus.length !== 1) return null;
-  const rows = P.batched_measurements.filter((m) => m.preset === system.gpus[0].name);
+  const onDevice = P.batched_measurements.filter((m) => m.preset === system.gpus[0].name);
+  const same = onDevice.filter((m) => m.sim_model === est.model.name);
+  const rows = same.length ? same : onDevice;
   if (!rows.length) return null;
   const sources = [];
   const out = rows.map((m) => {

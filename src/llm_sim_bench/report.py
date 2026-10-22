@@ -281,11 +281,13 @@ def concurrency(est: Estimate) -> list[dict] | None:
 
 
 def parallel_checks(system: System, est: Estimate, kv_bits: int, data: dict) -> dict | None:
-    """llama-batched-bench runs on the selected GPU or chip, each simulated with the
-    backend, model, prompt length and number of sequences of the run."""
+    """llama-batched-bench runs on the selected GPU or chip (only those of the selected
+    model if there are any), each simulated with the backend, model, prompt length and
+    number of sequences of the run."""
     if est.parallel == 1 or len(system.gpus) != 1:
         return None
     rows = [m for m in data["batched_measurements"] if m["preset"] == system.gpus[0].name]
+    rows = [m for m in rows if m["sim_model"] == est.model.name] or rows
     if not rows:
         return None
     sources: list[str] = []

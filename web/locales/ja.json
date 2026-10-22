@@ -11,7 +11,7 @@
   "report.label": "レポートを書き出す:",
   "report.json": "JSON",
   "report.markdown": "Markdown",
-  "report.hint": "すべての構成の推定値、注記、警告、実測との比較をファイル(英語)でダウンロードします。この設定へのリンクも含まれます。",
+  "report.hint": "すべての構成の推定値、注記、警告、実測との比較をファイル（英語）でダウンロードします。この設定へのリンクも含まれます。",
   "config.remove": "削除",
   "config.platform": "プラットフォーム",
   "platform.pc": "PC",
@@ -32,6 +32,7 @@
   "field.quant": "量子化",
   "field.context": "コンテキスト",
   "field.kvCache": "KVキャッシュ",
+  "field.parallel": "同時リクエスト",
 
   "gpu.add": "+ GPUを追加",
   "gpu.addFirst": "+ GPUを追加（現在はCPUのみ）",
@@ -45,6 +46,7 @@
   "option.chip": "{name} · GPU {cores}コア · {bw} GB/s",
   "option.moe": "{total}B、アクティブ {active}B",
   "option.context": "{k}Kトークン",
+  "option.parallelOne": "1（一度に1件）",
 
   "badge.noFit": "メモリに収まりません",
   "badge.cpuOnly": "CPUのみ",
@@ -56,6 +58,15 @@
   "metric.prefill": "プロンプト処理",
   "metric.firstToken": "最初のトークンまで（{n}トークンのプロンプト）",
   "metric.reply": "{n}トークンの回答完了まで",
+  "metric.each": "{n}件同時の1件あたり",
+  "metric.total": "{n}件の合計",
+  "metric.firstTokenAll": "最初のトークンまで（{n}トークンのプロンプト{k}件同時）",
+  "metric.replyAll": "{n}トークンの回答{k}件同時の完了まで",
+  "parallel.summary": "同時リクエスト1〜{n}件の速度",
+  "parallel.intro": "この数のリクエストが同時に生成するときの速度（空のコンテキスト、tok/s）。スロットごとに{context}トークンのKVキャッシュを持ちます。llama-server -np {n} -c {total} と同じです。",
+  "parallel.requests": "リクエスト数",
+  "parallel.each": "1件あたり",
+  "parallel.total": "合計",
 
   "bar.unified": "ユニファイドメモリ（GPU使用上限 {limit}）",
   "bar.vram": "VRAM",
@@ -86,6 +97,8 @@
   "measured.memUnknown": "メモリ情報なし",
   "measured.threads": "{n}スレッド",
   "measured.sources": "出典",
+  "measured.parallelSummary": "検証: このハードウェアの同時リクエストの実測（{n}件）",
+  "measured.parallelIntro": "llama.cppのllama-batched-bench: 全シーケンスを合わせた生成速度の実測値と、このシミュレーターの推定値の比較（tok/s）。",
 
   "mock.title": "速度を体感する",
   "mock.promptTokens": "プロンプトのトークン数",
@@ -119,6 +132,7 @@
   "mock.cpuOnly": "CPUのみ",
   "mock.prefilling": "プロンプト {n}トークンを処理中… 残り{left}",
   "mock.prefillStat": "プロンプト処理 {v} tok/s",
+  "mock.requests": "{n}件同時",
   "mock.stats": "最初のトークン {ttft} · {total}トークン中 {n} · {rate} tok/s · 毎秒{cps}文字 · コンテキスト {fill}トークン",
 
   "about.title": "推定の仕組み",
@@ -158,6 +172,9 @@
   "warn.prefillDevice": "{device}はこのバックエンドでのプロンプト処理の実測がないため、バックエンドの平均値を使っています。実際と大きく異なる場合があります。",
   "warn.cpuDevice": "{cpu}は生成速度の実測がないため、CPUの平均メモリ効率を使っています。CCDが1つのRyzenは実測でこれより約25%遅くなります。",
   "warn.moe": "MoE（専門家混合）モデルのルーティングのコストは反映していないため、生成速度が実際より速く出ることがあります。",
+  "warn.parallelUncalibrated": "{backend}はまだ同時リクエストの実測がないため、バッチ処理による高速化はCUDAの値を使っています。",
+  "warn.parallelDevice": "同時リクエストの速度は他のハードウェアの実測にだけ合わせた値で、{device}の実測はありません。",
+  "warn.moeParallel": "MoEモデルの同時リクエストは較正していません。リクエストごとに専門家をランダムに選ぶと仮定しており、実測ではこれより速くなります。",
 
   "platform.server": "サーバー",
   "search.label": "部品を検索",

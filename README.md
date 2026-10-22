@@ -54,7 +54,11 @@ Note      8/48 layers offloaded to CPU
 RAM), a Mac, a unified-memory PC (DGX Spark, Ryzen AI Max) or a server (data-center GPUs and
 server CPUs), a model and a quantization, and watch mock tokens stream at the simulated speed.
 Lists show the newest parts first, and a search box finds any GPU, CPU or chip and switches to
-the right tab. Add a second configuration to compare both side by side. Playback can start with
+the right tab. Add a second configuration to compare both side by side. "Concurrent requests" sets the
+number of llama-server slots: the result then shows the speed per request and in total for up to
+that many requests at once, the memory for every slot's KV cache, and, where measured, a check
+against `llama-batched-bench` results; playback shows one of that many requests that arrive
+together. Playback can start with
 the context already partly filled (cached, so it adds no prompt-processing time) to feel the
 slowdown at long contexts. Under each result, a check table compares the simulator with real
 llama.cpp results for the selected GPU, chip or, in a CPU-only setup, CPU. The whole setup is
@@ -111,6 +115,12 @@ Custom hardware or models that are not presets can be defined field-by-field in 
 non-streaming). Point any OpenAI client or chat UI at `http://127.0.0.1:8000/v1` with any API
 key. Time-to-first-token follows the simulated prefill speed for the prompt length, and each
 token after that follows the simulated decode speed at the current context fill.
+
+With `--parallel N` the server behaves like llama-server with N slots: up to N requests stream at
+once and share each decode step, so each one slows down as more run; further requests wait for
+a free slot; and while a new request's prompt is processed, the other streams pause. The log
+line of each request shows its wait (`queued=`). A forced `--decode-tps` holds for every request
+however many run at once.
 
 ## Reports
 
@@ -236,7 +246,7 @@ Calibration data:
 
 Features:
 
-- Concurrent-request simulation (llama.cpp `--parallel` slots).
+- Web playback of several concurrent streams side by side (playback now shows one of them).
 
 ## Development
 

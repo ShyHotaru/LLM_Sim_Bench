@@ -1,10 +1,10 @@
-import { buildSystem, estimate, ramBandwidthGbps } from "./estimator.js";
+import { buildSystem, estimate, parallelLevels, ramBandwidthGbps } from "./estimator.js";
 import {
   LANGS, lang, loadLocale, numberLocale, pickLang, saveLang, savedLang, t, translateDom,
 } from "./i18n.js";
 import { Schedule } from "./mock.js";
 import {
-  BACKEND_NAMES, buildReport, cpuChecks, genTime, gpuChecks, markdown, warnings,
+  BACKEND_NAMES, buildReport, cpuChecks, gpuChecks, markdown, parallelChecks, timingInfo, warnings,
 } from "./report.js";
 import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
@@ -23,6 +23,8 @@ function ramKinds() {
 }
 const CONTEXTS = [2048, 4096, 8192, 16384, 32768, 65536, 131072];
 const KV_BITS = [16, 8, 4];
+// Concurrent request slots (llama-server --parallel).
+const PARALLEL = [1, 2, 4, 8, 16, 32];
 // Tokens already in the KV cache when playback starts (llama-bench -d).
 const DEPTHS = [0, 4096, 8192, 16384, 32768, 65536, 131072];
 const MAX_CONFIGS = 2;
@@ -44,6 +46,7 @@ const DEFAULT_CONFIG = {
   quant: "Q4_K_M",
   context: 8192,
   kvBits: 16,
+  parallel: 1,
 };
 // Defaults when a configuration moves to the server tab.
 const SERVER_DEFAULT = { gpu: "h100-sxm-80gb", cpu: "epyc-9654", ramGb: 512 };
@@ -223,7 +226,8 @@ function sanitizeConfig(c) {
   if (!(cfg.quant in P.quant_bpw)) cfg.quant = DEFAULT_CONFIG.quant;
   if (!CONTEXTS.includes(Number(cfg.context))) cfg.context = DEFAULT_CONFIG.context;
   if (!KV_BITS.includes(Number(cfg.kvBits))) cfg.kvBits = DEFAULT_CONFIG.kvBits;
-  for (const k of ["ramGb", "ramChannels", "memoryGb", "context", "kvBits"]) cfg[k] = Number(cfg[k]);
+  if (!PARALLEL.includes(Number(cfg.parallel))) cfg.parallel = DEFAULT_CONFIG.parallel;
+  for (const k of ["ramGb", "ramChannels", "memoryGb", "context", "kvBits", "parallel"]) cfg[k] = Number(cfg[k]);
   return cfg;
 }
 
@@ -259,10 +263,10 @@ function systemSpec(cfg) {
   };
 }
 
-function compute(cfg, model = cfg.model, quant = cfg.quant, context = cfg.context) {
+function compute(cfg) {
   const system = buildSystem(systemSpec(cfg), P);
-  const m = P.models.find((x) => x.name === model);
-  const est = estimate(system, m, quant, context, cfg.kvBits, P.efficiency, P.quant_bpw);
+  const m = P.models.find((x) => x.name === cfg.model);
+  const est = estimate(system, m, cfg.quant, cfg.context, cfg.kvBits, P.efficiency, P.quant_bpw, cfg.parallel);
   return { system, est };
 }
 
@@ -345,6 +349,8 @@ function renderConfig(cfg, i) {
     field(t("field.quant"), select("quant", Object.entries(P.quant_bpw).map(([q, b]) => [q, `${q} (${b} bpw)`]), cfg.quant, { "data-focus-id": `${i}-quant` })),
     field(t("field.context"), select("context", CONTEXTS.map((c) => [c, t("option.context", { k: c / 1024 })]), cfg.context, { "data-focus-id": `${i}-ctx` })),
     field(t("field.kvCache"), select("kvBits", KV_BITS.map((b) => [b, b === 16 ? "F16" : `Q${b}`]), cfg.kvBits, { "data-focus-id": `${i}-kv` }))));
+  settings.append(h("div", { class: "fields" },
+    field(t("field.parallel"), select("parallel", PARALLEL.map((n) => [n, n === 1 ? t("option.parallelOne") : String(n)]), cfg.parallel, { "data-focus-id": `${i}-parallel` }))));
 
   panel.append(h("div", { class: "config-body" }, settings, renderResult(cfg)));
   return panel;
@@ -366,8 +372,8 @@ function renderResult(cfg) {
   else if (!system.gpus.length) badge = h("p", { class: "badge warn" }, t("badge.cpuOnly"));
   else if (gpuLayers < n) badge = h("p", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
 
-  const ttft = state.prompt / est.prefill_tps;
-  const gen = genTime(est, state.depth + state.prompt, state.maxTokens);
+  const timing = timingInfo(est, { prompt_tokens: state.prompt, max_tokens: state.maxTokens, depth: state.depth });
+  const slots = cfg.parallel;
   const notes = localizedNotes(cfg, system, est);
   const result = h("div", { class: "result" },
     badge,
@@ -377,13 +383,55 @@ function renderResult(cfg) {
     h("div", { class: "metrics" },
       metric(t("metric.fullContext"), t("result.tps", { v: fmtTps(est.decode_tps_full) })),
       metric(t("metric.prefill"), t("result.tps", { v: fmtTps(est.prefill_tps) })),
-      metric(t("metric.firstToken", { n: fmtInt(state.prompt) }), fmtTime(ttft)),
-      metric(t("metric.reply", { n: fmtInt(state.maxTokens) }), fmtTime(ttft + gen))),
+      slots > 1 ? metric(t("metric.each", { n: slots }), t("result.tps", { v: fmtTps(est.parallelTps(slots, 0)) })) : null,
+      slots > 1 ? metric(t("metric.total", { n: slots }), t("result.tps", { v: fmtTps(slots * est.parallelTps(slots, 0)) })) : null,
+      slots > 1
+        ? metric(t("metric.firstTokenAll", { n: fmtInt(state.prompt), k: slots }), fmtTime(timing.ttft_all_s))
+        : metric(t("metric.firstToken", { n: fmtInt(state.prompt) }), fmtTime(timing.ttft_s)),
+      slots > 1
+        ? metric(t("metric.replyAll", { n: fmtInt(state.maxTokens), k: slots }), fmtTime(timing.reply_all_s))
+        : metric(t("metric.reply", { n: fmtInt(state.maxTokens) }), fmtTime(timing.reply_s))),
     renderBars(system, est),
+    renderParallel(cfg, est),
     notes.length ? h("ul", { class: "notes" }, notes.map((note) => h("li", {}, note))) : null,
     renderWarnings(system, est),
-    renderMeasured(cfg, system));
+    renderMeasured(cfg, system),
+    renderParallelMeasured(cfg, system, est));
   return result;
+}
+
+// Speeds with 1, 2, 4, ... requests at once, up to the configured slots.
+function renderParallel(cfg, est) {
+  if (cfg.parallel === 1) return null;
+  const rows = parallelLevels(cfg.parallel).map((n) => {
+    const each = est.parallelTps(n, 0);
+    return h("tr", {}, h("td", {}, String(n)), h("td", {}, fmtTps(each)), h("td", {}, fmtTps(n * each)));
+  });
+  return h("details", { class: "measured-wrap" },
+    h("summary", {}, t("parallel.summary", { n: cfg.parallel })),
+    h("div", { class: "measured" },
+      h("p", { style: "margin:0 0 6px" }, t("parallel.intro", {
+        context: fmtInt(cfg.context), n: cfg.parallel, total: cfg.context * cfg.parallel })),
+      h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, t("parallel.requests")), h("th", {}, t("parallel.each")), h("th", {}, t("parallel.total")))),
+        h("tbody", {}, rows))));
+}
+
+// llama-batched-bench runs on the selected GPU or chip, measured vs. simulated.
+function renderParallelMeasured(cfg, system, est) {
+  const check = parallelChecks(P, system, est, cfg.kvBits);
+  if (!check) return null;
+  const body = check.rows.map((r) => h("tr", {},
+    h("td", {}, `${r.model} · ${r.quant}`, h("span", { class: "run-meta" }, `${r.backend} · pp${r.n_prompt} tg${r.n_gen}`)),
+    h("td", {}, String(r.requests)), h("td", {}, fmtTps(r.tg_measured)), h("td", {}, fmtTps(r.tg_simulated))));
+  return h("details", { class: "measured-wrap" },
+    h("summary", {}, t("measured.parallelSummary", { n: check.rows.length })),
+    h("div", { class: "measured" },
+      h("p", { style: "margin:0 0 6px" }, `${t("measured.parallelIntro")} `, h("a", { href: check.sources[0] }, t("measured.source"))),
+      h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, t("measured.model")), h("th", {}, t("parallel.requests")),
+          h("th", {}, t("measured.genReal")), h("th", {}, t("measured.genSim")))),
+        h("tbody", {}, body))));
 }
 
 // The estimator's notes are English; rebuild them from its numbers instead.
@@ -408,6 +456,9 @@ const WARNING_KEYS = {
   decode_uncalibrated: "warn.decodeUncalibrated",
   prefill_uncalibrated: "warn.prefillUncalibrated",
   moe_routing: "warn.moe",
+  parallel_uncalibrated: "warn.parallelUncalibrated",
+  parallel_device_uncalibrated: "warn.parallelDevice",
+  moe_parallel: "warn.moeParallel",
 };
 
 // Point out where the numbers rest on uncalibrated assumptions rather than measurements.
@@ -527,7 +578,7 @@ function downloadReport(format) {
   const timing = { prompt_tokens: state.prompt, max_tokens: state.maxTokens, depth: state.depth };
   const configs = state.configs.map((cfg, i) => ({
     label: state.configs.length > 1 ? LETTERS[i] : null, system: systemSpec(cfg), model: cfg.model,
-    quant: cfg.quant, context: cfg.context, kv_bits: cfg.kvBits, timing,
+    quant: cfg.quant, context: cfg.context, kv_bits: cfg.kvBits, parallel: cfg.parallel, timing,
   }));
   const rep = buildReport(P, configs, "web", location.href);
   const [body, type, ext] = format === "json"
@@ -690,7 +741,8 @@ function renderStreams() {
       const m = P.models.find((x) => x.name === cfg.model);
       const hw = !isPcLike(cfg) ? chipName(activeChip(cfg))
         : (cfg.gpus.length ? cfg.gpus.map(gpuName).join(" + ") : t("mock.cpuOnly"));
-      label = `${hw} · ${m.name} ${cfg.quant}`;
+      label = `${hw} · ${m.name} ${cfg.quant}`
+        + (cfg.parallel > 1 ? ` · ${t("mock.requests", { n: cfg.parallel })}` : "");
       tok = tokenizerLabel(tokenizerFor(cfg));
     } catch { /* invalid configs show an error in their panel */ }
     return h("div", { class: "stream", "data-i": i },
@@ -731,9 +783,12 @@ async function startPlayback() {
       const turns = entry.kind === "chat"
         ? content.map((x) => ({ user: chunkText(x.user, tk.value), assistant: chunkText(x.assistant, tk.value) }))
         : [{ user: null, assistant: chunkText(content, tk.value) }];
+      // With several slots, play one of n requests that arrive together: their prompts
+      // share prompt processing and every decode step serves all of them.
+      const n = cfg.parallel;
       const schedule = new Schedule({
         turns, promptTokens: state.prompt, maxTokens: state.maxTokens, cachedTokens: state.depth,
-        prefillTps: est.prefill_tps, decodeTps: est.decodeTpsAt, seed: 7 + i });
+        prefillTps: est.prefill_tps / n, decodeTps: (fill) => est.parallelTps(n, fill), seed: 7 + i });
       streams.push({ el, est, shown: 0, block: null, chat: entry.kind === "chat", schedule });
       // The real text length is known now; a conversation can need more than one reply.
       el.querySelector(".problem").textContent = contextProblem(cfg, schedule.events.at(-1)?.fill ?? 0);
@@ -809,7 +864,7 @@ function tick() {
       }
       pending.textContent = t("mock.prefilling", {
         n: fmtInt(turn.prefillTokens), left: fmtTime(Math.max(0, turn.firstAt - elapsed)) });
-      stats.textContent = turnLabel + t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps) });
+      stats.textContent = turnLabel + t("mock.prefillStat", { v: fmtTps(s.est.prefill_tps / s.est.parallel) });
       running = true;
     } else {
       const now = Math.min(elapsed, turn.end);
@@ -819,7 +874,8 @@ function tick() {
       const chars = done.slice(1).reduce((a, ev) => a + Array.from(ev.text).length, 0);
       const fill = n ? sch.events[n - 1].fill : state.depth + state.prompt;
       // With a pre-filled context, show how much slower generation is than when empty.
-      const slower = state.depth ? Math.round(100 * (1 - s.est.decodeTpsAt(fill) / s.est.decode_tps_empty)) : 0;
+      const p = s.est.parallel;
+      const slower = state.depth ? Math.round(100 * (1 - s.est.parallelTps(p, fill) / s.est.parallelTps(p, 0))) : 0;
       stats.textContent = turnLabel + t("mock.stats", {
         ttft: fmtTime(turn.ttft), n: done.length, total: turn.tokens,
         rate: rate ? fmtTps(rate) : "–", cps: rate ? fmtTps(chars / genElapsed) : "–",
