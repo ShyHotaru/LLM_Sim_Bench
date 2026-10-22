@@ -3,7 +3,7 @@
 // keeps the two in sync. Reports are in English; notes and warnings carry a code and
 // parameters, which the app also uses to show them in the interface language.
 
-import { buildSystem, estimate, parallelLevels } from "./estimator.js";
+import { buildSystem, estimate, parallelLevels, withoutFlashAttention } from "./estimator.js";
 import { benchGenTps, groupCpuRuns } from "./measured.js";
 
 export const SCHEMA = "llmsimbench.report/1";
@@ -151,8 +151,9 @@ export function gpuChecks(P, system, kvBits) {
   return {
     kind: "gpu",
     rows: rows.map((m) => {
+      const eff = m.flash_attn === false ? withoutFlashAttention(P.efficiency) : P.efficiency;
       const est = estimate(withBackend(system, m.sim_backend), model(P, m.model), m.quant,
-                           m.n_prompt + m.n_gen, kvBits, P.efficiency, P.quant_bpw, 1, P.quant_shared_bpw);
+                           m.n_prompt + m.n_gen, kvBits, eff, P.quant_bpw, 1, P.quant_shared_bpw);
       return {
         backend: BACKEND_NAMES[m.sim_backend], model: m.model, quant: m.quant, flash_attn: m.flash_attn,
         old_build: m.old_build, n_prompt: m.n_prompt, n_gen: m.n_gen,
