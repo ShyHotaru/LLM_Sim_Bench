@@ -18,7 +18,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
-from .estimator import Efficiency, Estimate, estimate
+from .estimator import Efficiency, Estimate, add_in_order, estimate
 from .profiles import CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, UNIFIED_PRESETS, System
 
 SCHEMA = "llmsimbench.report/1"
@@ -92,7 +92,7 @@ def ram_use(system: System, est: Estimate, eff: Efficiency = Efficiency()) -> tu
     cpu = [p for p in est.placements if not p.is_gpu]
     free = system.ram.size_gb - eff.ram_reserve_gb
     if system.unified:
-        free -= sum(p.weights_gb + p.kv_gb for p in est.placements if p.is_gpu)
+        free -= add_in_order(p.weights_gb + p.kv_gb for p in est.placements if p.is_gpu)
     return (cpu[0].weights_gb + cpu[0].kv_gb if cpu else 0.0), free
 
 
@@ -142,7 +142,7 @@ def warnings(system: System, est: Estimate, data: dict,
 
 def gen_time(est: Estimate, filled: int, max_tokens: int) -> float:
     """Seconds for tokens 2..max_tokens of a reply after `filled` context tokens."""
-    return sum(1 / est.decode_tps_at(filled + i) for i in range(1, max_tokens))
+    return add_in_order(1 / est.decode_tps_at(filled + i) for i in range(1, max_tokens))
 
 
 def _with_backend(system: System, backend: str) -> System:
@@ -203,7 +203,7 @@ def group_cpu_runs(rows: list[dict]) -> tuple[list[dict], list[str]]:
 
 def bench_gen_tps(est: Estimate, n_gen: int) -> float:
     """Decode speed llama-bench reports for n_gen tokens from an empty context."""
-    return n_gen / sum(1 / est.decode_tps_at(i) for i in range(n_gen))
+    return n_gen / add_in_order(1 / est.decode_tps_at(i) for i in range(n_gen))
 
 
 def cpu_checks(system: System, data: dict) -> dict | None:

@@ -93,7 +93,7 @@
       "max_tokens": 300,
       "depth": 0,
       "ttft_s": 0.08905213264886287,
-      "reply_s": 2.219996282143383
+      "reply_s": 2.2199962821433825
      },
      "notes": [],
      "warnings": [],
@@ -109,7 +109,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 186.21,
-        "tg_simulated": 174.84775207154397,
+        "tg_simulated": 174.84775207154394,
         "pp_measured": 11992.7,
         "pp_simulated": 13378.620178041545,
         "sources": [
@@ -125,7 +125,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 188.96,
-        "tg_simulated": 174.84775207154397,
+        "tg_simulated": 174.84775207154394,
         "pp_measured": 14770.63,
         "pp_simulated": 13378.620178041545,
         "sources": [
@@ -141,7 +141,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 187.97,
-        "tg_simulated": 181.83059674166395,
+        "tg_simulated": 181.8305967416638,
         "pp_measured": 9452.03,
         "pp_simulated": 10144.228486646884,
         "sources": [
@@ -157,7 +157,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 190.1,
-        "tg_simulated": 181.83059674166395,
+        "tg_simulated": 181.8305967416638,
         "pp_measured": 10830.41,
         "pp_simulated": 10144.228486646884,
         "sources": [
@@ -357,7 +357,7 @@
         "n_gen": 512,
         "runs": 5,
         "tg_measured": 16.29,
-        "tg_simulated": 16.01445530902614,
+        "tg_simulated": 16.014455309026143,
         "pp_measured": null,
         "pp_simulated": null,
         "sources": [
@@ -411,7 +411,7 @@
         "n_gen": 512,
         "runs": 1,
         "tg_measured": 8.77,
-        "tg_simulated": 11.23120671418206,
+        "tg_simulated": 11.231206714182063,
         "pp_measured": null,
         "pp_simulated": null,
         "sources": [
@@ -429,7 +429,7 @@
         "n_gen": 512,
         "runs": 5,
         "tg_measured": 8.06,
-        "tg_simulated": 9.516362618145896,
+        "tg_simulated": 9.516362618145887,
         "pp_measured": null,
         "pp_simulated": null,
         "sources": [
@@ -566,7 +566,7 @@
       "max_tokens": 4000,
       "depth": 4096,
       "ttft_s": 132.86204560387566,
-      "reply_s": 518.7320845508247
+      "reply_s": 518.7320845508245
      },
      "notes": [
       {
@@ -639,7 +639,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 83.06,
-        "tg_simulated": 105.72711552251704,
+        "tg_simulated": 105.72711552251701,
         "pp_measured": 885.68,
         "pp_simulated": 793.1750741839762,
         "sources": [
@@ -719,7 +719,7 @@
       "max_tokens": 300,
       "depth": 0,
       "ttft_s": 4.1087351813142545,
-      "reply_s": 10.254585801513166
+      "reply_s": 10.254585801513162
      },
      "notes": [
       {
@@ -899,7 +899,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 75.57,
-        "tg_simulated": 71.73430338202171,
+        "tg_simulated": 71.73430338202172,
         "pp_measured": 2137.5,
         "pp_simulated": 2271.3353115727004,
         "sources": [
@@ -915,7 +915,7 @@
         "n_prompt": 512,
         "n_gen": 128,
         "tg_measured": 76.92,
-        "tg_simulated": 71.73430338202171,
+        "tg_simulated": 71.73430338202172,
         "pp_measured": 2407.67,
         "pp_simulated": 2271.3353115727004,
         "sources": [
