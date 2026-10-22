@@ -21,6 +21,8 @@ class GPU:
     segment: str = ""  # "consumer", "workstation" or "datacenter"
     label: str = ""  # display name, e.g. "Radeon RX 7900 XTX"
     year: int = 0  # launch year, used to list newer parts first
+    pcie_gen: int = 0  # host link: PCIe generation and lanes; 0 if unknown
+    pcie_lanes: int = 0
 
 
 @dataclass(frozen=True)
@@ -502,6 +504,17 @@ def ram_bandwidth_gbps(kind: str, channels: int = 2) -> float:
     if not m:
         raise ValueError(f"Unrecognized RAM kind {kind!r}; expected e.g. 'ddr5-5600'")
     return int(m.group(1)) * 8 * channels / 1000
+
+
+# Transfer rate of one PCIe lane in GT/s; generations 3 to 5 encode 128 bits in 130.
+_PCIE_GTPS = {3: 8, 4: 16, 5: 32}
+
+
+def pcie_gbps(gen: int, lanes: int) -> float:
+    """Theoretical one-way bandwidth of a PCIe link in GB/s; 0 if unknown."""
+    if gen not in _PCIE_GTPS or lanes <= 0:
+        return 0.0
+    return _PCIE_GTPS[gen] * 128 / 130 / 8 * lanes
 
 
 def lookup(presets: dict, name: str, what: str):
