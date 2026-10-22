@@ -1,4 +1,4 @@
-"""Command-line interface: `llmsimbench list | estimate | run | serve | calibrate | export-web | web`."""
+"""Command-line interface: `llmsimbench list | texts | estimate | run | serve | calibrate | export-web | web`."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ import sys
 import tomllib
 from dataclasses import replace
 
+from . import texts
 from .estimator import Estimate, estimate, format_estimate
-from .mock import MockEngine, StreamStats, count_tokens
+from .mock import MockEngine, StreamStats
 from .profiles import (CPU, CPU_PRESETS, GPU, GPU_PRESETS, MODEL_PRESETS, QUANT_BPW, RAM,
                        UNIFIED_PRESETS, Model, System, lookup, ram_bandwidth_gbps,
                        unified_system)
@@ -105,6 +106,20 @@ def cmd_list(_args):
     print("Models:", ", ".join(MODEL_PRESETS))
     print("Quants:", ", ".join(QUANT_BPW))
     print("RAM:    any 'ddrN-SPEED' kind, e.g. ddr4-3200, ddr5-6000")
+    print("Texts: ", ", ".join(x["id"] for x in texts.manifest()["texts"]))
+
+
+def cmd_texts(args):
+    entries = [texts.entry(args.id)] if args.id else texts.manifest()["texts"]
+    print("\n\n".join(texts.describe(e) for e in entries))
+    return 0
+
+
+def make_script(args, est: Estimate) -> texts.Script:
+    script = texts.script(est.model.tokenizer, args.text, args.text_file, args.chars_per_token)
+    print(f"{texts.credit_line(script.entry)}\nTokens    {texts.ratio_label(script)}",
+          file=sys.stderr)
+    return script
 
 
 def cmd_estimate(args):
@@ -120,15 +135,32 @@ def cmd_run(args):
     print(format_estimate(est))
     if not est.fits:
         print("Warning: configuration does not fit in memory; simulating anyway.")
-    prompt_tokens = args.prompt_tokens or (count_tokens(args.prompt) if args.prompt else 128)
+    script = make_script(args, est)
+    prompt_tokens = args.prompt_tokens or (texts.count_tokens(args.prompt, texts.prompt_ratio(
+        args.prompt, script.family, script.ratio_id)) if args.prompt else 128)
+    chat = len(script.turns) > 1 or script.turns[0][0] is not None
     print(f"\n--- mock output ({prompt_tokens} prompt tokens) ---")
-    stats = StreamStats()
-    for tok in make_engine(est, run, args.seed).stream(prompt_tokens, args.max_tokens, stats):
-        sys.stdout.write(tok)
-        sys.stdout.flush()
-    print("\n---")
-    print(f"TTFT {stats.ttft_s:.2f}s | {stats.completion_tokens} tokens in "
-          f"{stats.total_s:.2f}s | decode {stats.decode_tps:.1f} tok/s")
+    engine = make_engine(est, run, args.seed)
+    cached = 0
+    for k, (user, assistant) in enumerate(script.turns):
+        # Earlier turns stay in the KV cache; only the new user message is prefilled.
+        new_tokens = (0 if k else prompt_tokens) + len(user or ())
+        if chat:
+            if k:
+                print()
+            user_text = "".join(user or ())
+            print(f"User: {user_text}\n\nAssistant: ", end="")
+        stats = StreamStats()
+        pieces = assistant[:args.max_tokens]
+        for tok in engine.stream(new_tokens, pieces, stats, cached_tokens=cached):
+            sys.stdout.write(tok)
+            sys.stdout.flush()
+        cached += new_tokens + len(pieces)
+        finish = "stop" if len(assistant) <= args.max_tokens else "length"
+        turn = f"turn {k + 1}/{len(script.turns)} | " if chat else ""
+        print(f"\n[{turn}TTFT {stats.ttft_s:.2f}s | {stats.completion_tokens} tokens in "
+              f"{stats.total_s:.2f}s | decode {stats.decode_tps:.1f} tok/s | {finish}]")
+    print("---")
     return 0
 
 
@@ -138,7 +170,8 @@ def cmd_serve(args):
     system, est, run = _estimate(args)
     print(describe_system(system))
     print(format_estimate(est))
-    serve(make_engine(est, run), est.model.name, args.host, args.port, args.max_tokens)
+    script = make_script(args, est)
+    serve(make_engine(est, run), est.model.name, args.host, args.port, args.max_tokens, script)
     return 0
 
 
@@ -234,16 +267,29 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--decode-tps", type=float, help="force a fixed decode tok/s")
     s.add_argument("--prefill-tps", type=float, help="force a fixed prefill tok/s")
 
+    text = argparse.ArgumentParser(add_help=False)
+    t = text.add_argument_group("output text")
+    t.add_argument("--text", default=texts.DEFAULT_TEXT,
+                   help=f"text preset to stream (default: {texts.DEFAULT_TEXT}; "
+                   "see `llmsimbench texts`)")
+    t.add_argument("--text-file", help="stream this UTF-8 file instead; its language picks "
+                   "the tokenizer ratio of the matching sample answer")
+    t.add_argument("--chars-per-token", type=float,
+                   help="override the measured characters per token")
+
     p = argparse.ArgumentParser(prog="llmsimbench", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="show available presets").set_defaults(func=cmd_list)
+    tx = sub.add_parser("texts", help="show output texts and their sources")
+    tx.add_argument("id", nargs="?", help="only this text")
+    tx.set_defaults(func=cmd_texts)
     sub.add_parser("estimate", parents=[common], help="estimate memory and tok/s"
                    ).set_defaults(func=cmd_estimate)
 
-    r = sub.add_parser("run", parents=[common], help="stream mock tokens in the terminal")
+    r = sub.add_parser("run", parents=[common, text], help="stream mock tokens in the terminal")
     r.add_argument("--prompt", help="prompt text (only its length matters)")
-    r.add_argument("--prompt-tokens", type=int, help="prompt length in tokens")
-    r.add_argument("--max-tokens", type=int, default=200)
+    r.add_argument("--prompt-tokens", type=int, help="prompt length in tokens (default 128)")
+    r.add_argument("--max-tokens", type=int, default=200, help="tokens per answer")
     r.add_argument("--seed", type=int)
     r.set_defaults(func=cmd_run)
 
@@ -263,7 +309,7 @@ def parser() -> argparse.ArgumentParser:
     w.add_argument("--port", type=int, default=8000)
     w.set_defaults(func=cmd_web)
 
-    sv = sub.add_parser("serve", parents=[common], help="run a mock OpenAI-compatible API")
+    sv = sub.add_parser("serve", parents=[common, text], help="run a mock OpenAI-compatible API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8000)
     sv.add_argument("--max-tokens", type=int, default=256, help="default when request omits it")
