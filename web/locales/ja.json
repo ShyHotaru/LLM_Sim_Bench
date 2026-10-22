@@ -53,6 +53,7 @@
   "badge.layersOnCpu": "{total}層中 {cpu}層がCPUで実行",
 
   "result.unit": "tok/s 生成速度（空のコンテキスト）",
+  "result.bandHint": "似たハードウェアの実測結果10件のうち8件が、推定値のこの範囲内に入ります。",
   "result.tps": "{v} tok/s",
   "metric.fullContext": "コンテキスト満杯時",
   "metric.prefill": "プロンプト処理",

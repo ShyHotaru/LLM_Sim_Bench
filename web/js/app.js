@@ -4,7 +4,7 @@ import {
 } from "./i18n.js";
 import { Schedule } from "./mock.js";
 import {
-  BACKEND_NAMES, buildReport, cpuChecks, gpuChecks, markdown, parallelChecks, timingInfo, warnings,
+  BACKEND_NAMES, buildReport, cpuChecks, gpuChecks, markdown, parallelChecks, speedBands, timingInfo, warnings,
 } from "./report.js";
 import { newestFirst, searchParts } from "./search.js";
 import { decodeState, encodeState } from "./state.js";
@@ -375,16 +375,18 @@ function renderResult(cfg) {
   else if (gpuLayers < n) badge = h("p", { class: "badge warn" }, t("badge.layersOnCpu", { cpu: n - gpuLayers, total: n }));
 
   const timing = timingInfo(est, { prompt_tokens: state.prompt, max_tokens: state.maxTokens, depth: state.depth });
+  const bands = speedBands(P, system, est);
   const slots = cfg.parallel;
   const notes = localizedNotes(cfg, system, est);
   const result = h("div", { class: "result" },
     badge,
     h("div", { class: "headline" },
       h("span", { class: "big" }, fmtTps(est.decode_tps_empty)),
+      bandMark(bands.decode),
       h("span", { class: "unit" }, t("result.unit"))),
     h("div", { class: "metrics" },
       metric(t("metric.fullContext"), t("result.tps", { v: fmtTps(est.decode_tps_full) })),
-      metric(t("metric.prefill"), t("result.tps", { v: fmtTps(est.prefill_tps) })),
+      metric(t("metric.prefill"), [t("result.tps", { v: fmtTps(est.prefill_tps) }), bandMark(bands.prefill)]),
       slots > 1 ? metric(t("metric.each", { n: slots }), t("result.tps", { v: fmtTps(est.parallelTps(slots, 0)) })) : null,
       slots > 1 ? metric(t("metric.total", { n: slots }), t("result.tps", { v: fmtTps(slots * est.parallelTps(slots, 0)) })) : null,
       slots > 1
@@ -471,6 +473,11 @@ function renderWarnings(system, est) {
   if (!items.length) return null;
   return h("div", { class: "warnings", role: "note" },
     h("strong", {}, t("warn.title")), h("ul", {}, items.map((x) => h("li", {}, x))));
+}
+
+// "±N%" after an estimate: the error 8 of 10 benchmark results of comparable hardware stay within.
+function bandMark(v) {
+  return v == null ? null : h("span", { class: "band", title: t("result.bandHint") }, ` ±${Math.round(100 * v)}%`);
 }
 
 function metric(k, v) {

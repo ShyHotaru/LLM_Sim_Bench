@@ -114,6 +114,50 @@
  "batch_devices": [
   "nvidia-dgx-spark|cuda"
  ],
+ "bands": {
+  "cpu": {
+   "pp_measured": 0.151,
+   "pp_other": 0.57,
+   "tg_measured": 0.087,
+   "tg_other": 0.154
+  },
+  "cuda": {
+   "pp_measured": 0.056,
+   "pp_other": 0.287,
+   "tg_measured": 0.1,
+   "tg_other": 0.1
+  },
+  "metal": {
+   "pp_measured": 0.042,
+   "pp_other": 0.192,
+   "tg_measured": 0.077,
+   "tg_other": 0.077
+  },
+  "rocm": {
+   "pp_measured": 0.044,
+   "pp_other": 0.429,
+   "tg_measured": 0.199,
+   "tg_other": 0.199
+  },
+  "sycl": {
+   "pp_measured": 0.088,
+   "pp_other": 0.279,
+   "tg_measured": 0.052,
+   "tg_other": 0.052
+  },
+  "sycl-f16": {
+   "pp_measured": 0.063,
+   "pp_other": 0.176,
+   "tg_measured": 0.051,
+   "tg_other": 0.051
+  },
+  "vulkan": {
+   "pp_measured": 0.166,
+   "pp_other": 0.389,
+   "tg_measured": 0.188,
+   "tg_other": 0.188
+  }
+ },
  "measurements": [
   {
    "id": "llamacpp-4167-m5-pro-16c-f16",
