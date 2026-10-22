@@ -27,6 +27,7 @@ llmsimbench run --gpu rtx4090-24gb --model llama-3.1-8b --prompt-tokens 2000 --m
 llmsimbench run --gpu rtx3060-12gb --model qwen2.5-14b --text ko-chat
 llmsimbench estimate --apple apple-m4-max-40c --ram-gb 64 --model qwen3-32b
 llmsimbench estimate --gpu rtx4090-24gb --model qwen3-32b --format markdown -o report.md
+llmsimbench estimate --soc nvidia-dgx-spark --model qwen2.5-7b --quant Q8_0 --parallel 8
 llmsimbench serve --config examples/rtx3080_desktop.toml --port 8000
 llmsimbench calibrate
 ```
@@ -98,6 +99,7 @@ Every option can be passed as a flag or in a TOML file (`--config`); flags win.
 | `--gpu` | GPU preset; repeat for multi-GPU; `--no-gpu` for CPU-only |
 | `--apple` | Apple Silicon chip preset; `--ram-gb` then sets the unified memory size |
 | `--model`, `--quant`, `--ctx`, `--kv-bits` | Model preset, quantization, context length, KV cache precision |
+| `--parallel` | Concurrent request slots, each with `--ctx` tokens of KV cache (llama-server `-np N -c N*ctx`) |
 | `--decode-tps`, `--prefill-tps` | Skip the estimate and force a target speed for the mock |
 
 Custom hardware or models that are not presets can be defined field-by-field in TOML. See
@@ -121,7 +123,10 @@ same report for every configuration on the page, with a link back to the setup. 
   `--depth` (in the web app, the playback settings) the time to the first token and to the
   whole reply;
 - notes and "estimate only" warnings, each with a `code` and `params` as well as English text;
-- the check against real llama.cpp benchmarks on the same GPU, chip or CPU.
+- the check against real llama.cpp benchmarks on the same GPU, chip or CPU;
+- with `--parallel N`: speeds per request and in total for 1, 2, 4, ... N active requests,
+  the times when all N slots get a request at once, and the check against `llama-batched-bench`
+  results on the same hardware.
 
 Reports are in English. The JSON has `"schema": "llmsimbench.report/1"`; numbers are not
 rounded. `src/llm_sim_bench/report.py` builds it and `web/js/report.js` is its port, kept in
@@ -155,6 +160,11 @@ the whole prompt on every request.
   weights and the filled KV cache. Device times add up (layers run sequentially).
 - **Overhead**: each layer adds a fixed per-token cost (kernel launches, synchronization).
 - **Prefill** is compute bound: about 2 FLOPs per active parameter per prompt token.
+- **Concurrent requests** (llama-server `--parallel` slots, continuous batching) share each
+  decode step: the weights are read once for the whole batch, every request reads its own KV
+  cache, and each request beyond the first adds compute at a fitted fraction of the
+  prompt-processing rate. Mixture-of-experts models read the experts any request in the batch
+  is routed to, assuming random routing. Prompts that arrive together share prompt processing.
 - **Unified memory** (Apple Silicon): the GPU may use about 75 % of system RAM.
 - Peak specs are scaled by efficiency factors (`Efficiency` in `estimator.py`).
 
@@ -179,6 +189,11 @@ suite fails if the defaults drift from the data. Current median error:
 | Metal (12, M5 family) | 1.4 % | 0.6 % |
 | CPU (174 decode, 29 prefill) | 3.1 % | 6.4 % |
 
+Concurrent decode is fitted to how the total speed grows from one sequence to 2–32 in
+`llama-batched-bench` results from llama.cpp's own `benches/` folder: 6.1 % median error (12.6 %
+at most) over 15 CUDA results, all of them Qwen2.5-Coder 7B on a DGX Spark. Every other
+backend uses the CUDA factor, so concurrency estimates are rough everywhere else.
+
 GPU calibration data is Llama 2 7B at short context, so larger models, long contexts and CPU
 offload are extrapolations. The app marks results that rest on uncalibrated parts (a backend
 or device without measurements, or a mixture-of-experts model).
@@ -188,7 +203,11 @@ or device without measurements, or a mixture-of-experts model).
 - Prefill with partial CPU offload is pessimistic: real runtimes push large prompt batches
   through the GPU even for CPU-resident layers.
 - MoE decode is optimistic: routing overhead and shared weights are not modeled yet.
-- Single request only; no batching or concurrency effects.
+- Concurrent requests are calibrated on one dense model on one device (DGX Spark). For
+  mixture-of-experts models the measured speed-up is much larger than estimated (at 32
+  sequences, the estimate is 36–65 % low), so their concurrent totals are pessimistic.
+- Concurrent prompt processing is modeled as one shared queue; llama-server's chunked
+  scheduling of prompts between decode steps is not modeled.
 - Devices without their own measurements use backend averages for prompt processing, which can
   be far off (data-center GPUs reach much less of their peak than consumer cards).
 
@@ -208,6 +227,9 @@ Calibration data:
 - Apple M1–M4 on current llama.cpp builds (only 2023 builds are recorded), an M6 preset, and
   the M5 Ultra prompt-processing gap.
 - Intel SYCL FP16 vs. FP32 builds as a separate option.
+- Concurrent-request (`llama-batched-bench`) results beyond DGX Spark, and the GPU core count of
+  the M2 Ultra in llama.cpp's `benches/` (its 108 results are recorded but unused). The same
+  files also hold `llama-bench` depth results that could calibrate long contexts.
 - Prompt processing for unmeasured data-center GPUs (H200, B200, MI325X, MI355X).
 - A human pass over transcribed scoreboard tables (they were read with an automated
   summarizer and spot-checked).

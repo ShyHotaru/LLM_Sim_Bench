@@ -55,6 +55,8 @@ class ReportTests(unittest.TestCase):
 
     def test_formatting_rounds_like_javascript_report(self):
         self.assertEqual(report.fmt(2.5, 0), "2")
+        self.assertEqual(report.fmt(70.35, 1), "70.3")
+        self.assertEqual(report.fmt(999.96, 1), "1,000.0")
         self.assertEqual(report.fmt_tps(1234.5), "1,234")
         self.assertEqual(report.fmt_tps(None), "–")
         self.assertEqual(report.fmt_time(0.0904), "90 ms")

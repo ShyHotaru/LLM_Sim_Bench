@@ -56,6 +56,63 @@ class EstimatorTests(unittest.TestCase):
         self.assertGreater(moe.decode_tps_empty, 5 * dense.decode_tps_empty)
 
 
+class ParallelTests(unittest.TestCase):
+    SYSTEM = System(CPU, RAM64, (GPU_PRESETS["rtx3090-24gb"],))
+
+    def test_one_request_matches_single_stream(self):
+        est = estimate(self.SYSTEM, LLAMA8, "Q4_K_M", 8192)
+        for fill in (0, 1000, 8192):
+            self.assertAlmostEqual(est.step_time([fill]), 1 / est.decode_tps_at(fill), places=12)
+            self.assertAlmostEqual(est.parallel_tps(1, fill), est.decode_tps_at(fill), places=9)
+
+    def test_slots_get_their_own_kv_cache(self):
+        one = estimate(self.SYSTEM, LLAMA8, "Q4_K_M", 8192)
+        four = estimate(self.SYSTEM, LLAMA8, "Q4_K_M", 8192, parallel=4)
+        self.assertAlmostEqual(four.kv_gb, 4 * one.kv_gb)
+        self.assertEqual(four.context, 8192)
+        self.assertAlmostEqual(four.decode_tps_full, one.decode_tps_full)
+        with self.assertRaises(ValueError):
+            estimate(self.SYSTEM, LLAMA8, parallel=0)
+
+    def test_batching_trades_speed_per_request_for_throughput(self):
+        est = estimate(self.SYSTEM, LLAMA8, "Q4_K_M", 4096, parallel=16)
+        prev_each, prev_total = float("inf"), 0.0
+        for n in (1, 2, 4, 8, 16):
+            each = est.parallel_tps(n, 1000)
+            self.assertLess(each, prev_each)
+            self.assertGreater(n * each, prev_total)
+            prev_each, prev_total = each, n * each
+
+    def test_moe_reads_more_experts_with_more_requests(self):
+        from llm_sim_bench.estimator import weight_read_ratio
+
+        moe = MODEL_PRESETS["qwen3-30b-a3b"]
+        ratios = [weight_read_ratio(moe, n) for n in (1, 2, 8, 64, 10_000)]
+        self.assertAlmostEqual(ratios[0], moe.active_b / moe.params_b)
+        self.assertEqual(ratios, sorted(ratios))
+        self.assertAlmostEqual(ratios[-1], 1.0, places=6)
+        self.assertEqual(weight_read_ratio(LLAMA8, 32), 1.0)
+
+    def test_parallel_levels(self):
+        from llm_sim_bench.estimator import parallel_levels
+
+        self.assertEqual(parallel_levels(1), [1])
+        self.assertEqual(parallel_levels(8), [1, 2, 4, 8])
+        self.assertEqual(parallel_levels(6), [1, 2, 4, 6])
+
+    def test_cli_parallel_table(self):
+        import contextlib
+        import io
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["estimate", "--gpu", "rtx3090-24gb", "--model", "llama-3.1-8b",
+                         "--parallel", "4"])
+        self.assertEqual(code, 0)
+        self.assertIn("x 4 slots (llama-server -np 4 -c 16384)", out.getvalue())
+        self.assertIn("Parallel", out.getvalue())
+
+
 class MockTests(unittest.TestCase):
     def test_pacing_matches_target(self):
         engine = MockEngine(prefill_tps=1000, decode_tps=lambda _: 200, jitter=0, seed=1)

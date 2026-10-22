@@ -63,16 +63,27 @@ GOLDEN_CASES = [
      "qwen3-32b", "Q6_K", 32768, 16),
     ({"kind": "unified", "chip": "apple-m1-8c", "memory_gb": 8},
      "llama-3.2-3b", "Q4_0", 4096, 16),
+    # Request slots (the sixth value): KV cache for each slot, batched decode steps.
+    ({"kind": "unified", "chip": "nvidia-dgx-spark", "memory_gb": 128},
+     "qwen2.5-7b", "Q8_0", 8192, 16, 8),
+    ({"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 32, "ram_bandwidth_gbps": 51.2,
+      "gpus": ["rtx4060ti-16gb"]}, "qwen3-30b-a3b", "Q4_K_M", 8192, 8, 4),
+    ({"kind": "pc", "cpu": "ryzen9-7950x", "ram_gb": 64, "ram_bandwidth_gbps": 96,
+      "gpus": []}, "gpt-oss-20b", "MXFP4", 4096, 16, 16),
 ]
+# KV fills of the requests in the decode steps the golden file records.
+STEP_FILLS = [[0], [1000], [0, 0], [100, 2000, 4000], [500] * 8, [0] * 16]
 
 
 def golden() -> list[dict]:
     cases = []
-    for spec, model, quant, context, kv_bits in GOLDEN_CASES:
-        est = estimate(build_system(spec), MODEL_PRESETS[model], quant, context, kv_bits)
+    for spec, model, quant, context, kv_bits, *rest in GOLDEN_CASES:
+        parallel = rest[0] if rest else 1
+        est = estimate(build_system(spec), MODEL_PRESETS[model], quant, context, kv_bits,
+                       parallel=parallel)
         cases.append({
             "input": {"system": spec, "model": model, "quant": quant, "context": context,
-                      "kv_bits": kv_bits},
+                      "kv_bits": kv_bits, "parallel": parallel},
             "expected": {
                 "weights_gb": est.weights_gb, "kv_gb": est.kv_gb, "fits": est.fits,
                 "placements": [asdict(p) for p in est.placements],
@@ -80,6 +91,9 @@ def golden() -> list[dict]:
                 "decode_tps_empty": est.decode_tps_empty,
                 "decode_tps_full": est.decode_tps_full,
                 "decode_tps_at": [[f, est.decode_tps_at(f)] for f in (0, 1000, context // 2)],
+                "step_time": [[fills, est.step_time(fills)] for fills in STEP_FILLS],
+                "parallel_tps": [[n, f, est.parallel_tps(n, f)] for n in (1, 3, 32)
+                                 for f in (0, context)],
                 "notes": est.notes,
             },
         })
@@ -102,6 +116,14 @@ REPORT_CASES = [
       16384, 4, {"prompt_tokens": 1000, "max_tokens": 300, "depth": 0})],
     [(None, {"kind": "pc", "cpu": "i5-12400", "ram_gb": 16, "ram_bandwidth_gbps": 51.2,
              "gpus": ["rtx3060-12gb"]}, "llama-3.1-70b", "Q4_K_M", 200000, 16, None)],
+    # Request slots (the eighth value): concurrency table, timing and check, warnings.
+    [(None, {"kind": "unified", "chip": "nvidia-dgx-spark", "memory_gb": 128}, "qwen2.5-7b",
+      "Q8_0", 8192, 16, {"prompt_tokens": 1000, "max_tokens": 300, "depth": 0}, 8)],
+    [("A", {"kind": "pc", "cpu": "ryzen7-5800x", "ram_gb": 64, "ram_bandwidth_gbps": 51.2,
+            "gpus": ["rtx3090-24gb"]}, "gpt-oss-20b", "MXFP4", 16384, 16,
+      {"prompt_tokens": 2000, "max_tokens": 200, "depth": 1000}, 6),
+     ("B", {"kind": "unified", "chip": "apple-m4-max-40c", "memory_gb": 64}, "qwen3-32b",
+      "Q4_K_M", 8192, 8, {"prompt_tokens": 2000, "max_tokens": 200, "depth": 1000}, 4)],
 ]
 SHARE_URL = "https://example.invalid/#state"
 
@@ -111,16 +133,18 @@ def report_golden(data: dict) -> list[dict]:
     cases = []
     for configs in REPORT_CASES:
         results = []
-        for label, spec, model, quant, context, kv_bits, timing in configs:
+        for label, spec, model, quant, context, kv_bits, timing, *rest in configs:
             system = build_system(spec)
-            est = estimate(system, MODEL_PRESETS[model], quant, context, kv_bits)
+            est = estimate(system, MODEL_PRESETS[model], quant, context, kv_bits,
+                           parallel=rest[0] if rest else 1)
             results.append(report.result(system, est, kv_bits, data, timing, label))
         surface = "web" if len(configs) > 1 else "cli"
         rep = report.report(results, surface, SHARE_URL if surface == "web" else None)
         cases.append({
             "input": [{"label": label, "system": spec, "model": model, "quant": quant,
-                       "context": context, "kv_bits": kv_bits, "timing": timing}
-                      for label, spec, model, quant, context, kv_bits, timing in configs],
+                       "context": context, "kv_bits": kv_bits, "timing": timing,
+                       "parallel": rest[0] if rest else 1}
+                      for label, spec, model, quant, context, kv_bits, timing, *rest in configs],
             "surface": surface, "share_url": rep["share_url"],
             "report": rep, "markdown": report.markdown(rep),
         })
@@ -211,9 +235,12 @@ def calibration_data(records: list[dict]) -> dict:
     The web app reads them from presets.json; the package keeps a copy for reports.
     """
     stats = calibrate.summary(calibrate.evaluate(records, Efficiency()))
+    batch = calibrate.batch_points(records, Efficiency())
+    stats.update(calibrate.batch_summary(batch))
     return {
         "calibration": {k: {"n": v["n"], "median": round(v["median"], 4),
                             "max": round(v["max"], 4)} for k, v in stats.items()},
+        "batch_devices": calibrate.batch_devices(batch),
         "measurements": [{
             "id": r["id"], "gpu": r["hardware"]["gpu"], "preset": r["hardware"]["gpu_preset"],
             "backend": r["software"]["backend"], "flash_attn": r["software"]["flash_attn"],
@@ -223,10 +250,32 @@ def calibration_data(records: list[dict]) -> dict:
             "source": r["source"]["url"], "commit": r["software"]["commit"],
             "old_build": "old_build" in r["flags"],
         } for r in records if r["hardware"]["gpu_preset"] and "suspect" not in r["flags"]
+            and "batched" not in r["flags"]
             and r["model"]["name"] in MODEL_PRESETS and r["model"]["quant"] in QUANT_BPW
             and r["run"]["n_prompt"] and r["run"]["n_gen"]],
         "cpu_measurements": cpu_measurements(records),
+        "batched_measurements": batched_measurements(records),
     }
+
+
+def batched_measurements(records: list[dict]) -> list[dict]:
+    """llama-batched-bench runs the concurrency check compares with the simulator: the
+    shortest prompt of each model on each device, every sequence count."""
+    recs = [r for r in records if calibrate.usable_batched(r)]
+    shortest = {}
+    for r in recs:
+        k = (r["hardware"]["gpu_preset"], r["software"]["backend"], r["model"]["name"])
+        shortest[k] = min(shortest.get(k, r["run"]["n_prompt"]), r["run"]["n_prompt"])
+    return [{
+        "id": r["id"], "preset": r["hardware"]["gpu_preset"], "backend": r["software"]["backend"],
+        "model": r["model"]["name"], "sim_model": calibrate._model(r).name,
+        "quant": r["model"]["quant"], "n_prompt": r["run"]["n_prompt"], "n_gen": r["run"]["n_gen"],
+        "n_parallel": r["run"]["n_parallel"], "pp_tps": r["results"]["pp_tps"],
+        "tg_tps": r["results"]["tg_tps"], "source": r["source"]["url"],
+        "commit": r["software"]["commit"],
+    } for r in recs if r["run"]["n_prompt"] == shortest[(r["hardware"]["gpu_preset"],
+                                                         r["software"]["backend"],
+                                                         r["model"]["name"])]]
 
 
 def cpu_measurements(records: list[dict]) -> list[dict]:
