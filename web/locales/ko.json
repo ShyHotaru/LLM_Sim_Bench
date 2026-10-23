@@ -81,6 +81,8 @@
   "note.context": "컨텍스트 길이({context})가 모델 최대치({max})를 넘습니다.",
   "note.ram": "시스템 RAM이 {need} 필요하지만 여유는 {free}뿐이라 디스크 스왑이 발생합니다.",
   "note.offload": "{total}개 레이어 중 {cpu}개가 CPU로 넘어갑니다.",
+  "note.experts": "{total}개 레이어 중 {experts}개 레이어의 라우팅 전문가가 시스템 RAM에 남습니다. 모든 레이어의 어텐션과 KV 캐시를 GPU에 두기 위해서입니다(llama-server --fit과 같은 방식).",
+  "note.fitContext": "-c 없이 실행하면 llama-server는 모델 전체를 GPU에 두려고 컨텍스트를 {context} 토큰으로 줄입니다.",
 
   "measured.summary": "검증: 이 하드웨어의 실측 벤치마크 ({n}건)",
   "measured.intro": "llama.cpp에서 Llama 2 7B의 실측값과 이 시뮬레이터의 추정값 비교 (tok/s).",
@@ -178,6 +180,9 @@
   "warn.parallelUncalibrated": "{backend}는 아직 동시 요청 실측이 없어, 배칭으로 빨라지는 정도는 CUDA 값을 썼습니다.",
   "warn.parallelDevice": "동시 요청 속도는 다른 하드웨어의 실측에만 맞춘 값이며, {device}의 실측은 없습니다.",
   "warn.moeParallel": "MoE 모델의 동시 요청은 보정되지 않았습니다. 요청마다 전문가를 무작위로 고른다고 가정했으며, 실측에서는 이보다 더 빨라집니다.",
+  "warn.offloadUncalibrated": "시스템 RAM에 있는 가중치는 보정되지 않았습니다. 모델 일부가 RAM에 있을 때의 속도와, 그 가중치를 GPU로 복사하는 프롬프트 배치의 속도는 크게 틀릴 수 있습니다.",
+  "warn.pcieUnknown": "{device}의 PCIe 링크를 알 수 없어, 프롬프트 배치에서 시스템 RAM의 가중치를 CPU로 계산합니다. 실제 llama.cpp보다 느리게 나올 가능성이 높습니다.",
+  "warn.pcieUnverified": "{device}의 PCIe 링크는 제조사 출처로 확인되지 않았습니다. PCIe {gen}.0 x{lanes} 값은 Wikipedia에서 가져온 것이라 틀릴 수 있습니다.",
 
   "platform.server": "서버",
   "search.label": "부품 검색",

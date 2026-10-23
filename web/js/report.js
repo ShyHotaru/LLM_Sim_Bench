@@ -15,6 +15,8 @@ const TEXTS = {
   context_exceeds_max: "Context {context} exceeds the model's maximum of {max}.",
   ram_short: "Needs {need_gb} GB in system RAM but only {free_gb} GB is free; it would page to disk.",
   layers_on_cpu: "{cpu_layers} of {total_layers} layers are offloaded to the CPU.",
+  experts_in_ram: "The routed experts of {expert_layers} of {total_layers} layers stay in system RAM, so that every layer's attention and KV cache fit on the GPU (like llama-server --fit).",
+  fit_context: "Without -c, llama-server would shrink the context to {fit_context} tokens to keep the whole model on the GPU.",
   prefill_device_uncalibrated: "No prompt-processing measurements for {device} with this backend: its prompt speed uses the backend average and can be far off.",
   cpu_device_uncalibrated: "No decode measurements for the {cpu}: its memory efficiency uses the CPU average. Single-CCD Ryzen parts measure about 25 % slower than that.",
   backend_uncalibrated: "No measured {backend} results yet, so its speeds are uncalibrated guesses.",
@@ -26,6 +28,9 @@ const TEXTS = {
   parallel_uncalibrated: "No concurrent-request measurements for {backend} yet: the speed-up from batching uses the CUDA factor.",
   parallel_device_uncalibrated: "Concurrent-request speeds are fitted to other hardware only, not to {device}.",
   moe_parallel: "Concurrent requests of a mixture-of-experts model are not calibrated: the estimate assumes every request picks experts at random, while measured speed-ups are higher.",
+  offload_uncalibrated: "Weights in system RAM are not calibrated: speeds with part of the model in RAM, and prompt batches that copy those weights to the GPU, can be far off.",
+  pcie_unknown: "The PCIe link of {device} is not known, so prompt batches compute the weights in system RAM on the CPU, which is likely slower than llama.cpp.",
+  pcie_unverified: "No vendor source states the PCIe link of {device}; PCIe {gen}.0 x{lanes} comes from Wikipedia and may be wrong.",
 };
 
 function item(code, params = {}) {
@@ -71,6 +76,8 @@ function systemInfo(P, system) {
     gpus: system.gpus.map((g) => ({
       name: g.name, label: label(P, g.name), backend: g.backend,
       vram_gb: system.unified ? null : g.vram_gb,
+      pcie: g.pcie_gen && !system.unified
+        ? { gen: g.pcie_gen, lanes: g.pcie_lanes, source: g.pcie_source } : null,
     })),
   };
 }
@@ -81,8 +88,19 @@ export function notes(system, est) {
   const cpu = est.placements.find((p) => !p.is_gpu);
   if (est.context > m.max_context) out.push(item("context_exceeds_max", { context: est.context, max: m.max_context }));
   if (cpu && !est.fits) out.push(item("ram_short", { need_gb: fmt(est.ram_needed_gb, 1), free_gb: fmt(est.ram_free_gb, 1) }));
-  if (cpu && system.gpus.length) out.push(item("layers_on_cpu", { cpu_layers: cpu.layers, total_layers: m.n_layers }));
+  if (cpu && system.gpus.length && cpu.layers) out.push(item("layers_on_cpu", { cpu_layers: cpu.layers, total_layers: m.n_layers }));
+  if (cpu && system.gpus.length && cpu.expert_layers > cpu.layers) {
+    out.push(item("experts_in_ram", { expert_layers: cpu.expert_layers - cpu.layers, total_layers: m.n_layers }));
+  }
+  if (est.fit_context) out.push(item("fit_context", { fit_context: est.fit_context }));
   return out;
+}
+
+const offloaded = (system, est) => system.gpus.length > 0 && !est.placements.every((p) => p.is_gpu);
+
+// The GPU that prompt batches copy the weights in system RAM to (op offload), if any.
+function offloadGpu(system, est) {
+  return !system.unified && offloaded(system, est) ? system.gpus[0] : null;
 }
 
 // Where the numbers rest on uncalibrated assumptions rather than measurements.
@@ -128,6 +146,12 @@ export function warnings(P, system, est) {
     }
     for (const device of devs) out.push(item("parallel_device_uncalibrated", { device }));
     if (est.model.active_params_b) out.push(item("moe_parallel"));
+  }
+  if (offloaded(system, est)) out.push(item("offload_uncalibrated"));
+  const g = offloadGpu(system, est);
+  if (g && !(g.pcie_gen && g.pcie_lanes)) out.push(item("pcie_unknown", { device: label(P, g.name) }));
+  else if (g && g.pcie_source === "wikipedia") {
+    out.push(item("pcie_unverified", { device: label(P, g.name), gen: g.pcie_gen, lanes: g.pcie_lanes }));
   }
   return out;
 }
@@ -189,8 +213,10 @@ export function cpuChecks(P, system) {
 }
 
 // The error 8 of 10 measured results stay within for this configuration's decode and prompt
-// speeds, the widest of the devices used; null where a backend has too few results.
+// speeds, the widest of the devices used; null where a backend has too few results, and with
+// weights in system RAM next to GPUs (no measurements).
 export function speedBands(P, system, est) {
+  if (offloaded(system, est)) return { decode: null, prefill: null };
   const eff = P.efficiency;
   const out = { decode: 0, prefill: 0 };
   for (const p of est.placements) {
