@@ -81,6 +81,8 @@
   "note.context": "コンテキスト {context} がモデルの最大値 {max} を超えています。",
   "note.ram": "システムRAMが{need}必要ですが、空きは{free}しかないため、ディスクへのスワップが発生します。",
   "note.offload": "{total}層中 {cpu}層がCPUにオフロードされます。",
+  "note.experts": "{total}層中 {experts}層のルーティング専門家がシステムRAMに残ります。すべての層のアテンションとKVキャッシュをGPUに置くためです（llama-server --fitと同じ方式）。",
+  "note.fitContext": "-cを指定しないと、llama-serverはモデル全体をGPUに置くためにコンテキストを{context}トークンまで縮めます。",
 
   "measured.summary": "検証: このハードウェアの実測ベンチマーク（{n}件）",
   "measured.intro": "llama.cppでのLlama 2 7Bの実測値と、このシミュレーターの推定値の比較（tok/s）。",
@@ -178,6 +180,9 @@
   "warn.parallelUncalibrated": "{backend}はまだ同時リクエストの実測がないため、バッチ処理による高速化はCUDAの値を使っています。",
   "warn.parallelDevice": "同時リクエストの速度は他のハードウェアの実測にだけ合わせた値で、{device}の実測はありません。",
   "warn.moeParallel": "MoEモデルの同時リクエストは較正していません。リクエストごとに専門家をランダムに選ぶと仮定しており、実測ではこれより速くなります。",
+  "warn.offloadUncalibrated": "システムRAM上の重みは較正していません。モデルの一部がRAMにあるときの速度と、その重みをGPUへコピーするプロンプトバッチの速度は大きく外れることがあります。",
+  "warn.pcieUnknown": "{device}のPCIeリンクが不明なため、プロンプトバッチではシステムRAM上の重みをCPUで計算します。実際のllama.cppより遅く出る可能性が高いです。",
+  "warn.pcieUnverified": "{device}のPCIeリンクはメーカーの資料で確認できていません。PCIe {gen}.0 x{lanes}はWikipediaの値で、誤っている可能性があります。",
 
   "platform.server": "サーバー",
   "search.label": "部品を検索",

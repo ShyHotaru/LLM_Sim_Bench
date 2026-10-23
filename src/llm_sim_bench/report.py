@@ -35,6 +35,11 @@ TEXTS = {
     "ram_short": "Needs {need_gb} GB in system RAM but only {free_gb} GB is free; "
                  "it would page to disk.",
     "layers_on_cpu": "{cpu_layers} of {total_layers} layers are offloaded to the CPU.",
+    "experts_in_ram": "The routed experts of {expert_layers} of {total_layers} layers stay in "
+                      "system RAM, so that every layer's attention and KV cache fit on the GPU "
+                      "(like llama-server --fit).",
+    "fit_context": "Without -c, llama-server would shrink the context to {fit_context} tokens "
+                   "to keep the whole model on the GPU.",
     "prefill_device_uncalibrated": "No prompt-processing measurements for {device} with this "
                                    "backend: its prompt speed uses the backend average and can "
                                    "be far off.",
@@ -58,6 +63,13 @@ TEXTS = {
     "moe_parallel": "Concurrent requests of a mixture-of-experts model are not calibrated: the "
                     "estimate assumes every request picks experts at random, while measured "
                     "speed-ups are higher.",
+    "offload_uncalibrated": "Weights in system RAM are not calibrated: speeds with part of the "
+                            "model in RAM, and prompt batches that copy those weights to the GPU, "
+                            "can be far off.",
+    "pcie_unknown": "The PCIe link of {device} is not known, so prompt batches compute the "
+                    "weights in system RAM on the CPU, which is likely slower than llama.cpp.",
+    "pcie_unverified": "No vendor source states the PCIe link of {device}; PCIe {gen}.0 "
+                       "x{lanes} comes from Wikipedia and may be wrong.",
 }
 
 
@@ -90,7 +102,9 @@ def device_label(system: System, p) -> str:
 
 def system_info(system: System) -> dict:
     gpus = [{"name": g.name, "label": _label(g.name), "backend": g.backend,
-             "vram_gb": None if system.unified else g.vram_gb} for g in system.gpus]
+             "vram_gb": None if system.unified else g.vram_gb,
+             "pcie": {"gen": g.pcie_gen, "lanes": g.pcie_lanes, "source": g.pcie_source}
+             if g.pcie_gen and not system.unified else None} for g in system.gpus]
     return {
         "kind": "unified" if system.unified else "pc",
         "cpu": None if system.unified else {"name": system.cpu.name,
@@ -119,9 +133,23 @@ def notes(system: System, est: Estimate, eff: Efficiency = Efficiency()) -> list
     if cpu and not est.fits:
         need, free = ram_use(system, est, eff)
         out.append(_item("ram_short", need_gb=_gb1(need), free_gb=_gb1(free)))
-    if cpu and system.gpus:
+    if cpu and system.gpus and cpu[0].layers:
         out.append(_item("layers_on_cpu", cpu_layers=cpu[0].layers, total_layers=m.n_layers))
+    if cpu and system.gpus and cpu[0].expert_layers > cpu[0].layers:
+        out.append(_item("experts_in_ram", expert_layers=cpu[0].expert_layers - cpu[0].layers,
+                         total_layers=m.n_layers))
+    if est.fit_context:
+        out.append(_item("fit_context", fit_context=est.fit_context))
     return out
+
+
+def _offloaded(system: System, est: Estimate) -> bool:
+    return bool(system.gpus) and not all(p.is_gpu for p in est.placements)
+
+
+def _offload_gpu(system: System, est: Estimate):
+    """The GPU that prompt batches copy the weights in system RAM to (op offload), if any."""
+    return system.gpus[0] if not system.unified and _offloaded(system, est) else None
 
 
 def warnings(system: System, est: Estimate, data: dict,
@@ -169,6 +197,14 @@ def warnings(system: System, est: Estimate, data: dict,
         out += [_item("parallel_device_uncalibrated", device=d) for d in devices]
         if est.model.active_params_b:
             out.append(_item("moe_parallel"))
+    if _offloaded(system, est):
+        out.append(_item("offload_uncalibrated"))
+    g = _offload_gpu(system, est)
+    if g and not (g.pcie_gen and g.pcie_lanes):
+        out.append(_item("pcie_unknown", device=_label(g.name)))
+    elif g and g.pcie_source == "wikipedia":
+        out.append(_item("pcie_unverified", device=_label(g.name), gen=g.pcie_gen,
+                         lanes=g.pcie_lanes))
     return out
 
 
@@ -176,8 +212,11 @@ def speed_bands(system: System, est: Estimate, data: dict,
                 eff: Efficiency = Efficiency()) -> dict:
     """The error 8 of 10 measured results stay within for this configuration's decode and
     prompt speeds (calibrate.error_bands), taking the widest of the devices used; None
-    where a device's backend has too few results."""
+    where a device's backend has too few results, and with weights in system RAM next to
+    GPUs (no measurements)."""
     gpu_backend = {g.name: g.backend for g in system.gpus}
+    if _offloaded(system, est):
+        return {"decode": None, "prefill": None}
     out: dict = {"decode": 0.0, "prefill": 0.0}
     for p in est.placements:
         backend = gpu_backend[p.device] if p.is_gpu else "cpu"
