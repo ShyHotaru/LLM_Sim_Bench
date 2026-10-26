@@ -58,6 +58,7 @@
   "sycl_batch_compute": 0.4,
   "cpu_batch_compute": 0.4,
   "vram_reserve_gb": 1.0,
+  "pcie_bandwidth": 1.0,
   "ram_reserve_gb": 4.0,
   "unified_gpu_fraction": 0.75,
   "device_compute": {
@@ -675,7 +676,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 2060 SUPER",
-   "year": 2019
+   "year": 2019,
+   "pcie_gen": 3,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx2070super-8gb",
@@ -686,7 +690,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 2070 SUPER",
-   "year": 2019
+   "year": 2019,
+   "pcie_gen": 3,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx2080ti-11gb",
@@ -697,7 +704,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 2080 Ti",
-   "year": 2018
+   "year": 2018,
+   "pcie_gen": 3,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3060-12gb",
@@ -708,7 +718,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3060 12GB",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3060ti-8gb",
@@ -719,7 +732,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3060 Ti",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3070-8gb",
@@ -730,7 +746,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3070",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3080-10gb",
@@ -741,7 +760,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3080 10GB",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3080ti-12gb",
@@ -752,7 +774,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3080 Ti",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3090-24gb",
@@ -763,7 +788,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3090",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx3090ti-24gb",
@@ -774,7 +802,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 3090 Ti",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4060-8gb",
@@ -785,7 +816,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4060",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4060ti-8gb",
@@ -796,7 +830,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4060 Ti 8GB",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4060ti-16gb",
@@ -807,7 +844,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4060 Ti 16GB",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4070-12gb",
@@ -818,7 +858,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4070",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4070super-12gb",
@@ -829,7 +872,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4070 SUPER",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4070tisuper-16gb",
@@ -840,7 +886,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4070 Ti SUPER",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4080-16gb",
@@ -851,7 +900,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4080",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4080super-16gb",
@@ -862,7 +914,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4080 SUPER",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx4090-24gb",
@@ -873,7 +928,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 4090",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5060-8gb",
@@ -884,7 +942,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5060",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5060ti-16gb",
@@ -895,7 +956,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5060 Ti 16GB",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5070-12gb",
@@ -906,7 +970,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5070",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5070ti-16gb",
@@ -917,7 +984,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5070 Ti",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5080-16gb",
@@ -928,7 +998,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5080",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx5090-32gb",
@@ -939,7 +1012,10 @@
    "vendor": "NVIDIA",
    "segment": "consumer",
    "label": "RTX 5090",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rtx-a4000-16gb",
@@ -950,7 +1026,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX A4000",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtx-a5000-24gb",
@@ -961,7 +1040,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX A5000",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtx-a6000-48gb",
@@ -972,7 +1054,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX A6000",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtx4000ada-20gb",
@@ -983,7 +1068,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX 4000 Ada",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtx6000ada-48gb",
@@ -994,7 +1082,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX 6000 Ada",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtxpro4000-24gb",
@@ -1005,7 +1096,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX PRO 4000 Blackwell",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtxpro4500-32gb",
@@ -1016,7 +1110,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX PRO 4500 Blackwell",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rtxpro6000-96gb",
@@ -1027,7 +1124,10 @@
    "vendor": "NVIDIA",
    "segment": "workstation",
    "label": "RTX PRO 6000 Blackwell (Workstation)",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "t4-16gb",
@@ -1038,7 +1138,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "Tesla T4",
-   "year": 2018
+   "year": 2018,
+   "pcie_gen": 3,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "v100-sxm2-32gb",
@@ -1049,7 +1152,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "Tesla V100 SXM2 32GB",
-   "year": 2017
+   "year": 2017,
+   "pcie_gen": 3,
+   "pcie_lanes": 0,
+   "pcie_source": "vendor"
   },
   {
    "name": "a10-24gb",
@@ -1060,7 +1166,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "A10",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "a100-pcie-40gb",
@@ -1071,7 +1180,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "A100 40GB PCIe",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "a100-pcie-80gb",
@@ -1082,7 +1194,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "A100 80GB PCIe",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "a100-sxm-80gb",
@@ -1093,7 +1208,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "A100 80GB SXM",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "l4-24gb",
@@ -1104,7 +1222,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "L4",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "l40s-48gb",
@@ -1115,7 +1236,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "L40S",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "h100-pcie-80gb",
@@ -1126,7 +1250,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "H100 PCIe",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "h100-sxm-80gb",
@@ -1137,7 +1264,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "H100 SXM",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "h200-141gb",
@@ -1148,7 +1278,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "H200",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "b200-180gb",
@@ -1159,7 +1292,10 @@
    "vendor": "NVIDIA",
    "segment": "datacenter",
    "label": "B200",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rx6800xt-16gb",
@@ -1170,7 +1306,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 6800 XT",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx6900xt-16gb",
@@ -1181,7 +1320,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 6900 XT",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx7600xt-16gb",
@@ -1192,7 +1334,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 7600 XT",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx7800xt-16gb",
@@ -1203,7 +1348,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 7800 XT",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx7900gre-16gb",
@@ -1214,7 +1362,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 7900 GRE",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx7900xt-20gb",
@@ -1225,7 +1376,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 7900 XT",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx7900xtx-24gb",
@@ -1236,7 +1390,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 7900 XTX",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "wikipedia"
   },
   {
    "name": "rx9060xt-16gb",
@@ -1247,7 +1404,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 9060 XT 16GB",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rx9070-16gb",
@@ -1258,7 +1418,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 9070",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "rx9070xt-16gb",
@@ -1269,7 +1432,10 @@
    "vendor": "AMD",
    "segment": "consumer",
    "label": "Radeon RX 9070 XT",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "radeon-pro-w7800-32gb",
@@ -1280,7 +1446,10 @@
    "vendor": "AMD",
    "segment": "workstation",
    "label": "Radeon PRO W7800",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "radeon-pro-w7900-48gb",
@@ -1291,7 +1460,10 @@
    "vendor": "AMD",
    "segment": "workstation",
    "label": "Radeon PRO W7900",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "radeon-ai-pro-r9700-32gb",
@@ -1302,7 +1474,10 @@
    "vendor": "AMD",
    "segment": "workstation",
    "label": "Radeon AI PRO R9700",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi100-32gb",
@@ -1313,7 +1488,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI100",
-   "year": 2020
+   "year": 2020,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi210-64gb",
@@ -1324,7 +1502,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI210",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi250x-gcd-64gb",
@@ -1335,7 +1516,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI250X (one GCD)",
-   "year": 2021
+   "year": 2021,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi300x-192gb",
@@ -1346,7 +1530,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI300X",
-   "year": 2023
+   "year": 2023,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi325x-256gb",
@@ -1357,7 +1544,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI325X",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "mi355x-288gb",
@@ -1368,7 +1558,10 @@
    "vendor": "AMD",
    "segment": "datacenter",
    "label": "Instinct MI355X",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "arc-a770-16gb",
@@ -1379,7 +1572,10 @@
    "vendor": "Intel",
    "segment": "consumer",
    "label": "Arc A770 16GB",
-   "year": 2022
+   "year": 2022,
+   "pcie_gen": 4,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   },
   {
    "name": "arc-b570-10gb",
@@ -1390,7 +1586,10 @@
    "vendor": "Intel",
    "segment": "consumer",
    "label": "Arc B570",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "vendor"
   },
   {
    "name": "arc-b580-12gb",
@@ -1401,7 +1600,10 @@
    "vendor": "Intel",
    "segment": "consumer",
    "label": "Arc B580",
-   "year": 2024
+   "year": 2024,
+   "pcie_gen": 4,
+   "pcie_lanes": 8,
+   "pcie_source": "vendor"
   },
   {
    "name": "arc-pro-b60-24gb",
@@ -1412,7 +1614,10 @@
    "vendor": "Intel",
    "segment": "workstation",
    "label": "Arc Pro B60",
-   "year": 2025
+   "year": 2025,
+   "pcie_gen": 5,
+   "pcie_lanes": 8,
+   "pcie_source": "vendor"
   },
   {
    "name": "arc-pro-b70-32gb",
@@ -1423,7 +1628,10 @@
    "vendor": "Intel",
    "segment": "workstation",
    "label": "Arc Pro B70",
-   "year": 2026
+   "year": 2026,
+   "pcie_gen": 5,
+   "pcie_lanes": 16,
+   "pcie_source": "vendor"
   }
  ],
  "unified": [

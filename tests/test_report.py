@@ -3,6 +3,7 @@ import io
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from llm_sim_bench import report
@@ -42,8 +43,29 @@ class ReportTests(unittest.TestCase):
         moe = [w for w in res["warnings"] if w["code"] == "moe_uncalibrated"]
         self.assertEqual([w["params"]["backend"] for w in moe], ["CPU"])
         self.assertIn("depth_uncalibrated", codes)
-        self.assertIn("layers_on_cpu", [n["code"] for n in res["notes"]])
+        # Like llama-server --fit, every layer stays on the GPU but some of their experts.
+        self.assertEqual([n["code"] for n in res["notes"]], ["experts_in_ram"])
+        self.assertIn("offload_uncalibrated", codes)
         self.assertIsNone(res["timing"])
+
+    def test_pcie_link_source_is_reported(self):
+        def codes(gpu):
+            system = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (gpu,))
+            est = estimate(system, MODEL_PRESETS["llama-3.1-70b"])
+            return [w["code"] for w in report.result(system, est, 16, DATA)["warnings"]]
+
+        wiki = GPU_PRESETS["rtx4090-24gb"]
+        self.assertEqual(wiki.pcie_source, "wikipedia")
+        self.assertIn("pcie_unverified", codes(wiki))
+        self.assertNotIn("pcie_unverified", codes(GPU_PRESETS["rtx6000ada-48gb"]))
+        unknown = codes(replace(wiki, pcie_gen=0, pcie_lanes=0, pcie_source=""))
+        self.assertIn("pcie_unknown", unknown)
+        self.assertNotIn("pcie_unverified", unknown)
+        # A model that fits needs no link.
+        system = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (wiki,))
+        est = estimate(system, MODEL_PRESETS["llama-3.1-8b"])
+        self.assertNotIn("pcie_unverified",
+                         [w["code"] for w in report.result(system, est, 16, DATA)["warnings"]])
 
     def test_error_bands_widen_for_unmeasured_devices(self):
         measured = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (GPU_PRESETS["rtx4090-24gb"],))
@@ -54,10 +76,10 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(m["prefill"], DATA["bands"]["cuda"]["pp_measured"])
         self.assertEqual(o["prefill"], DATA["bands"]["cuda"]["pp_other"])
         self.assertLess(m["prefill"], o["prefill"])
-        # Offloaded layers widen the band to the CPU's.
+        # No band with weights in system RAM: no measurements back it.
         small = System(CPU_PRESETS["ryzen7-5800x"], RAM(64, 51.2), (GPU_PRESETS["rtx3080-10gb"],))
         off = report.speed_bands(small, estimate(small, MODEL_PRESETS["llama-3.1-70b"]), DATA)
-        self.assertGreaterEqual(off["prefill"], DATA["bands"]["cpu"]["pp_other"])
+        self.assertEqual(off, {"decode": None, "prefill": None})
 
     def test_markdown_lists_every_configuration(self):
         system = System(CPU_PRESETS["ryzen9-7950x"], RAM(64, 96))

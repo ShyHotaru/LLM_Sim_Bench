@@ -81,6 +81,8 @@
   "note.context": "Context {context} exceeds the model's maximum of {max}.",
   "note.ram": "Needs {need} in system RAM but only {free} is free; it would page to disk.",
   "note.offload": "{cpu} of {total} layers are offloaded to the CPU.",
+  "note.experts": "The routed experts of {experts} of {total} layers stay in system RAM, so that every layer's attention and KV cache fit on the GPU (like llama-server --fit).",
+  "note.fitContext": "Without -c, llama-server would shrink the context to {context} tokens to keep the whole model on the GPU.",
 
   "measured.summary": "Check: real benchmarks on this hardware ({n})",
   "measured.intro": "Llama 2 7B with llama.cpp, measured vs. this simulator (tok/s).",
@@ -178,6 +180,9 @@
   "warn.parallelUncalibrated": "No concurrent-request measurements for {backend} yet: the speed-up from batching uses the CUDA factor.",
   "warn.parallelDevice": "Concurrent-request speeds are fitted to other hardware only, not to {device}.",
   "warn.moeParallel": "Concurrent requests of a mixture-of-experts model are not calibrated: the estimate assumes every request picks experts at random, while measured speed-ups are higher.",
+  "warn.offloadUncalibrated": "Weights in system RAM are not calibrated: speeds with part of the model in RAM, and prompt batches that copy those weights to the GPU, can be far off.",
+  "warn.pcieUnknown": "The PCIe link of {device} is not known, so prompt batches compute the weights in system RAM on the CPU, which is likely slower than llama.cpp.",
+  "warn.pcieUnverified": "No vendor source states the PCIe link of {device}; PCIe {gen}.0 x{lanes} comes from Wikipedia and may be wrong.",
 
   "platform.server": "Server",
   "search.label": "Find a part",

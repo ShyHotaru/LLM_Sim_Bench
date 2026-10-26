@@ -44,7 +44,8 @@ Placement
   rtx3080-10gb              40 layers    8.88 GB
   cpu:ryzen7-5800x           8 layers    1.78 GB
 Fits      yes
-Decode    ~16.0 tok/s (empty context)  ->  ~13.6 tok/s (full context)
+Prefill   ~2,199 tok/s
+Decode    ~19.6 tok/s (empty context)  ->  ~16.7 tok/s (full context)
 Note      8/48 layers offloaded to CPU
 ```
 
@@ -166,7 +167,11 @@ the whole prompt on every request.
 - **Weights** = parameters × bits-per-weight of the quantization.
 - **KV cache** = 2 × layers × KV heads × head dim × bytes × context. Sliding-window layers
   (Gemma 2, gpt-oss) keep only their window plus one batch, as llama.cpp does.
-- **Placement**: whole layers go to GPUs first (minus a VRAM reserve), the rest to system RAM.
+- **Placement** follows llama-server's default `--fit`: whole layers go to GPUs first (minus a
+  VRAM reserve), the rest to system RAM. A mixture-of-experts model that does not fit keeps
+  its routed experts in RAM first, so that attention, shared weights and KV cache of every
+  layer stay on the GPU. Without `-c`, llama-server would rather shrink the context; the
+  reports say to how much.
 - **Decode** is memory-bandwidth bound: per token, each device reads its share of the active
   weights (not the token embedding, which is a lookup) and the filled KV cache (attention reads
   the cache more slowly than the weights).
@@ -174,7 +179,12 @@ the whole prompt on every request.
 - **Overhead**: each layer adds a fixed per-token cost (kernel launches, synchronization).
 - **Prefill** is compute bound: about 2 FLOPs per multiplied weight per prompt token (without
   the output layer, which llama.cpp runs only for the last prompt token), plus attention over
-  every token already in the context, so prompts get slower as it fills.
+  every token already in the context, so prompts get slower as it fills. Prompts run in
+  batches of 512 tokens; for weights in system RAM, batches of 32 tokens or more run on the
+  first GPU, which copies those weights over PCIe for every batch (llama.cpp's op offload),
+  and smaller ones on the CPU. GPU presets carry their PCIe generation and lanes from vendor
+  pages, or from Wikipedia where no vendor source states them; reports flag those as
+  unverified, and a GPU without a known link computes the batches on the CPU.
 - **Mixture-of-experts** models read their shared weights and the routed experts; their layers
   cost extra time per token, and their prompt processing reaches less of the GPU's compute.
   gpt-oss MXFP4 files keep everything but the experts in Q8_0.
@@ -258,12 +268,15 @@ backend uses the CUDA factor, so concurrency estimates are rough everywhere else
 Most GPU calibration data is Llama 2 7B at short context, so larger dense models and CPU
 offload are extrapolations. The app marks results that rest on uncalibrated
 parts (a backend or device without measurements, long contexts or mixture-of-experts models on
-a backend without benches/ results).
+a backend without benches/ results, weights in system RAM, a PCIe link taken from Wikipedia or
+not known), and shows no ± range when part of the model is in system RAM.
 
 ### Known limitations
 
-- Prefill with partial CPU offload is pessimistic: real runtimes push large prompt batches
-  through the GPU even for CPU-resident layers.
+- Partial offload is not calibrated: copying weights to the GPU assumes the PCIe link's
+  theoretical rate (in one public result, prompts ran about a third slower with mmap'd than
+  with pinned host memory), and public results rarely state the PCIe link and RAM channels
+  together.
 - Long-context and MoE factors come from one device per backend (DGX Spark, M2 Ultra) and
   only CUDA and Metal; MoE prompt processing differs by model (within 27 % on CUDA).
 - Concurrent requests are calibrated on one dense model on one device (DGX Spark). For
@@ -288,6 +301,8 @@ Calibration data:
   virtual function, and Llama 3 8B on two and four RTX 4090s).
 - Mixture-of-experts results beyond DGX Spark and M2 Ultra, and MoE prompt processing on
   Metal (the M2 Ultra's GPU core count is unknown).
+- Partial-offload results (`--n-cpu-moe`, `-ngl`) with a known PCIe link and RAM
+  configuration, to calibrate the copy rate of llama.cpp's op offload.
 - CPU prompt processing on more CPUs (only native-build data for a few CPUs).
 - Apple M1–M4 on current llama.cpp builds (only the M1 Ultra 64-core so far), and the M5
   Ultra prompt-processing gap (about 20 % below the other M5 chips per GPU core).

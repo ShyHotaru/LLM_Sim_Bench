@@ -164,6 +164,18 @@ Presets in `src/llm_sim_bench/profiles.py` are approximate public specs.
   sparse figures, it is derived with ratios confirmed on cards of the same generation
   (GeForce 40: AI TOPS / 4; Blackwell: FP4 sparse / 8; RTX Ada: FP8 sparse / 4; Intel: INT8
   TOPS / 2). RDNA2 cards have no matrix units, so their packed FP16 vector peak is used.
+- **GPU PCIe links** (`pcie_gen`, `pcie_lanes`, `pcie_source`) set how fast weights in system
+  RAM reach the GPU for prompt processing. Vendor sources come first: NVIDIA RTX/workstation
+  and data-center datasheets, AMD Radeon PRO, Radeon RX 9000 and Instinct product pages, Intel
+  Arc specification pages (checked October 2026). NVIDIA states SXM and HGX host links as
+  bandwidth only (Gen4 64 GB/s, Gen5 128 GB/s in both directions together), which is 16 lanes;
+  V100 SXM2 gets its generation only, so its link counts as unknown. Where no vendor source
+  states the link, Wikipedia is used and `pcie_source` is `"wikipedia"`, which reports flag as
+  unverified: GeForce RTX 30, 40 and 50 cards (NVIDIA pages give the generation but not the
+  lanes; List of Nvidia graphics processing units, revision 1381062337), RTX 20 cards (the
+  generation is on NVIDIA's comparison page via the Wayback Machine, the lanes in the GeForce
+  RTX 20 series article) and Radeon RX 6000 and 7000 cards (amd.com leaves the bus empty; List
+  of AMD graphics processing units, revision 1376670003). TechPowerUp refused automated access.
 - **Unified-memory PCs**: DGX Spark FP16 is derived from NVIDIA's "1 PFLOP FP4 with sparsity"
   (/8); Ryzen AI Max FP16 from AMD's compute-unit count and GPU clock (RDNA 3.5, 512 FP16
   FLOPs per CU per clock). CPU figures for these systems are rough. Jetson AGX Thor was left

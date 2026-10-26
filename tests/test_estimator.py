@@ -1,11 +1,12 @@
 import time
 import unittest
+from dataclasses import replace
 
 from llm_sim_bench.cli import main
 from llm_sim_bench.estimator import estimate, kv_bytes_per_token
 from llm_sim_bench.mock import MockEngine, StreamStats
 from llm_sim_bench.profiles import (CPU_PRESETS, GPU_PRESETS, MODEL_PRESETS, RAM, System,
-                                    ram_bandwidth_gbps)
+                                    pcie_gbps, ram_bandwidth_gbps)
 
 CPU = CPU_PRESETS["ryzen7-5800x"]
 RAM64 = RAM(64, ram_bandwidth_gbps("ddr4-3200", 2))
@@ -39,6 +40,47 @@ class EstimatorTests(unittest.TestCase):
         big = estimate(sys_, MODEL_PRESETS["qwen2.5-32b"])
         self.assertEqual([p.is_gpu for p in big.placements], [True, False])
         self.assertLess(big.decode_tps_empty, 10)
+
+    def test_moe_keeps_experts_in_ram_first(self):
+        # Like llama-server --fit: attention, shared weights and KV cache of every layer stay
+        # on the GPU; the experts of some layers go to system RAM.
+        sys_ = System(CPU, RAM(128, 96), (GPU_PRESETS["rtx4090-24gb"],))
+        est = estimate(sys_, MODEL_PRESETS["gpt-oss-120b"], "MXFP4", 8192)
+        gpu, cpu = est.placements
+        self.assertEqual((gpu.layers, cpu.layers), (36, 0))
+        self.assertEqual(gpu.expert_layers + cpu.expert_layers, 36)
+        self.assertGreater(cpu.expert_layers, 0)
+
+    def test_pcie_link_speeds_up_offloaded_prompts(self):
+        # Prompt batches multiply the weights in RAM on the GPU after copying them over PCIe;
+        # without a known link they stay on the CPU.
+        gpu = GPU_PRESETS["rtx3090-24gb"]
+        def prefill(g):
+            return estimate(System(CPU, RAM64, (g,)), MODEL_PRESETS["llama-3.1-70b"]).prefill_tps
+        x16, x8 = prefill(gpu), prefill(replace(gpu, pcie_lanes=8))
+        unknown = prefill(replace(gpu, pcie_gen=0, pcie_lanes=0))
+        self.assertGreater(x16, x8)
+        self.assertGreater(x8, unknown)
+        # Decode does not use the link.
+        decode = {estimate(System(CPU, RAM64, (g,)), MODEL_PRESETS["llama-3.1-70b"]).decode_tps_empty
+                  for g in (gpu, replace(gpu, pcie_lanes=8))}
+        self.assertEqual(len(decode), 1)
+
+    def test_fit_context_shrinks_to_keep_the_model_on_the_gpu(self):
+        sys_ = System(CPU, RAM64, (GPU_PRESETS["rtx4060ti-16gb"],))
+        est = estimate(sys_, MODEL_PRESETS["qwen2.5-14b"], "Q4_K_M", 131072)
+        self.assertGreaterEqual(est.fit_context, 4096)
+        self.assertLess(est.fit_context, 131072)
+        self.assertEqual(est.fit_context % 256, 0)
+        self.assertTrue(all(p.is_gpu for p in estimate(sys_, MODEL_PRESETS["qwen2.5-14b"], "Q4_K_M",
+                                                       est.fit_context).placements))
+        self.assertEqual(estimate(sys_, LLAMA8).fit_context, 0)
+
+    def test_pcie_bandwidth(self):
+        self.assertAlmostEqual(pcie_gbps(4, 16), 31.5, places=1)
+        self.assertAlmostEqual(pcie_gbps(5, 8), pcie_gbps(4, 16))
+        self.assertEqual(pcie_gbps(0, 16), 0.0)
+        self.assertEqual(pcie_gbps(4, 0), 0.0)
 
     def test_does_not_fit_in_ram(self):
         est = estimate(System(CPU, RAM(16, 51.2)), MODEL_PRESETS["llama-3.1-70b"])

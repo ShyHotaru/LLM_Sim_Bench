@@ -448,7 +448,11 @@ function localizedNotes(cfg, system, est) {
   }
   if (cpu && !est.fits) notes.push(t("note.ram", { need: gb(est.ram_needed_gb), free: gb(est.ram_free_gb) }));
   // When the model fits, the status line already says how many layers run on the CPU.
-  if (cpu && system.gpus.length && !est.fits) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
+  if (cpu && system.gpus.length && !est.fits && cpu.layers) notes.push(t("note.offload", { cpu: cpu.layers, total: n }));
+  if (cpu && system.gpus.length && cpu.expert_layers > cpu.layers) {
+    notes.push(t("note.experts", { experts: cpu.expert_layers - cpu.layers, total: n }));
+  }
+  if (est.fit_context) notes.push(t("note.fitContext", { context: fmtInt(est.fit_context) }));
   return notes;
 }
 
@@ -465,6 +469,9 @@ const WARNING_KEYS = {
   parallel_uncalibrated: "warn.parallelUncalibrated",
   parallel_device_uncalibrated: "warn.parallelDevice",
   moe_parallel: "warn.moeParallel",
+  offload_uncalibrated: "warn.offloadUncalibrated",
+  pcie_unknown: "warn.pcieUnknown",
+  pcie_unverified: "warn.pcieUnverified",
 };
 
 // Point out where the numbers rest on uncalibrated assumptions rather than measurements.

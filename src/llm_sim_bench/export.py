@@ -94,6 +94,7 @@ def golden() -> list[dict]:
                       "kv_bits": kv_bits, "parallel": parallel},
             "expected": {
                 "weights_gb": est.weights_gb, "kv_gb": est.kv_gb, "fits": est.fits,
+                "fit_context": est.fit_context,
                 "placements": [asdict(p) for p in est.placements],
                 "prefill_tps": est.prefill_tps,
                 "decode_tps_empty": est.decode_tps_empty,

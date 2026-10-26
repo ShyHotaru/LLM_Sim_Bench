@@ -21,6 +21,11 @@ class GPU:
     segment: str = ""  # "consumer", "workstation" or "datacenter"
     label: str = ""  # display name, e.g. "Radeon RX 7900 XTX"
     year: int = 0  # launch year, used to list newer parts first
+    pcie_gen: int = 0  # host link: PCIe generation and lanes; 0 if unknown
+    pcie_lanes: int = 0
+    # Where the link comes from: "vendor" (vendor pages), "wikipedia" (no vendor source states
+    # it), "" if unknown.
+    pcie_source: str = ""
 
 
 @dataclass(frozen=True)
@@ -228,6 +233,55 @@ _GPU_YEARS = {
     "arc-pro-b70-32gb": 2026,
 }
 GPU_PRESETS = {k: replace(g, year=_GPU_YEARS[k]) for k, g in GPU_PRESETS.items()}
+
+# Host link (PCIe generation, lanes, source), see data/README.md. Vendor pages come first;
+# "wikipedia" marks links whose lanes (or generation) no vendor source states. SXM and HGX
+# modules: NVIDIA gives the host link as bandwidth (Gen4 64 GB/s, Gen5 128 GB/s in both
+# directions together), which is 16 lanes. V100 SXM2: generation only.
+_GPU_PCIE = {
+    "rtx2060super-8gb": (3, 16, "wikipedia"), "rtx2070super-8gb": (3, 16, "wikipedia"),
+    "rtx2080ti-11gb": (3, 16, "wikipedia"),
+    "rtx3060-12gb": (4, 16, "wikipedia"), "rtx3060ti-8gb": (4, 16, "wikipedia"),
+    "rtx3070-8gb": (4, 16, "wikipedia"), "rtx3080-10gb": (4, 16, "wikipedia"),
+    "rtx3080ti-12gb": (4, 16, "wikipedia"), "rtx3090-24gb": (4, 16, "wikipedia"),
+    "rtx3090ti-24gb": (4, 16, "wikipedia"),
+    "rtx4060-8gb": (4, 8, "wikipedia"), "rtx4060ti-8gb": (4, 8, "wikipedia"),
+    "rtx4060ti-16gb": (4, 8, "wikipedia"), "rtx4070-12gb": (4, 16, "wikipedia"),
+    "rtx4070super-12gb": (4, 16, "wikipedia"), "rtx4070tisuper-16gb": (4, 16, "wikipedia"),
+    "rtx4080-16gb": (4, 16, "wikipedia"), "rtx4080super-16gb": (4, 16, "wikipedia"),
+    "rtx4090-24gb": (4, 16, "wikipedia"),
+    "rtx5060-8gb": (5, 8, "wikipedia"), "rtx5060ti-16gb": (5, 8, "wikipedia"),
+    "rtx5070-12gb": (5, 16, "wikipedia"), "rtx5070ti-16gb": (5, 16, "wikipedia"),
+    "rtx5080-16gb": (5, 16, "wikipedia"), "rtx5090-32gb": (5, 16, "wikipedia"),
+    "rtx-a4000-16gb": (4, 16, "vendor"), "rtx-a5000-24gb": (4, 16, "vendor"),
+    "rtx-a6000-48gb": (4, 16, "vendor"), "rtx4000ada-20gb": (4, 16, "vendor"),
+    "rtx6000ada-48gb": (4, 16, "vendor"), "rtxpro4000-24gb": (5, 16, "vendor"),
+    "rtxpro4500-32gb": (5, 16, "vendor"), "rtxpro6000-96gb": (5, 16, "vendor"),
+    "t4-16gb": (3, 16, "vendor"), "v100-sxm2-32gb": (3, 0, "vendor"),
+    "a10-24gb": (4, 16, "vendor"), "a100-pcie-40gb": (4, 16, "vendor"),
+    "a100-pcie-80gb": (4, 16, "vendor"), "a100-sxm-80gb": (4, 16, "vendor"),
+    "l4-24gb": (4, 16, "vendor"), "l40s-48gb": (4, 16, "vendor"),
+    "h100-pcie-80gb": (5, 16, "vendor"), "h100-sxm-80gb": (5, 16, "vendor"),
+    "h200-141gb": (5, 16, "vendor"), "b200-180gb": (5, 16, "vendor"),
+    "rx6800xt-16gb": (4, 16, "wikipedia"), "rx6900xt-16gb": (4, 16, "wikipedia"),
+    "rx7600xt-16gb": (4, 8, "wikipedia"), "rx7800xt-16gb": (4, 16, "wikipedia"),
+    "rx7900gre-16gb": (4, 16, "wikipedia"), "rx7900xt-20gb": (4, 16, "wikipedia"),
+    "rx7900xtx-24gb": (4, 16, "wikipedia"),
+    "rx9060xt-16gb": (5, 16, "vendor"), "rx9070-16gb": (5, 16, "vendor"),
+    "rx9070xt-16gb": (5, 16, "vendor"), "radeon-pro-w7800-32gb": (4, 16, "vendor"),
+    "radeon-pro-w7900-48gb": (4, 16, "vendor"), "radeon-ai-pro-r9700-32gb": (5, 16, "vendor"),
+    "mi100-32gb": (4, 16, "vendor"), "mi210-64gb": (4, 16, "vendor"),
+    # The whole card's link; its two GCDs share it.
+    "mi250x-gcd-64gb": (4, 16, "vendor"),
+    "mi300x-192gb": (5, 16, "vendor"), "mi325x-256gb": (5, 16, "vendor"),
+    "mi355x-288gb": (5, 16, "vendor"),
+    "arc-a770-16gb": (4, 16, "vendor"), "arc-b570-10gb": (4, 8, "vendor"),
+    "arc-b580-12gb": (4, 8, "vendor"), "arc-pro-b60-24gb": (5, 8, "vendor"),
+    "arc-pro-b70-32gb": (5, 16, "vendor"),
+}
+GPU_PRESETS = {k: replace(g, pcie_gen=_GPU_PCIE[k][0], pcie_lanes=_GPU_PCIE[k][1],
+                          pcie_source=_GPU_PCIE[k][2])
+               for k, g in GPU_PRESETS.items()}
 
 
 def _cpu_label(name: str) -> str:
@@ -502,6 +556,17 @@ def ram_bandwidth_gbps(kind: str, channels: int = 2) -> float:
     if not m:
         raise ValueError(f"Unrecognized RAM kind {kind!r}; expected e.g. 'ddr5-5600'")
     return int(m.group(1)) * 8 * channels / 1000
+
+
+# Transfer rate of one PCIe lane in GT/s; generations 3 to 5 encode 128 bits in 130.
+_PCIE_GTPS = {3: 8, 4: 16, 5: 32}
+
+
+def pcie_gbps(gen: int, lanes: int) -> float:
+    """Theoretical one-way bandwidth of a PCIe link in GB/s; 0 if unknown."""
+    if gen not in _PCIE_GTPS or lanes <= 0:
+        return 0.0
+    return _PCIE_GTPS[gen] * 128 / 130 / 8 * lanes
 
 
 def lookup(presets: dict, name: str, what: str):
